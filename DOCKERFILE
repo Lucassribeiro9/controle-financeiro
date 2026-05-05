@@ -1,0 +1,20 @@
+# container do projeto
+FROM python:3.12-alpine
+
+# variáveis de ambiente para Python/pip
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# criar diretório de trabalho
+WORKDIR /app
+
+# copiar arquivos de requisitos e instalar dependências
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# copiar o restante do código para o container
+COPY . .
+
+EXPOSE 8000
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
