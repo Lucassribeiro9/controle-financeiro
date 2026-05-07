@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'institutions',
     'accounts',
     'categories',
+    'cards',
     
 ]
 
