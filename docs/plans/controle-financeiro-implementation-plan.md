@@ -242,6 +242,14 @@ feature/categories
 - Models têm testes.
 - Migrations versionadas.
 
+### Próximos passos imediatos
+
+1. Finalizar `Institution` com migration aplicada e testes verdes.
+2. Implementar `Category` (`feature/categories`) com model, admin e testes.
+3. Implementar `FinancialAccount` (`feature/accounts-models`) com vínculo a `Institution`, moeda e testes.
+4. Implementar `Card` (`feature/cards-models`) com tipos e regras mínimas de crédito/benefício, com testes.
+5. Revisar documentação da fase e atualizar `README.md` ao concluir a Fase 2.
+
 ## 8. Fase 3 - Transações e Transferências
 
 ### Objetivo
@@ -730,4 +738,3 @@ Uma tarefa só está pronta quando:
 11. Criar admin de `Institution`.
 12. Criar teste de `Institution`.
 
-Essa sequência é pequena de propósito. Ela cria confiança no fluxo antes de entrar nas regras financeiras mais complexas.
