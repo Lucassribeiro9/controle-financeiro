@@ -3,13 +3,13 @@
 Aplicativo web local para controle financeiro pessoal com Django.
 
 ## Índice
-
 - [Controle Financeiro](#controle-financeiro)
   - [Índice](#índice)
   - [Visão Geral](#visão-geral)
   - [Stack e Execução](#stack-e-execução)
   - [Fase 1 - Fundação](#fase-1---fundação)
   - [Fase 2 - Cadastros Fundamentais](#fase-2---cadastros-fundamentais)
+  - [Fase 3 - Transações e Transferências](#fase-3---transações-e-transferências)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -52,20 +52,45 @@ Implementado:
 
 ## Fase 2 - Cadastros Fundamentais
 
-Status: em andamento
+Status: concluída
 
-Implementado até agora:
+Implementado:
 
 - App `institutions`
 - Model `Institution`
 - Admin de `Institution`
 - Testes de model para `Institution`
+- App `categories`
+- Model `Category` com hierarquia simples
+- Admin de `Category`
+- Testes de model para `Category`
+- App `accounts`
+- Model `FinancialAccount` com vínculo a instituição, tipo, moeda e saldo em `Decimal`
+- Admin de `FinancialAccount`
+- Testes de model para `FinancialAccount`
+- App `cards`
+- Model `Card` com regras mínimas para cartões de crédito, benefício, transporte e pré-pago
+- Admin de `Card`
+- Testes de model para `Card`
+- Migrations versionadas para os cadastros fundamentais
+
+## Fase 3 - Transações e Transferências
+
+Status: próxima
+
+Próximos focos:
+
+- Modelar `Transaction`
+- Modelar `Transfer`
+- Garantir que transferências internas não entrem como despesa ou receita
+- Preparar os primeiros serviços e testes do núcleo de movimentações
 
 ## Documentação Detalhada
 
-Para detalhes técnicos da fase concluída:
+Para detalhes técnicos das fases:
 
 - `docs/phases/fase-1-fundacao.md`
+- `docs/phases/fase-2-cadastros-fundamentais.md`
 
 ## Roadmap
 
