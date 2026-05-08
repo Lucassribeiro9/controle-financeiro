@@ -244,6 +244,7 @@ feature/categories
 
 ### Próximos passos imediatos
 
+<<<<<<< HEAD
 Status em 2026-05-08: concluídos.
 
 1. [x] Finalizar `Institution` com migration aplicada e testes verdes.
@@ -251,6 +252,13 @@ Status em 2026-05-08: concluídos.
 3. [x] Implementar `FinancialAccount` (`feature/accounts-models`) com vínculo a `Institution`, moeda e testes.
 4. [x] Implementar `Card` (`feature/cards-models`) com tipos e regras mínimas de crédito/benefício, com testes.
 5. [x] Revisar documentação da fase e atualizar `README.md` ao concluir a Fase 2.
+=======
+1. Finalizar `Institution` com migration aplicada e testes verdes.
+2. Implementar `Category` (`feature/categories`) com model, admin e testes.
+3. Implementar `FinancialAccount` (`feature/accounts-models`) com vínculo a `Institution`, moeda e testes.
+4. Implementar `Card` (`feature/cards-models`) com tipos e regras mínimas de crédito/benefício, com testes.
+5. Revisar documentação da fase e atualizar `README.md` ao concluir a Fase 2.
+>>>>>>> origin/main
 
 ## 8. Fase 3 - Transações e Transferências
 
@@ -739,3 +747,7 @@ Uma tarefa só está pronta quando:
 10. Criar model `Institution`.
 11. Criar admin de `Institution`.
 12. Criar teste de `Institution`.
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
