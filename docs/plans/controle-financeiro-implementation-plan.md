@@ -739,7 +739,3 @@ Uma tarefa só está pronta quando:
 10. Criar model `Institution`.
 11. Criar admin de `Institution`.
 12. Criar teste de `Institution`.
-<<<<<<< HEAD
-=======
-
->>>>>>> 86fe545 (docs(plan): atualizando o plan com a proxima fase)
