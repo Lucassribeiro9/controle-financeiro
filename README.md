@@ -54,7 +54,9 @@ Implementado:
 ## Fase 2 - Cadastros Fundamentais
 
 Status: concluída
+Status: concluída
 
+Implementado:
 Implementado:
 
 - App `institutions`
@@ -117,6 +119,7 @@ Regras importantes:
 
 ## Documentação Detalhada
 
+Para detalhes técnicos das fases:
 Para detalhes técnicos das fases:
 
 - `docs/phases/fase-1-fundacao.md`
