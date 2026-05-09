@@ -53,7 +53,9 @@ Implementado:
 ## Fase 2 - Cadastros Fundamentais
 
 Status: concluída
+Status: concluída
 
+Implementado:
 Implementado:
 
 - App `institutions`
@@ -76,21 +78,28 @@ Implementado:
 
 ## Fase 3 - Transações e Transferências
 
-Status: próxima
+Status: concluída
 
-Próximos focos:
+Implementado:
 
-- Modelar `Transaction`
-- Modelar `Transfer`
-- Garantir que transferências internas não entrem como despesa ou receita
-- Preparar os primeiros serviços e testes do núcleo de movimentações
+- App `transactions`
+- Model `Transaction`
+- Model `Transfer`
+- Admin de `Transaction` e `Transfer`
+- Serviços `create_transaction` e `create_transfer`
+- Regras para movimentação de saldo por tipo de transação
+- Regras para transferências internas entre contas
+- Testes de model e serviços para transações e transferências
+- Migration versionada para o núcleo de movimentações
 
 ## Documentação Detalhada
 
 Para detalhes técnicos das fases:
+Para detalhes técnicos das fases:
 
 - `docs/phases/fase-1-fundacao.md`
 - `docs/phases/fase-2-cadastros-fundamentais.md`
+- `docs/phases/fase-3-transacoes-e-transferencias.md`
 
 ## Roadmap
 
