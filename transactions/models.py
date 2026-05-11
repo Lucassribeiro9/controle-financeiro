@@ -72,6 +72,14 @@ class Transaction(models.Model):
     notes = models.TextField("Observacoes", blank=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
+    # fatura do cartao associada (para compras no cartao, pode ser diferente da fatura atual do cartao para permitir flexibilidade)
+    statement = models.ForeignKey(
+        "cards.CardStatement",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+    )
 
     class Meta:
         """Define metadados de exibicao, ordenacao e unicidade."""
@@ -93,6 +101,17 @@ class Transaction(models.Model):
 
         if self.transaction_type != self.TransactionType.CARD_PURCHASE and self.account is None:
             raise ValidationError({"account": "Transacao exige conta financeira."})
+
+        if self.statement_id and self.transaction_type not in (
+            self.TransactionType.CARD_PURCHASE,
+            self.TransactionType.STATEMENT_PAYMENT,
+        ):
+            raise ValidationError(
+                {"statement": "Apenas compras no cartao ou pagamentos de fatura podem ter fatura vinculada."}
+            )
+
+        if self.statement_id and self.card_id and self.statement.card_id != self.card_id:
+            raise ValidationError({"statement": "Fatura deve pertencer ao cartao da transacao."})
 
     def __str__(self) -> str:
         """Retorna uma descricao curta para exibicao no admin e logs."""
