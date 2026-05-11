@@ -10,7 +10,7 @@ from cards.models import Card
 from categories.models import Category
 from institutions.models import Institution
 from transactions.models import Transaction
-from transactions.services import create_transaction, create_transfer
+from transactions.services import create_transaction, create_transfer, mark_transaction_as_paid
 
 
 class TransactionServiceTests(TestCase):
@@ -117,6 +117,62 @@ class TransactionServiceTests(TestCase):
         self.account.refresh_from_db()
 
         self.assertEqual(self.account.balance, Decimal("1000.00"))
+
+    def test_mark_transaction_as_paid_updates_status(self):
+        """Deve marcar uma transacao como paga."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        paid_transaction = mark_transaction_as_paid(transaction.id)
+
+        self.assertEqual(paid_transaction.status, Transaction.PaymentStatus.PAID)
+
+    def test_mark_transaction_as_paid_does_not_apply_balance_twice(self):
+        """Nao deve alterar saldo novamente ao marcar transacao como paga."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+        self.account.refresh_from_db()
+        balance_after_creation = self.account.balance
+
+        mark_transaction_as_paid(transaction.id)
+
+        self.account.refresh_from_db()
+
+        self.assertEqual(balance_after_creation, Decimal("750.00"))
+        self.assertEqual(self.account.balance, balance_after_creation)
+
+    def test_mark_paid_transaction_as_paid_is_idempotent(self):
+        """Nao deve alterar saldo ao marcar como paga uma transacao ja paga."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        mark_transaction_as_paid(transaction.id)
+        mark_transaction_as_paid(transaction.id)
+
+        self.account.refresh_from_db()
+
+        self.assertEqual(self.account.balance, Decimal("750.00"))
 
 
 class TransferServiceTests(TestCase):
