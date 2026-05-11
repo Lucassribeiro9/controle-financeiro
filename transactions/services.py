@@ -92,3 +92,16 @@ def create_transfer(
         target_account.save(update_fields=["balance", "updated_at"])
 
     return transfer
+
+def mark_transaction_as_paid(transaction_id):
+    """Marca uma transação como paga sem reaplicar impacto no saldo."""
+    with db_transaction.atomic():
+        transaction = Transaction.objects.select_for_update().get(pk=transaction_id)
+
+        if transaction.status == Transaction.PaymentStatus.PAID:
+            return transaction  # Já está pago, não faz nada
+
+        transaction.status = Transaction.PaymentStatus.PAID
+        transaction.save(update_fields=["status", "updated_at"])
+
+    return transaction
