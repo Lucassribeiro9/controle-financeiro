@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from accounts.models import FinancialAccount
-from cards.models import Card
+from cards.models import Card, CardStatement
 from categories.models import Category
 from institutions.models import Institution
 from transactions.models import Transaction, Transfer
@@ -35,6 +35,29 @@ class TransactionModelTests(TestCase):
             statement_closing_day=20,
             statement_due_day=27,
             payment_account=self.account,
+        )
+        self.other_card = Card.objects.create(
+            name="Inter Platinum",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("10000.00"),
+            statement_closing_day=15,
+            statement_due_day=22,
+            payment_account=self.account,
+        )
+        self.statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            closing_date=date(2026, 5, 20),
+            due_date=date(2026, 5, 27),
+        )
+        self.other_statement = CardStatement.objects.create(
+            card=self.other_card,
+            year=2026,
+            month=5,
+            closing_date=date(2026, 5, 15),
+            due_date=date(2026, 5, 22),
         )
 
     def test_create_income_transaction_linked_to_account(self):
@@ -101,6 +124,39 @@ class TransactionModelTests(TestCase):
 
         self.assertEqual(transaction.card, self.card)
         self.assertIsNone(transaction.account)
+
+    def test_card_purchase_can_be_linked_to_statement_from_same_card(self):
+        """Deve permitir compra no cartao vinculada a fatura do mesmo cartao."""
+
+        transaction = Transaction(
+            description="Assinatura",
+            amount=Decimal("39.90"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=self.card,
+            statement=self.statement,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+        transaction.full_clean()
+        transaction.save()
+
+        self.assertEqual(transaction.statement, self.statement)
+
+    def test_transaction_cannot_be_linked_to_statement_from_other_card(self):
+        """Nao deve permitir transacao vinculada a fatura de outro cartao."""
+
+        transaction = Transaction(
+            description="Assinatura",
+            amount=Decimal("39.90"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=self.card,
+            statement=self.other_statement,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        with self.assertRaises(ValidationError):
+            transaction.full_clean()
 
     def test_transaction_amount_must_be_positive(self):
         """Nao deve validar transacao com valor zero ou negativo."""
