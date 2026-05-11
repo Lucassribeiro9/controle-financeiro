@@ -10,6 +10,7 @@ Aplicativo web local para controle financeiro pessoal com Django.
   - [Fase 1 - Fundação](#fase-1---fundação)
   - [Fase 2 - Cadastros Fundamentais](#fase-2---cadastros-fundamentais)
   - [Fase 3 - Transações e Transferências](#fase-3---transações-e-transferências)
+  - [Fase 4 - Cartões e Faturas](#fase-4---cartões-e-faturas)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -53,9 +54,7 @@ Implementado:
 ## Fase 2 - Cadastros Fundamentais
 
 Status: concluída
-Status: concluída
 
-Implementado:
 Implementado:
 
 - App `institutions`
@@ -92,14 +91,38 @@ Implementado:
 - Testes de model e serviços para transações e transferências
 - Migration versionada para o núcleo de movimentações
 
+## Fase 4 - Cartões e Faturas
+
+Status: em andamento
+
+Implementado:
+
+- Model `CardStatement`
+- Migration para faturas de cartão
+- Vínculo `Transaction.statement`
+- Migration para relacionar transações com faturas
+- Serviços `get_or_create_card_statement`, `close_statement`, `pay_statement` e `update_statement_status`
+- Regras para associar compras no cartão à fatura correta
+- Regras para fechamento de fatura sem alteração de saldo
+- Regras para pagamento total ou parcial de fatura
+- Criação de `statement_payment` ao pagar fatura
+- Testes de model e serviços para faturas
+
+Regras importantes:
+
+- Compras no cartão entram na fatura, mas não alteram saldo da conta no momento da compra.
+- Fechar a fatura calcula o valor fechado e muda o status, mas não altera saldo.
+- Pagar a fatura reduz o saldo da conta de pagamento.
+- Pagamento de fatura cria uma transação `statement_payment`, mas essa transação não deve duplicar despesas nos relatórios.
+
 ## Documentação Detalhada
 
-Para detalhes técnicos das fases:
 Para detalhes técnicos das fases:
 
 - `docs/phases/fase-1-fundacao.md`
 - `docs/phases/fase-2-cadastros-fundamentais.md`
 - `docs/phases/fase-3-transacoes-e-transferencias.md`
+- `docs/phases/fase-4-cartoes-e-faturas.md`
 
 ## Roadmap
 
