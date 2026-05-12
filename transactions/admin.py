@@ -16,9 +16,10 @@ class TransactionAdmin(admin.ModelAdmin):
         "card",
         "category",
         "date",
+        "statement",
     )
-    search_fields = ("description", "account__name", "card__name", "category__name")
-    list_filter = ("transaction_type", "status", "date", "account", "card", "category")
+    search_fields = ("description", "account__name", "card__name", "category__name", "statement__card__name")
+    list_filter = ("transaction_type", "status", "statement", "account", "card", "category")
     ordering = ("-date", "-created_at")
 
 
