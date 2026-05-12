@@ -91,6 +91,17 @@ O que fazem:
 - Criam a tabela de `CardStatement`.
 - Adicionam o campo `statement` em `Transaction`.
 
+### 4. Admin Django
+
+Arquivos:
+
+- `cards/admin.py`
+
+O que foi feito:
+
+- Registro do model `CardStatement` no Django Admin.
+- Configuracao inicial de listagem, filtros, busca e ordenacao para operacao das faturas.
+
 ## Servicos implementados
 
 Arquivo:
@@ -217,15 +228,14 @@ docker compose run --rm web python manage.py test cards transactions
 
 ## Status da fase
 
-Fase 4 em andamento.
+Fase 4 concluida (escopo MVP) em 2026-05-12.
 
-O nucleo de faturas foi criado e testado, incluindo model, relacionamento com transacoes, fechamento e pagamento. A fase ainda pode evoluir com recursos administrativos, seletores e lembretes.
+O nucleo de faturas foi criado e testado, incluindo model, relacionamento com transacoes, fechamento e pagamento.
+Em 2026-05-12, o `CardStatement` foi registrado no admin.
 
-## Proximos passos
+## Backlog pos-fase
 
-- Registrar `CardStatement` no Django Admin.
-- Exibir `statement` no admin de `Transaction`.
 - Criar testes para `update_statement_status`.
 - Criar seletores de resumo de faturas.
 - Avaliar lembretes de vencimento.
-- Atualizar o plano principal quando a Fase 4 for concluida.
+- Tratar robustez de concorrencia em pagamento de fatura.
