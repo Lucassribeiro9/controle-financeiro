@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'cards',
     'transactions',
     'recurrences',
+    'goals',
     
 ]
 
