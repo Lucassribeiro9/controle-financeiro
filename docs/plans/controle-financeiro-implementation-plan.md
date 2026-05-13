@@ -480,6 +480,12 @@ feature/monthly-goals
 - Usuário consegue criar objetivos.
 - Usuário consegue acompanhar metas mensais.
 
+### Fechamento da fase
+
+Entregue o núcleo previsto para objetivos e metas mensais: cadastro de objetivos de acúmulo e redução, metas mensais, progresso por saldos de contas, progresso por despesas de categoria, status de acompanhamento e cobertura automatizada de models e services.
+
+Itens de interface dedicada, seletores para dashboard, acompanhamento proporcional e integração com insights permanecem no backlog técnico para ciclos seguintes.
+
 ## 12. Fase 7 - Dashboards e Relatórios
 
 ### Objetivo

@@ -12,6 +12,7 @@ Aplicativo web local para controle financeiro pessoal com Django.
   - [Fase 3 - Transações e Transferências](#fase-3---transações-e-transferências)
   - [Fase 4 - Cartões e Faturas](#fase-4---cartões-e-faturas)
   - [Fase 5 - Recorrências e Previsões](#fase-5---recorrências-e-previsões)
+  - [Fase 6 - Objetivos e Metas Mensais](#fase-6---objetivos-e-metas-mensais)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -150,6 +151,33 @@ Regras importantes:
 - Ajustar uma previsão altera o valor previsto e registra a alteração em `notes`.
 - Reconciliar uma recorrência com uma transação real registra o vínculo em `notes`.
 
+## Fase 6 - Objetivos e Metas Mensais
+
+Status: concluída
+
+Implementado:
+
+- App `goals`
+- Model `Goal`
+- Model `MonthlyGoal`
+- Admin de `Goal` e `MonthlyGoal`
+- Migration versionada para objetivos e metas mensais
+- Serviço `calculate_goal_progress`
+- Serviço `create_monthly_goal_from_goal`
+- Serviço `update_monthly_goal_status`
+- Regras para calcular progresso de objetivos de acúmulo
+- Regras para calcular progresso de objetivos de redução
+- Testes de model e services para objetivos e metas mensais
+
+Regras importantes:
+
+- Objetivos podem ser de acúmulo (`accumulation`) ou redução (`reduction`).
+- Objetivos de acúmulo calculam progresso pelo saldo das contas vinculadas.
+- Objetivos de redução calculam progresso pelas despesas da categoria no mês.
+- Metas mensais podem nascer de um objetivo.
+- Metas mensais identificam status `on_track`, `at_risk`, `achieved` e `missed`.
+- Transações `forecasted`, `ignored` e `canceled` não entram no cálculo de redução.
+
 ## Documentação Detalhada
 
 Para detalhes técnicos das fases:
@@ -159,6 +187,7 @@ Para detalhes técnicos das fases:
 - `docs/phases/fase-3-transacoes-e-transferencias.md`
 - `docs/phases/fase-4-cartoes-e-faturas.md`
 - `docs/phases/fase-5-recorrencias-e-previsoes.md`
+- `docs/phases/fase-6-objetivos-e-metas-mensais.md`
 
 ## Roadmap
 
