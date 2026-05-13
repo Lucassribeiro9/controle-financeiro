@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from cards.models import Card
+from cards.models import Card, CardStatement
 
 
 @admin.register(Card)
@@ -20,3 +20,23 @@ class CardAdmin(admin.ModelAdmin):
     search_fields = ("name", "institution__name")
     list_filter = ("card_type", "institution", "is_active")
     ordering = ("name",)
+
+# Criando admin do CardStatement
+@admin.register(CardStatement)
+class CardStatementAdmin(admin.ModelAdmin):
+    """Configura exibicao e filtros do model CardStatement no Django Admin."""
+
+    list_display = (
+        "card",
+        "month",
+        "year",
+        "status",
+        "expected_amount",
+        "paid_amount",
+        "closed_amount",
+        "due_date",
+        "payment_account"
+    )
+    search_fields = ("card__name", "card__institution__name")
+    list_filter = ("month", "year", "status", "card", "due_date")
+    ordering = ("-year", "-month", "-card__name")

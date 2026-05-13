@@ -93,7 +93,7 @@ Implementado:
 
 ## Fase 4 - Cartões e Faturas
 
-Status: em andamento
+Status: concluída
 
 Implementado:
 
@@ -107,6 +107,13 @@ Implementado:
 - Regras para pagamento total ou parcial de fatura
 - Criação de `statement_payment` ao pagar fatura
 - Testes de model e serviços para faturas
+- Admin de `CardStatement` no Django Admin
+
+Backlog técnico pós-fase:
+
+- Robustez de concorrência em pagamento de fatura.
+- Alinhamento fino entre status de pagamento e impacto em saldo.
+- Seletor `get_account_balance` e evoluções de resumo.
 
 Regras importantes:
 

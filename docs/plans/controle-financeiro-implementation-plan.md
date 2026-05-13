@@ -320,6 +320,10 @@ feature/internal-transfers
 
 Implementar faturas, vencimentos e pagamento por conta.
 
+### Status atual
+
+Status em 2026-05-12: concluída (escopo MVP).
+
 ### Branches sugeridas
 
 ```text
@@ -374,6 +378,12 @@ feature/statement-reminders
 - Cartões de crédito geram faturas.
 - Faturas têm vencimento e lembrete.
 - Pagamento de fatura altera saldo corretamente.
+
+### Fechamento da fase
+
+Entregue o núcleo previsto para faturas: criação, fechamento, pagamento total/parcial, status e vínculo com transações, com cobertura de testes de model e serviços.
+
+Itens de robustez e evolução permanecem no backlog técnico para ciclos seguintes.
 
 ## 10. Fase 5 - Recorrências e Previsões
 
