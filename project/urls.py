@@ -22,4 +22,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("", include("core.urls")),
     path("", include("recurrences.urls")),
+    path("", include("reports.urls")),
 ]
