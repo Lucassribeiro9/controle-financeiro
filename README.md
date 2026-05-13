@@ -11,6 +11,7 @@ Aplicativo web local para controle financeiro pessoal com Django.
   - [Fase 2 - Cadastros Fundamentais](#fase-2---cadastros-fundamentais)
   - [Fase 3 - Transações e Transferências](#fase-3---transações-e-transferências)
   - [Fase 4 - Cartões e Faturas](#fase-4---cartões-e-faturas)
+  - [Fase 5 - Recorrências e Previsões](#fase-5---recorrências-e-previsões)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -122,6 +123,33 @@ Regras importantes:
 - Pagar a fatura reduz o saldo da conta de pagamento.
 - Pagamento de fatura cria uma transação `statement_payment`, mas essa transação não deve duplicar despesas nos relatórios.
 
+## Fase 5 - Recorrências e Previsões
+
+Status: concluída
+
+Implementado:
+
+- App `recurrences`
+- Model `Recurrence`
+- Admin de `Recurrence`
+- Migration versionada para recorrências
+- Serviço `generate_monthly_recurrences_forecasts`
+- Serviço `skip_recurrence_for_month`
+- Serviço `match_recurrence_with_transaction`
+- Serviço `has_relevant_amount_difference`
+- Rotas para listar previsões mensais
+- Rotas para confirmar, ignorar e ajustar previsões
+- Testes de model, serviços e views para recorrências e previsões
+
+Regras importantes:
+
+- Recorrências geram transações previstas (`forecast`), nunca pagas automaticamente.
+- Previsões nascem com status `forecasted`.
+- Confirmar uma previsão transforma o lançamento em receita ou despesa pendente.
+- Ignorar uma previsão marca apenas aquele lançamento como `ignored`.
+- Ajustar uma previsão altera o valor previsto e registra a alteração em `notes`.
+- Reconciliar uma recorrência com uma transação real registra o vínculo em `notes`.
+
 ## Documentação Detalhada
 
 Para detalhes técnicos das fases:
@@ -130,6 +158,7 @@ Para detalhes técnicos das fases:
 - `docs/phases/fase-2-cadastros-fundamentais.md`
 - `docs/phases/fase-3-transacoes-e-transferencias.md`
 - `docs/phases/fase-4-cartoes-e-faturas.md`
+- `docs/phases/fase-5-recorrencias-e-previsoes.md`
 
 ## Roadmap
 
