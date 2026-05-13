@@ -430,6 +430,12 @@ feature/monthly-forecasts
 - Recorrências aparecem no mês como previsões.
 - Usuário confirma, ignora ou ajusta.
 
+### Fechamento da fase
+
+Entregue o núcleo previsto para recorrências e previsões: cadastro de recorrências, geração de transações previstas, listagem mensal, confirmação, ajuste, ignorar previsão, reconciliação inicial e detecção de diferença relevante de valor.
+
+Itens de automação, reconciliação estruturada e frequências avançadas permanecem no backlog técnico para ciclos seguintes.
+
 ## 11. Fase 6 - Objetivos e Metas Mensais
 
 ### Objetivo
