@@ -13,6 +13,7 @@ Aplicativo web local para controle financeiro pessoal com Django.
   - [Fase 4 - Cartões e Faturas](#fase-4---cartões-e-faturas)
   - [Fase 5 - Recorrências e Previsões](#fase-5---recorrências-e-previsões)
   - [Fase 6 - Objetivos e Metas Mensais](#fase-6---objetivos-e-metas-mensais)
+  - [Fase 7 - Dashboards e Relatórios](#fase-7---dashboards-e-relatórios)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -178,6 +179,26 @@ Regras importantes:
 - Metas mensais identificam status `on_track`, `at_risk`, `achieved` e `missed`.
 - Transações `forecasted`, `ignored` e `canceled` não entram no cálculo de redução.
 
+## Fase 7 - Dashboards e Relatórios
+
+Status: concluída
+
+Implementado:
+
+- App `reports`
+- Selectors para receitas, despesas, gastos por categoria, patrimônio, faturas e metas
+- Selector consolidado `get_monthly_dashboard`
+- Rota mensal `reports/month/<year>/<month>/`
+- View e template do dashboard financeiro mensal
+- Testes de selectors e view para relatórios
+
+Regras importantes:
+
+- Transferências internas não entram como receita nem despesa no dashboard.
+- Transações `forecasted`, `ignored` e `canceled` ficam fora dos totais principais.
+- Pagamentos de fatura não duplicam despesas por categoria.
+- Patrimônio considera apenas contas ativas e é agrupado por moeda.
+
 ## Documentação Detalhada
 
 Para detalhes técnicos das fases:
@@ -188,6 +209,7 @@ Para detalhes técnicos das fases:
 - `docs/phases/fase-4-cartoes-e-faturas.md`
 - `docs/phases/fase-5-recorrencias-e-previsoes.md`
 - `docs/phases/fase-6-objetivos-e-metas-mensais.md`
+- `docs/phases/fase-7-dashboards-e-relatorios.md`
 
 ## Roadmap
 
