@@ -14,6 +14,7 @@ Aplicativo web local para controle financeiro pessoal com Django.
   - [Fase 5 - Recorrências e Previsões](#fase-5---recorrências-e-previsões)
   - [Fase 6 - Objetivos e Metas Mensais](#fase-6---objetivos-e-metas-mensais)
   - [Fase 7 - Dashboards e Relatórios](#fase-7---dashboards-e-relatórios)
+  - [Fase 8 - Importações XLSX, CSV e OFX](#fase-8---importações-xlsx-csv-e-ofx)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -199,6 +200,37 @@ Regras importantes:
 - Pagamentos de fatura não duplicam despesas por categoria.
 - Patrimônio considera apenas contas ativas e é agrupado por moeda.
 
+## Fase 8 - Importações XLSX, CSV e OFX
+
+Status: concluída
+
+Implementado:
+
+- App `imports`
+- Model `ImportedTransaction`
+- Admin de `ImportedTransaction`
+- Migration versionada para importações
+- Importers `CsvTransactionImporter`, `XlsxTransactionImporter` e `OfxTransactionImporter`
+- Dataclass `ImportedTransactionRow` para normalização comum dos formatos
+- Service `stage_imported_transactions`
+- Service `confirm_imported_transaction`
+- Service `discard_imported_transaction`
+- Services de hash e detecção de duplicidade
+- Selector `get_imported_transactions_for_review`
+- Rotas para upload, revisão, confirmação e descarte
+- Testes de importers, services, selectors e views
+
+Regras importantes:
+
+- Importações não viram transações reais automaticamente.
+- Linhas importadas entram como pendentes para revisão.
+- Valores negativos são tratados como despesas sugeridas.
+- Valores positivos são tratados como receitas sugeridas.
+- CSV, XLSX e OFX são normalizados para o mesmo formato interno.
+- OFX usa `FITID` como `external_id` quando disponível.
+- Duplicidades podem ser identificadas por `external_id` ou `import_hash`.
+- Confirmar uma importação cria uma `Transaction` real usando o fluxo existente de transações.
+
 ## Documentação Detalhada
 
 Para detalhes técnicos das fases:
@@ -210,6 +242,7 @@ Para detalhes técnicos das fases:
 - `docs/phases/fase-5-recorrencias-e-previsoes.md`
 - `docs/phases/fase-6-objetivos-e-metas-mensais.md`
 - `docs/phases/fase-7-dashboards-e-relatorios.md`
+- `docs/phases/fase-8-importacoes-xlsx-csv-ofx.md`
 
 ## Roadmap
 

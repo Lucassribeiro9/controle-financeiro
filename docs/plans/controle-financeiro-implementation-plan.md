@@ -545,6 +545,10 @@ Itens de visualização avançada, filtros, navegação entre meses, gráficos c
 
 Permitir entrada de dados externos com revisão.
 
+### Status atual
+
+Status em 2026-05-14: concluída.
+
 ### Branches sugeridas
 
 ```text
@@ -585,6 +589,12 @@ feature/ofx-import
 ### Critério de pronto
 
 - Usuário consegue importar dados e revisar antes de confirmar.
+
+### Fechamento da fase
+
+Entregue o núcleo previsto para importações: app `imports`, model `ImportedTransaction`, importers CSV, XLSX e OFX, normalização para `ImportedTransactionRow`, staging de importações pendentes, confirmação criando `Transaction`, descarte sem criação de transação real, detecção de duplicidade por `external_id` ou `import_hash`, selector de revisão, rotas iniciais e cobertura automatizada de importers, services, selectors e views.
+
+Itens de interface HTML dedicada, sugestão configurável de categoria, sugestão de cartão, reconciliação avançada com recorrências, suporte a variações adicionais de OFX por banco e leitura avançada de planilhas XLSX permanecem no backlog técnico para ciclos seguintes.
 
 ## 14. Fase 9 - Insights e Sugestões Automáticas
 
