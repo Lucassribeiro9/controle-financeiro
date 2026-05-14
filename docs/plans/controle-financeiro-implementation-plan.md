@@ -492,6 +492,10 @@ Itens de interface dedicada, seletores para dashboard, acompanhamento proporcion
 
 Criar visualização útil dos dados.
 
+### Status atual
+
+Status em 2026-05-14: concluída (escopo MVP).
+
 ### Branches sugeridas
 
 ```text
@@ -528,6 +532,12 @@ feature/reports
 
 - Usuário consegue abrir o painel e entender o mês.
 - Dados principais aparecem sem precisar entrar no Admin.
+
+### Fechamento da fase
+
+Entregue o núcleo previsto para dashboards e relatórios: app `reports`, selectors para totais mensais, gastos por categoria, patrimônio por moeda, faturas e metas, payload consolidado do dashboard mensal, rota, view, template inicial e cobertura automatizada de selectors e view.
+
+Itens de visualização avançada, filtros, navegação entre meses, gráficos com Chart.js e integração com insights permanecem no backlog técnico para ciclos seguintes.
 
 ## 13. Fase 8 - Importações XLSX, CSV e OFX
 
