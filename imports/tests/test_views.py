@@ -70,18 +70,48 @@ class ImportViewTests(TestCase):
         self.assertEqual(response.json()["error"], "Campo file e obrigatorio.")
 
     def test_upload_import_rejects_unsupported_source_type(self):
-        """Deve rejeitar tipos ainda nao implementados no MVP."""
+        """Deve rejeitar tipos desconhecidos."""
 
         response = self.client.post(
             reverse("imports:upload"),
             {
-                "source_type": ImportedTransaction.SourceType.OFX,
+                "source_type": "pdf",
                 "file": self._csv_file(),
             },
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("Apenas importacao CSV", response.json()["error"])
+        self.assertIn("Tipo de importacao nao suportado", response.json()["error"])
+
+    def test_upload_import_accepts_ofx(self):
+        """Deve processar OFX e criar itens para revisao."""
+
+        file_obj = BytesIO(
+            b"""
+            <OFX>
+              <STMTTRN>
+                <DTPOSTED>20260510</DTPOSTED>
+                <TRNAMT>-87.45</TRNAMT>
+                <FITID>OFX123</FITID>
+                <MEMO>Mercado Dia</MEMO>
+              </STMTTRN>
+            </OFX>
+            """
+        )
+        file_obj.name = "extrato.ofx"
+
+        response = self.client.post(
+            reverse("imports:upload"),
+            {
+                "source_type": ImportedTransaction.SourceType.OFX,
+                "account_id": self.account.id,
+                "file": file_obj,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["count"], 1)
+        self.assertEqual(ImportedTransaction.objects.first().source_type, "ofx")
 
     def test_review_imports_lists_pending_items(self):
         """Deve listar importacoes pendentes para revisao."""

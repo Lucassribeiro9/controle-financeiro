@@ -7,8 +7,9 @@ from django.views.decorators.http import require_GET, require_POST
 from accounts.models import FinancialAccount
 from categories.models import Category
 
-from .importers import CsvTransactionImporter
+from .importers import get_importer_for_source_type
 from .models import ImportedTransaction
+from .selectors import get_imported_transactions_for_review
 from .services import (
     confirm_imported_transaction,
     discard_imported_transaction,
@@ -38,15 +39,13 @@ def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -
 
 @require_POST
 def upload_import(request: HttpRequest) -> JsonResponse:
-    """Recebe um CSV e cria transacoes importadas para revisao."""
+    """Recebe um arquivo suportado e cria transacoes importadas para revisao."""
 
     uploaded_file = request.FILES.get("file")
     if uploaded_file is None:
         return JsonResponse({"error": "Campo file e obrigatorio."}, status=400)
 
     source_type = request.POST.get("source_type", ImportedTransaction.SourceType.CSV)
-    if source_type != ImportedTransaction.SourceType.CSV:
-        return JsonResponse({"error": "Apenas importacao CSV esta disponivel no MVP."}, status=400)
 
     suggested_account = None
     account_id = request.POST.get("account_id")
@@ -54,7 +53,8 @@ def upload_import(request: HttpRequest) -> JsonResponse:
         suggested_account = get_object_or_404(FinancialAccount, pk=account_id)
 
     try:
-        rows = CsvTransactionImporter().parse(uploaded_file)
+        importer = get_importer_for_source_type(source_type)
+        rows = importer.parse(uploaded_file)
         imported_transactions = stage_imported_transactions(
             file_name=uploaded_file.name,
             source_type=source_type,
@@ -81,17 +81,7 @@ def review_imports(request: HttpRequest) -> JsonResponse:
     """Lista transacoes importadas para revisao."""
 
     status = request.GET.get("status")
-    queryset = ImportedTransaction.objects.all()
-
-    if status:
-        queryset = queryset.filter(status=status)
-    else:
-        queryset = queryset.filter(
-            status__in=[
-                ImportedTransaction.Status.PENDING,
-                ImportedTransaction.Status.DUPLICATE,
-            ]
-        )
+    queryset = get_imported_transactions_for_review(status=status)
 
     results = [_serialize_imported_transaction(item) for item in queryset]
     return JsonResponse({"count": len(results), "results": results})
