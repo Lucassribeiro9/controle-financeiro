@@ -50,6 +50,9 @@ INSTALLED_APPS = [
     'transactions',
     'recurrences',
     'goals',
+    'reports',
+    'imports',
+    'insights',
     
 ]
 

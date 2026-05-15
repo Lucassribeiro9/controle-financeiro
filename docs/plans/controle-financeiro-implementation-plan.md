@@ -492,6 +492,10 @@ Itens de interface dedicada, seletores para dashboard, acompanhamento proporcion
 
 Criar visualização útil dos dados.
 
+### Status atual
+
+Status em 2026-05-14: concluída (escopo MVP).
+
 ### Branches sugeridas
 
 ```text
@@ -529,11 +533,21 @@ feature/reports
 - Usuário consegue abrir o painel e entender o mês.
 - Dados principais aparecem sem precisar entrar no Admin.
 
+### Fechamento da fase
+
+Entregue o núcleo previsto para dashboards e relatórios: app `reports`, selectors para totais mensais, gastos por categoria, patrimônio por moeda, faturas e metas, payload consolidado do dashboard mensal, rota, view, template inicial e cobertura automatizada de selectors e view.
+
+Itens de visualização avançada, filtros, navegação entre meses, gráficos com Chart.js e integração com insights permanecem no backlog técnico para ciclos seguintes.
+
 ## 13. Fase 8 - Importações XLSX, CSV e OFX
 
 ### Objetivo
 
 Permitir entrada de dados externos com revisão.
+
+### Status atual
+
+Status em 2026-05-14: concluída.
 
 ### Branches sugeridas
 
@@ -575,6 +589,12 @@ feature/ofx-import
 ### Critério de pronto
 
 - Usuário consegue importar dados e revisar antes de confirmar.
+
+### Fechamento da fase
+
+Entregue o núcleo previsto para importações: app `imports`, model `ImportedTransaction`, importers CSV, XLSX e OFX, normalização para `ImportedTransactionRow`, staging de importações pendentes, confirmação criando `Transaction`, descarte sem criação de transação real, detecção de duplicidade por `external_id` ou `import_hash`, selector de revisão, rotas iniciais e cobertura automatizada de importers, services, selectors e views.
+
+Itens de interface HTML dedicada, sugestão configurável de categoria, sugestão de cartão, reconciliação avançada com recorrências, suporte a variações adicionais de OFX por banco e leitura avançada de planilhas XLSX permanecem no backlog técnico para ciclos seguintes.
 
 ## 14. Fase 9 - Insights e Sugestões Automáticas
 
