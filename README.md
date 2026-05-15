@@ -15,6 +15,7 @@ Aplicativo web local para controle financeiro pessoal com Django.
   - [Fase 6 - Objetivos e Metas Mensais](#fase-6---objetivos-e-metas-mensais)
   - [Fase 7 - Dashboards e Relatórios](#fase-7---dashboards-e-relatórios)
   - [Fase 8 - Importações XLSX, CSV e OFX](#fase-8---importações-xlsx-csv-e-ofx)
+  - [Fase 9 - Insights e Sugestões Automáticas](#fase-9---insights-e-sugestões-automáticas)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -231,6 +232,36 @@ Regras importantes:
 - Duplicidades podem ser identificadas por `external_id` ou `import_hash`.
 - Confirmar uma importação cria uma `Transaction` real usando o fluxo existente de transações.
 
+## Fase 9 - Insights e Sugestões Automáticas
+
+Status: concluída
+
+Implementado:
+
+- App `insights`
+- Model `Insight`
+- Model `IgnoredPattern`
+- Admin de `Insight` e `IgnoredPattern`
+- Migrations versionadas para insights e padrões silenciados
+- Service `get_category_expense_total`
+- Service `suggest_category_limit`
+- Service `detect_recurrent_habits`
+- Service `approve_insight`
+- Service `ignore_insight`
+- Service `silence_insight`
+- Selectors para insights pendentes, por status, recentes e padrões silenciados
+- Rotas para listar, aprovar, ignorar e silenciar insights
+- Testes de models, services, selectors e views
+
+Regras importantes:
+
+- Insights nascem como sugestões pendentes.
+- Insights não aplicam mudanças automaticamente.
+- Aprovar um insight de limite de categoria cria um objetivo de redução e uma meta mensal.
+- Ignorar um insight não altera metas, recorrências nem transações.
+- Silenciar um insight cria um padrão ignorado para evitar sugestões futuras semelhantes.
+- `source_key` evita duplicidade mensal de sugestões.
+
 ## Documentação Detalhada
 
 Para detalhes técnicos das fases:
@@ -243,6 +274,7 @@ Para detalhes técnicos das fases:
 - `docs/phases/fase-6-objetivos-e-metas-mensais.md`
 - `docs/phases/fase-7-dashboards-e-relatorios.md`
 - `docs/phases/fase-8-importacoes-xlsx-csv-ofx.md`
+- `docs/phases/fase-9-insights-e-sugestoes.md`
 
 ## Roadmap
 
