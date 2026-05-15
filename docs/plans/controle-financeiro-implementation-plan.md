@@ -602,6 +602,10 @@ Itens de interface HTML dedicada, sugestão configurável de categoria, sugestã
 
 Criar sugestões educativas e aprováveis.
 
+### Status atual
+
+Status em 2026-05-15: concluída (escopo MVP).
+
 ### Branches sugeridas
 
 ```text
@@ -634,15 +638,16 @@ feature/suggested-goals
 
 ### Services
 
-- `detect_recurring_habits`
+- `get_category_expense_total`
 - `suggest_category_limit`
-- `suggest_monthly_goal`
+- `detect_recurrent_habits`
 - `approve_insight`
 - `ignore_insight`
+- `silence_insight`
 
 ### Testes
 
-- Detectar padrão semanal.
+- Detectar padrão recorrente por categoria.
 - Criar sugestão pendente.
 - Aprovar sugestão e criar meta.
 - Ignorar sugestão sem afetar dados.
@@ -651,6 +656,12 @@ feature/suggested-goals
 ### Critério de pronto
 
 - O app gera sugestões úteis e o usuário controla o que será aplicado.
+
+### Fechamento da fase
+
+Entregue o núcleo previsto para insights e sugestões automáticas: app `insights`, model `Insight`, model `IgnoredPattern`, admin, migrations, services para sugestão de limite por categoria, detecção inicial de hábitos recorrentes, aprovação, ignorar e silenciar sugestões, selectors, rotas JSON iniciais e cobertura automatizada de models, services, selectors e views.
+
+Itens de evolução permanecem no backlog técnico para ciclos seguintes: sugestão de recorrência a partir de padrões detectados, insights de fatura próxima do vencimento, insights de saldo baixo em benefício, integração visual com o dashboard mensal, heurísticas por descrição/dia da semana e análise de histórico entre meses.
 
 ## 15. Fase 10 - Taxas, Moeda e Evoluções
 
