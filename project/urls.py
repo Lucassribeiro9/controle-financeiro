@@ -24,4 +24,5 @@ urlpatterns = [
     path("", include("recurrences.urls")),
     path("", include("reports.urls")),
     path("", include("imports.urls")),
+    path("", include("insights.urls")),
 ]
