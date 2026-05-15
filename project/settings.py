@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'goals',
     'reports',
     'imports',
+    'insights',
     
 ]
 
