@@ -34,6 +34,20 @@ a {
     text-decoration: none;
 }
 
+h1,
+h2 {
+    letter-spacing: 0;
+    margin: 0;
+}
+
+h1 {
+    font-size: 28px;
+}
+
+h2 {
+    font-size: 18px;
+}
+
 .app-shell {
     display: grid;
     grid-template-columns: 260px minmax(0, 1fr);
@@ -112,6 +126,102 @@ a {
     padding: 12px 14px;
 }
 
+.page-header {
+    align-items: start;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.muted {
+    color: var(--muted);
+    margin: 6px 0 0;
+}
+
+.summary-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 24px;
+}
+
+.metric-card,
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+}
+
+.metric-card {
+    box-shadow: var(--shadow);
+}
+
+.metric-card span {
+    color: var(--muted);
+    display: block;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.metric-card strong {
+    display: block;
+    font-size: 24px;
+}
+
+.income {
+    color: var(--income);
+}
+
+.expense {
+    color: var(--expense);
+}
+
+.dashboard-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.panel h2 {
+    margin-bottom: 12px;
+}
+
+.data-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.data-table th,
+.data-table td {
+    border-bottom: 1px solid var(--line);
+    padding: 10px 0;
+    text-align: left;
+    vertical-align: top;
+}
+
+.data-table th {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.data-table td:last-child,
+.data-table th:last-child {
+    text-align: right;
+}
+
+.empty {
+    color: var(--muted);
+    margin: 0;
+}
+
+.status {
+    color: var(--accent);
+    font-weight: 700;
+}
+
 @media (max-width: 860px) {
     .app-shell {
         grid-template-columns: 1fr;
@@ -131,5 +241,14 @@ a {
 
     .app-main {
         padding: 20px;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+
+    .summary-grid,
+    .dashboard-grid {
+        grid-template-columns: 1fr;
     }
 }
