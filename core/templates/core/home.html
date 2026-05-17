@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Inicio</h1>
+            <p class="muted">Acesse as principais areas do seu controle financeiro.</p>
+        </div>
+    </header>
+
+    <div class="shortcut-grid">
+        <a class="shortcut-card" href="/reports/month/2026/5/">
+            <strong>Dashboard mensal</strong>
+            <span>Resumo de receitas, despesas, patrimonio, faturas e metas.</span>
+        </a>
+
+        <a class="shortcut-card" href="/insights/">
+            <strong>Insights</strong>
+            <span>Revise sugestoes geradas a partir dos seus dados financeiros.</span>
+        </a>
+
+        <a class="shortcut-card" href="/imports/review/">
+            <strong>Importacoes</strong>
+            <span>Confira lancamentos importados antes de confirmar transacoes.</span>
+        </a>
+
+        <a class="shortcut-card" href="/admin/">
+            <strong>Admin</strong>
+            <span>Acesse cadastros e dados internos enquanto as telas evoluem.</span>
+        </a>
+    </div>
+{% endblock %}

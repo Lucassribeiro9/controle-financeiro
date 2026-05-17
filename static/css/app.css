@@ -222,6 +222,35 @@ h2 {
     font-weight: 700;
 }
 
+.shortcut-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shortcut-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    display: grid;
+    gap: 8px;
+    padding: 18px;
+}
+
+.shortcut-card:hover {
+    border-color: rgba(15, 118, 110, 0.45);
+    box-shadow: var(--shadow);
+}
+
+.shortcut-card strong,
+.shortcut-card span {
+    display: block;
+}
+
+.shortcut-card span {
+    color: var(--muted);
+}
+
 @media (max-width: 860px) {
     .app-shell {
         grid-template-columns: 1fr;
@@ -248,7 +277,8 @@ h2 {
     }
 
     .summary-grid,
-    .dashboard-grid {
+    .dashboard-grid,
+    .shortcut-grid {
         grid-template-columns: 1fr;
     }
 }
