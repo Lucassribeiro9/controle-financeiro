@@ -265,8 +265,83 @@ h2 {
     padding: 18px;
 }
 
+.import-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+}
+
 .insight-card p {
     margin: 8px 0 0;
+}
+
+.card-title-row {
+    align-items: start;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.tag {
+    background: var(--accent-soft);
+    border-radius: 999px;
+    color: var(--accent);
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 8px;
+}
+
+.detail-list {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 16px 0 0;
+}
+
+.detail-list div {
+    min-width: 0;
+}
+
+.detail-list dt {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.detail-list dd {
+    margin: 4px 0 0;
+}
+
+.form-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.form-field {
+    display: grid;
+    gap: 8px;
+}
+
+.form-field span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.form-field input,
+.form-field select {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--text);
+    font: inherit;
+    min-height: 42px;
+    padding: 9px 10px;
 }
 
 .action-row {
@@ -332,7 +407,8 @@ h2 {
 
     .summary-grid,
     .dashboard-grid,
-    .shortcut-grid {
+    .shortcut-grid,
+    .detail-list {
         grid-template-columns: 1fr;
     }
 

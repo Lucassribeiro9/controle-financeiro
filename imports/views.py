@@ -1,14 +1,15 @@
 """Views do app imports."""
 
 from django.http import HttpRequest, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET, require_POST
 
 from accounts.models import FinancialAccount
 from categories.models import Category
 
-from .importers import CsvTransactionImporter
+from .importers import get_importer_for_source_type
 from .models import ImportedTransaction
+from .selectors import get_imported_transactions_for_review
 from .services import (
     confirm_imported_transaction,
     discard_imported_transaction,
@@ -38,15 +39,13 @@ def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -
 
 @require_POST
 def upload_import(request: HttpRequest) -> JsonResponse:
-    """Recebe um CSV e cria transacoes importadas para revisao."""
+    """Recebe arquivo suportado e cria transacoes importadas para revisao."""
 
     uploaded_file = request.FILES.get("file")
     if uploaded_file is None:
         return JsonResponse({"error": "Campo file e obrigatorio."}, status=400)
 
     source_type = request.POST.get("source_type", ImportedTransaction.SourceType.CSV)
-    if source_type != ImportedTransaction.SourceType.CSV:
-        return JsonResponse({"error": "Apenas importacao CSV esta disponivel no MVP."}, status=400)
 
     suggested_account = None
     account_id = request.POST.get("account_id")
@@ -54,7 +53,8 @@ def upload_import(request: HttpRequest) -> JsonResponse:
         suggested_account = get_object_or_404(FinancialAccount, pk=account_id)
 
     try:
-        rows = CsvTransactionImporter().parse(uploaded_file)
+        importer = get_importer_for_source_type(source_type)
+        rows = importer.parse(uploaded_file)
         imported_transactions = stage_imported_transactions(
             file_name=uploaded_file.name,
             source_type=source_type,
@@ -153,4 +153,33 @@ def discard_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
             "id": discarded.id,
             "status": discarded.status,
         }
+    )
+
+
+@require_GET
+def upload_import_page(request: HttpRequest):
+    """Renderiza a pagina de upload de arquivos para importacao."""
+
+    accounts = FinancialAccount.objects.filter(is_active=True).order_by("name")
+    return render(
+        request,
+        "imports/upload.html",
+        {
+            "accounts": accounts,
+            "source_types": ImportedTransaction.SourceType.choices,
+        },
+    )
+
+
+@require_GET
+def review_imports_page(request: HttpRequest):
+    """Renderiza a pagina de revisao de transacoes importadas."""
+
+    imported_transactions = get_imported_transactions_for_review(
+        status=request.GET.get("status")
+    )
+    return render(
+        request,
+        "imports/review.html",
+        {"imported_transactions": imported_transactions},
     )

@@ -61,6 +61,19 @@ class ImportViewTests(TestCase):
             self.account,
         )
 
+    def test_upload_import_page_renders_form(self):
+        """Deve renderizar a pagina de upload de importacoes."""
+
+        response = self.client.get(reverse("imports:upload-page"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "imports/upload.html")
+        self.assertContains(response, "CSV")
+        self.assertContains(response, "XLSX")
+        self.assertContains(response, "OFX")
+        self.assertContains(response, "Enviar arquivo")
+        self.assertContains(response, self.account.name)
+
     def test_upload_import_requires_file(self):
         """Deve rejeitar upload sem arquivo."""
 
@@ -70,18 +83,18 @@ class ImportViewTests(TestCase):
         self.assertEqual(response.json()["error"], "Campo file e obrigatorio.")
 
     def test_upload_import_rejects_unsupported_source_type(self):
-        """Deve rejeitar tipos ainda nao implementados no MVP."""
+        """Deve rejeitar tipos nao suportados."""
 
         response = self.client.post(
             reverse("imports:upload"),
             {
-                "source_type": ImportedTransaction.SourceType.OFX,
+                "source_type": "pdf",
                 "file": self._csv_file(),
             },
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("Apenas importacao CSV", response.json()["error"])
+        self.assertIn("Tipo de importacao nao suportado", response.json()["error"])
 
     def test_review_imports_lists_pending_items(self):
         """Deve listar importacoes pendentes para revisao."""
@@ -110,6 +123,28 @@ class ImportViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["count"], 1)
         self.assertEqual(response.json()["results"][0]["raw_description"], "Mercado Dia")
+
+    def test_review_imports_page_lists_pending_items(self):
+        """Deve renderizar a pagina de revisao com importacoes pendentes."""
+
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_account=self.account,
+            suggested_category=self.category,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+        response = self.client.get(reverse("imports:review-page"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "imports/review.html")
+        self.assertContains(response, "Mercado Dia")
+        self.assertContains(response, "Confirmar")
 
     def test_confirm_import_creates_transaction(self):
         """Deve confirmar importacao e criar transacao real."""
