@@ -24,4 +24,5 @@ urlpatterns = [
         views.silence_insight_view,
         name="silence",
     ),
+    path("insights/page/", views.insight_page, name="page"),
 ]

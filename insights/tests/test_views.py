@@ -39,6 +39,14 @@ class InsightViewTests(TestCase):
         self.assertEqual(response.json()["count"], 1)
         self.assertEqual(response.json()["results"][0]["id"], self.insight.id)
 
+    def test_insight_page_returns_pending_items(self):
+        response = self.client.get(reverse("insights:page"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "insights/list.html")
+        self.assertContains(response, self.insight.title)
+        self.assertContains(response, "Aprovar")
+
     def test_insight_list_can_filter_by_status(self):
         self.insight.status = Insight.Status.IGNORED
         self.insight.save(update_fields=["status", "updated_at"])

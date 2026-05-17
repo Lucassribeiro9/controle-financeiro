@@ -2,7 +2,7 @@
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Insight
@@ -95,3 +95,15 @@ def silence_insight_view(request: HttpRequest, insight_id: int) -> JsonResponse:
     silenced = silence_insight(insight=insight)
 
     return JsonResponse(_serialize_insight(silenced))
+
+
+@require_GET
+def insight_page(request: HttpRequest):
+    """Renderiza a pagina de revisao de insights."""
+
+    insights = get_pending_insights()
+    return render(
+        request,
+        "insights/list.html",
+        {"insights": insights},
+    )

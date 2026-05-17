@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Insights - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Insights</h1>
+            <p class="muted">Revise sugestoes pendentes antes de aplicar mudancas.</p>
+        </div>
+    </header>
+
+    <div class="item-list">
+        {% for insight in insights %}
+            <article class="insight-card">
+                <div>
+                    <h2>{{ insight.title }}</h2>
+                    <p>{{ insight.message }}</p>
+
+                    {% if insight.suggested_amount %}
+                        <p class="muted">Valor sugerido: R$ {{ insight.suggested_amount }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="action-row">
+                    <form method="post" action="{% url 'insights:approve' insight.id %}">
+                        {% csrf_token %}
+                        <button class="button" type="submit">Aprovar</button>
+                    </form>
+
+                    <form method="post" action="{% url 'insights:ignore' insight.id %}">
+                        {% csrf_token %}
+                        <button class="button button-secondary" type="submit">Ignorar</button>
+                    </form>
+
+                    <form method="post" action="{% url 'insights:silence' insight.id %}">
+                        {% csrf_token %}
+                        <button class="button button-danger" type="submit">Silenciar</button>
+                    </form>
+                </div>
+            </article>
+        {% empty %}
+            <section class="panel">
+                <p class="empty">Nenhum insight pendente no momento.</p>
+            </section>
+        {% endfor %}
+    </div>
+
+{% endblock %}
