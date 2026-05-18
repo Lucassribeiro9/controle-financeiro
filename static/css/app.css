@@ -129,6 +129,7 @@ h2 {
 .page-header {
     align-items: start;
     display: flex;
+    gap: 16px;
     justify-content: space-between;
     margin-bottom: 24px;
 }
@@ -336,7 +337,8 @@ h2 {
 
 .form-field input,
 .form-field select,
-.inline-form input {
+.inline-form input,
+.period-form input {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -344,6 +346,30 @@ h2 {
     font: inherit;
     min-height: 42px;
     padding: 9px 10px;
+}
+
+.period-form {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: end;
+}
+
+.period-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.period-form span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.period-form input {
+    width: 96px;
 }
 
 .inline-form {
@@ -420,6 +446,12 @@ h2 {
         padding: 20px;
     }
 
+    .page-header,
+    .period-form {
+        display: grid;
+        justify-content: stretch;
+    }
+
     h1 {
         font-size: 24px;
     }
@@ -434,6 +466,7 @@ h2 {
     .action-row,
     .action-row form,
     .inline-form input,
+    .period-form input,
     .button {
         width: 100%;
     }

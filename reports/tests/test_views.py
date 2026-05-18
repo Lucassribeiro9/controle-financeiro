@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.test import TestCase
+from django.utils import timezone
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
@@ -40,6 +41,30 @@ class MonthlyDashboardViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "reports/monthly_dashboard.html")
         self.assertContains(response, "Dashboard financeiro")
+
+    def test_monthly_dashboard_page_uses_query_period(self):
+        """Deve renderizar o dashboard usando mes e ano da query string."""
+
+        response = self.client.get(
+            reverse("reports:monthly-dashboard-page"),
+            data={"year": 2026, "month": 5},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["year"], 2026)
+        self.assertEqual(response.context["month"], 5)
+        self.assertTemplateUsed(response, "reports/monthly_dashboard.html")
+
+    def test_monthly_dashboard_page_uses_current_period_by_default(self):
+        """Deve usar o mes atual quando a query string nao informar periodo."""
+
+        today = timezone.localdate()
+
+        response = self.client.get(reverse("reports:monthly-dashboard-page"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["year"], today.year)
+        self.assertEqual(response.context["month"], today.month)
 
     def test_monthly_dashboard_view_uses_selector_context(self):
         """Deve exibir totais calculados pelos selectors."""

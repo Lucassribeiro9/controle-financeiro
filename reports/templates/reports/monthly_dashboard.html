@@ -8,6 +8,18 @@
             <h1>Dashboard financeiro</h1>
             <p class="muted">{{ month }}/{{ year }}</p>
         </div>
+
+        <form class="period-form" method="get" action="{% url 'reports:monthly-dashboard-page' %}">
+            <label>
+                <span>Mes</span>
+                <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+            </label>
+            <label>
+                <span>Ano</span>
+                <input name="year" type="number" min="2000" value="{{ year }}" required>
+            </label>
+            <button class="button" type="submit">Filtrar</button>
+        </form>
     </header>
 
     <div class="summary-grid" aria-label="Resumo financeiro do mes">
