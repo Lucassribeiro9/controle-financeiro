@@ -27,4 +27,9 @@ urlpatterns = [
         views.adjust_forecast,
         name="adjust-forecast",
     ),
+    path(
+        "recurrences/month/<int:year>/<int:month>/page/",
+        views.forecasts_page,
+        name="forecasts-page",
+    ),
 ]

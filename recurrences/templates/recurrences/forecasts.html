@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Previsoes recorrentes - {{ month }}/{{ year }}{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Previsoes recorrentes</h1>
+            <p class="muted">{{ month }}/{{ year }}</p>
+        </div>
+    </header>
+
+    <div class="item-list">
+        {% for forecast in forecasts %}
+            <article class="forecast-card">
+                <div>
+                    <div class="card-title-row">
+                        <h2>{{ forecast.description }}</h2>
+                        <span class="tag">{{ forecast.status }}</span>
+                    </div>
+
+                    <dl class="detail-list">
+                        <div>
+                            <dt>Data</dt>
+                            <dd>{{ forecast.date }}</dd>
+                        </div>
+                        <div>
+                            <dt>Valor</dt>
+                            <dd>R$ {{ forecast.amount }}</dd>
+                        </div>
+                        <div>
+                            <dt>Conta</dt>
+                            <dd>{{ forecast.account|default:"Nao informada" }}</dd>
+                        </div>
+                        <div>
+                            <dt>Cartao</dt>
+                            <dd>{{ forecast.card|default:"Nao informado" }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="action-row">
+                    <form method="post" action="{% url 'recurrences:confirm-forecast' forecast.id %}">
+                        {% csrf_token %}
+                        <button class="button" type="submit">Confirmar</button>
+                    </form>
+
+                    <form method="post" action="{% url 'recurrences:ignore-forecast' forecast.id %}">
+                        {% csrf_token %}
+                        <button class="button button-secondary" type="submit">Ignorar</button>
+                    </form>
+
+                    <form class="inline-form" method="post" action="{% url 'recurrences:adjust-forecast' forecast.id %}">
+                        {% csrf_token %}
+                        <label class="sr-only" for="amount-{{ forecast.id }}">Novo valor</label>
+                        <input id="amount-{{ forecast.id }}" name="amount" type="number" min="0.01" step="0.01" value="{{ forecast.amount }}" required>
+                        <button class="button button-secondary" type="submit">Ajustar</button>
+                    </form>
+                </div>
+            </article>
+        {% empty %}
+            <section class="panel">
+                <p class="empty">Nenhuma previsao recorrente no periodo.</p>
+            </section>
+        {% endfor %}
+    </div>
+{% endblock %}

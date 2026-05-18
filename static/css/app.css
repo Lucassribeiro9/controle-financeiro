@@ -265,7 +265,8 @@ h2 {
     padding: 18px;
 }
 
-.import-card {
+.import-card,
+.forecast-card {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -334,7 +335,8 @@ h2 {
 }
 
 .form-field input,
-.form-field select {
+.form-field select,
+.inline-form input {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -342,6 +344,23 @@ h2 {
     font: inherit;
     min-height: 42px;
     padding: 9px 10px;
+}
+
+.inline-form {
+    display: flex;
+    gap: 10px;
+}
+
+.inline-form input {
+    width: 120px;
+}
+
+.sr-only {
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    position: absolute;
+    width: 1px;
 }
 
 .action-row {
@@ -414,6 +433,7 @@ h2 {
 
     .action-row,
     .action-row form,
+    .inline-form input,
     .button {
         width: 100%;
     }
