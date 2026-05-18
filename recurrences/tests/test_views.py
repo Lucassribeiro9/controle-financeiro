@@ -52,6 +52,16 @@ class RecurrenceViewsTests(TestCase):
         self.assertEqual(body["count"], 1)
         self.assertEqual(body["results"][0]["id"], self.forecast.id)
 
+    def test_forecasts_page_lists_month_items(self):
+        response = self.client.get(
+            reverse("recurrences:forecasts-page", kwargs={"year": 2026, "month": 6})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "recurrences/forecasts.html")
+        self.assertContains(response, "Internet residencial")
+        self.assertContains(response, "Confirmar")
+
     def test_confirm_forecast_sets_pending_and_expense(self):
         response = self.client.post(
             reverse("recurrences:confirm-forecast", kwargs={"transaction_id": self.forecast.id})

@@ -3,7 +3,7 @@
 from decimal import Decimal, InvalidOperation
 
 from django.http import HttpRequest, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Recurrence
@@ -60,6 +60,27 @@ def monthly_forecasts(request: HttpRequest, year: int, month: int) -> JsonRespon
         for tx in forecasts
     ]
     return JsonResponse({"count": len(payload), "results": payload})
+
+
+@require_GET
+def forecasts_page(request: HttpRequest, year: int, month: int):
+    """Renderiza a pagina de previsoes recorrentes do mes."""
+
+    forecasts = Transaction.objects.filter(
+        transaction_type=Transaction.TransactionType.FORECAST,
+        date__year=year,
+        date__month=month,
+    ).order_by("date", "description")
+
+    return render(
+        request,
+        "recurrences/forecasts.html",
+        {
+            "year": year,
+            "month": month,
+            "forecasts": forecasts,
+        },
+    )
 
 
 @require_POST
