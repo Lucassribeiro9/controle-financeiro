@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import Recurrence
@@ -37,15 +38,30 @@ def _get_transaction_type_from_recurrence(recurrence: Recurrence) -> str:
     return Transaction.TransactionType.EXPENSE
 
 
-@require_GET
-def monthly_forecasts(request: HttpRequest, year: int, month: int) -> JsonResponse:
-    """Lista previsoes do mes para conferencia do usuario."""
+def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
+    """Extrai ano e mes da query string ou usa o mes atual."""
 
-    forecasts = Transaction.objects.filter(
+    today = timezone.localdate()
+    year = int(request.GET.get("year") or today.year)
+    month = int(request.GET.get("month") or today.month)
+    return year, month
+
+
+def _get_forecasts_for_period(*, year: int, month: int):
+    """Lista previsoes recorrentes de um periodo."""
+
+    return Transaction.objects.filter(
         transaction_type=Transaction.TransactionType.FORECAST,
         date__year=year,
         date__month=month,
     ).order_by("date", "description")
+
+
+@require_GET
+def monthly_forecasts(request: HttpRequest, year: int, month: int) -> JsonResponse:
+    """Lista previsoes do mes para conferencia do usuario."""
+
+    forecasts = _get_forecasts_for_period(year=year, month=month)
 
     payload = [
         {
@@ -66,12 +82,7 @@ def monthly_forecasts(request: HttpRequest, year: int, month: int) -> JsonRespon
 def forecasts_page(request: HttpRequest, year: int, month: int):
     """Renderiza a pagina de previsoes recorrentes do mes."""
 
-    forecasts = Transaction.objects.filter(
-        transaction_type=Transaction.TransactionType.FORECAST,
-        date__year=year,
-        date__month=month,
-    ).order_by("date", "description")
-
+    forecasts = _get_forecasts_for_period(year=year, month=month)
     return render(
         request,
         "recurrences/forecasts.html",
@@ -81,6 +92,14 @@ def forecasts_page(request: HttpRequest, year: int, month: int):
             "forecasts": forecasts,
         },
     )
+
+
+@require_GET
+def forecasts_filter_page(request: HttpRequest):
+    """Renderiza previsoes recorrentes usando periodo informado por filtro."""
+
+    year, month = _get_period_from_request(request)
+    return forecasts_page(request, year=year, month=month)
 
 
 @require_POST

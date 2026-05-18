@@ -8,6 +8,11 @@ app_name = "reports"
 
 urlpatterns = [
     path(
+        "reports/month/",
+        views.monthly_dashboard_page,
+        name="monthly-dashboard-page",
+    ),
+    path(
         "reports/month/<int:year>/<int:month>/",
         views.monthly_dashboard,
         name="monthly-dashboard",

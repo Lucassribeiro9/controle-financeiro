@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.test import TestCase
+from django.utils import timezone
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
@@ -61,6 +62,27 @@ class RecurrenceViewsTests(TestCase):
         self.assertTemplateUsed(response, "recurrences/forecasts.html")
         self.assertContains(response, "Internet residencial")
         self.assertContains(response, "Confirmar")
+
+    def test_forecasts_filter_page_uses_query_period(self):
+        response = self.client.get(
+            reverse("recurrences:forecasts-filter-page"),
+            data={"year": 2026, "month": 6},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["year"], 2026)
+        self.assertEqual(response.context["month"], 6)
+        self.assertTemplateUsed(response, "recurrences/forecasts.html")
+        self.assertContains(response, "Internet residencial")
+
+    def test_forecasts_filter_page_uses_current_period_by_default(self):
+        today = timezone.localdate()
+
+        response = self.client.get(reverse("recurrences:forecasts-filter-page"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["year"], today.year)
+        self.assertEqual(response.context["month"], today.month)
 
     def test_confirm_forecast_sets_pending_and_expense(self):
         response = self.client.post(
