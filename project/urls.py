@@ -25,4 +25,5 @@ urlpatterns = [
     path("", include("reports.urls")),
     path("", include("imports.urls")),
     path("", include("insights.urls")),
+    path("", include("goals.urls")),
 ]

@@ -267,7 +267,8 @@ h2 {
 }
 
 .import-card,
-.forecast-card {
+.forecast-card,
+.goal-card {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -317,6 +318,14 @@ h2 {
 
 .detail-list dd {
     margin: 4px 0 0;
+}
+
+.detail-list-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.page-section {
+    margin-top: 16px;
 }
 
 .form-grid {

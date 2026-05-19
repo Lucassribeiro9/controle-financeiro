@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}{{ goal_summary.goal.name }} - Objetivo{% endblock %}
+
+{% block content %}
+    {% with goal=goal_summary.goal progress=goal_summary.progress %}
+        <header class="page-header">
+            <div>
+                <h1>{{ goal.name }}</h1>
+                <p class="muted">{{ month }}/{{ year }}</p>
+            </div>
+
+            <form class="period-form" method="get" action="{% url 'goals:detail' goal.id %}">
+                <label>
+                    <span>Mes</span>
+                    <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+                </label>
+                <label>
+                    <span>Ano</span>
+                    <input name="year" type="number" min="2000" value="{{ year }}" required>
+                </label>
+                <button class="button" type="submit">Filtrar</button>
+            </form>
+        </header>
+
+        <div class="action-row">
+            <a class="button button-secondary" href="{% url 'goals:list' %}?year={{ year }}&month={{ month }}">Voltar para objetivos</a>
+        </div>
+
+        <div class="summary-grid page-section" aria-label="Resumo do objetivo">
+            <div class="metric-card">
+                <span>Valor atual</span>
+                <strong>R$ {{ progress.current_amount }}</strong>
+            </div>
+            <div class="metric-card">
+                <span>Valor alvo</span>
+                <strong>R$ {{ progress.target_amount }}</strong>
+            </div>
+            <div class="metric-card">
+                <span>Progresso</span>
+                <strong>{{ progress.progress_percent }}%</strong>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <section class="panel">
+                <h2>Detalhes</h2>
+                <dl class="detail-list detail-list-compact">
+                    <div>
+                        <dt>Tipo</dt>
+                        <dd>{{ goal.get_goal_type_display }}</dd>
+                    </div>
+                    <div>
+                        <dt>Status</dt>
+                        <dd>{% if goal.is_active %}Ativo{% else %}Inativo{% endif %}</dd>
+                    </div>
+                    <div>
+                        <dt>Restante</dt>
+                        <dd>R$ {{ progress.remaining_amount }}</dd>
+                    </div>
+                    <div>
+                        <dt>Inicio</dt>
+                        <dd>{{ goal.start_date }}</dd>
+                    </div>
+                    <div>
+                        <dt>Data alvo</dt>
+                        <dd>{{ goal.target_date|default:"Nao definida" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Categoria</dt>
+                        <dd>{{ goal.category|default:"Nao vinculada" }}</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="panel">
+                <h2>Contas vinculadas</h2>
+                {% if goal.accounts.all %}
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Conta</th>
+                                <th>Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for account in goal.accounts.all %}
+                                <tr>
+                                    <td>{{ account }}</td>
+                                    <td>{{ account.currency }} {{ account.balance }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="empty">Nenhuma conta vinculada.</p>
+                {% endif %}
+            </section>
+
+            <section class="panel">
+                <h2>Metas do periodo</h2>
+                {% if goal_summary.monthly_goals %}
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Atual</th>
+                                <th>Alvo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for monthly_goal in goal_summary.monthly_goals %}
+                                <tr>
+                                    <td><span class="status">{{ monthly_goal.get_status_display }}</span></td>
+                                    <td>R$ {{ monthly_goal.current_amount }}</td>
+                                    <td>R$ {{ monthly_goal.target_amount }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="empty">Nenhuma meta mensal para este periodo.</p>
+                {% endif %}
+            </section>
+        </div>
+    {% endwith %}
+{% endblock %}
