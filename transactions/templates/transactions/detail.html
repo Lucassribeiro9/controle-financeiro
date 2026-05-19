@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ transaction.description }} - Lancamento{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>{{ transaction.description }}</h1>
+            <p class="muted">{{ transaction.date }}</p>
+        </div>
+
+        <a class="button button-secondary" href="{% url 'transactions:list' %}">Voltar</a>
+    </header>
+
+    <div class="summary-grid">
+        <div class="metric-card">
+            <span>Valor</span>
+            <strong>R$ {{ transaction.amount }}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Tipo</span>
+            <strong>{{ transaction.get_transaction_type_display }}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Status</span>
+            <strong>{{ transaction.get_status_display }}</strong>
+        </div>
+    </div>
+
+    <section class="panel">
+        <h2>Detalhes</h2>
+        <dl class="detail-list">
+            <div>
+                <dt>Conta</dt>
+                <dd>{{ transaction.account|default:"Nao informada" }}</dd>
+            </div>
+            <div>
+                <dt>Cartao</dt>
+                <dd>{{ transaction.card|default:"Nao informado" }}</dd>
+            </div>
+            <div>
+                <dt>Categoria</dt>
+                <dd>{{ transaction.category|default:"Nao informada" }}</dd>
+            </div>
+            <div>
+                <dt>Fatura</dt>
+                <dd>{{ transaction.statement|default:"Nao vinculada" }}</dd>
+            </div>
+            <div>
+                <dt>Criado em</dt>
+                <dd>{{ transaction.created_at }}</dd>
+            </div>
+            <div>
+                <dt>Atualizado em</dt>
+                <dd>{{ transaction.updated_at }}</dd>
+            </div>
+        </dl>
+
+        {% if transaction.notes %}
+            <div class="notes-block">
+                <h2>Observacoes</h2>
+                <p>{{ transaction.notes }}</p>
+            </div>
+        {% endif %}
+    </section>
+{% endblock %}

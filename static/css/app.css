@@ -346,8 +346,10 @@ h2 {
 
 .form-field input,
 .form-field select,
+.form-field textarea,
 .inline-form input,
-.period-form input {
+.period-form input,
+.period-form select {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -379,6 +381,10 @@ h2 {
 
 .period-form input {
     width: 96px;
+}
+
+.period-form select {
+    min-width: 150px;
 }
 
 .inline-form {
@@ -434,6 +440,21 @@ h2 {
     border-color: var(--expense);
 }
 
+.field-error {
+    color: var(--expense);
+    font-size: 13px;
+}
+
+.notes-block {
+    border-top: 1px solid var(--line);
+    margin-top: 18px;
+    padding-top: 18px;
+}
+
+.notes-block p {
+    margin: 8px 0 0;
+}
+
 @media (max-width: 860px) {
     .app-shell {
         grid-template-columns: 1fr;
@@ -476,6 +497,7 @@ h2 {
     .action-row form,
     .inline-form input,
     .period-form input,
+    .period-form select,
     .button {
         width: 100%;
     }
