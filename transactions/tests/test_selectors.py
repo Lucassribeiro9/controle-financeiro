@@ -6,12 +6,17 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import FinancialAccount
+from cards.models import Card
 from institutions.models import Institution
 from transactions.models import Transaction, Transfer
 from transactions.selectors import (
+    get_recent_transactions,
     get_monthly_expense_total,
     get_monthly_income_total,
     get_monthly_transfers_total,
+    get_transactions_by_status,
+    get_transactions_by_type,
+    get_transactions_for_period,
 )
 
 
@@ -33,6 +38,15 @@ class TransactionSelectorTests(TestCase):
             institution=self.institution,
             account_type=FinancialAccount.AccountType.PIGGY_BANK,
             balance=Decimal("200.00"),
+        )
+        self.card = Card.objects.create(
+            name="Inter Gold",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=self.account,
         )
 
     def test_get_monthly_income_total_sums_income_from_given_month(self):
@@ -197,3 +211,97 @@ class TransactionSelectorTests(TestCase):
         self.assertEqual(get_monthly_income_total(year=2026, month=5), Decimal("0.00"))
         self.assertEqual(get_monthly_expense_total(year=2026, month=5), Decimal("0.00"))
         self.assertEqual(get_monthly_transfers_total(year=2026, month=5), Decimal("0.00"))
+
+    def test_get_transactions_for_period_lists_month_items(self):
+        """Deve listar transacoes do periodo informado."""
+
+        may_transaction = Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            date=date(2026, 5, 8),
+        )
+        Transaction.objects.create(
+            description="Outro mes",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            date=date(2026, 6, 8),
+        )
+
+        transactions = list(get_transactions_for_period(year=2026, month=5))
+
+        self.assertEqual(transactions, [may_transaction])
+
+    def test_get_recent_transactions_respects_limit(self):
+        """Deve limitar a quantidade de transacoes recentes."""
+
+        Transaction.objects.create(
+            description="Primeira",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            account=self.account,
+            date=date(2026, 5, 1),
+        )
+        latest = Transaction.objects.create(
+            description="Ultima",
+            amount=Decimal("200.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            account=self.account,
+            date=date(2026, 5, 2),
+        )
+
+        transactions = list(get_recent_transactions(limit=1))
+
+        self.assertEqual(transactions, [latest])
+
+    def test_get_transactions_by_status_filters_status(self):
+        """Deve filtrar transacoes por status."""
+
+        paid = Transaction.objects.create(
+            description="Paga",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 1),
+        )
+        Transaction.objects.create(
+            description="Pendente",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PENDING,
+            account=self.account,
+            date=date(2026, 5, 2),
+        )
+
+        transactions = list(get_transactions_by_status(status=Transaction.PaymentStatus.PAID))
+
+        self.assertEqual(transactions, [paid])
+
+    def test_get_transactions_by_type_filters_type(self):
+        """Deve filtrar transacoes por tipo."""
+
+        card_purchase = Transaction.objects.create(
+            description="Compra no cartao",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=self.card,
+            date=date(2026, 5, 1),
+        )
+        Transaction.objects.create(
+            description="Despesa",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            date=date(2026, 5, 2),
+        )
+
+        transactions = list(
+            get_transactions_by_type(
+                transaction_type=Transaction.TransactionType.CARD_PURCHASE
+            )
+        )
+
+        self.assertEqual(transactions, [card_purchase])

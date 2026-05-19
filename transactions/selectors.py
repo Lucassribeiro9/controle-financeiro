@@ -51,3 +51,42 @@ def get_monthly_transfers_total(*, year, month):
         "0.00"
     )
     return total
+
+
+def get_transactions_for_period(*, year, month):
+    """Lista transacoes de um periodo com relacionamentos principais."""
+
+    return (
+        Transaction.objects.filter(date__year=year, date__month=month)
+        .select_related("account", "category", "card", "statement")
+        .order_by("-date", "-created_at")
+    )
+
+
+def get_recent_transactions(*, limit=10):
+    """Lista transacoes recentes para telas de acompanhamento."""
+
+    return (
+        Transaction.objects.select_related("account", "category", "card", "statement")
+        .order_by("-date", "-created_at")[:limit]
+    )
+
+
+def get_transactions_by_status(*, status):
+    """Lista transacoes filtradas por status."""
+
+    return (
+        Transaction.objects.filter(status=status)
+        .select_related("account", "category", "card", "statement")
+        .order_by("-date", "-created_at")
+    )
+
+
+def get_transactions_by_type(*, transaction_type):
+    """Lista transacoes filtradas por tipo."""
+
+    return (
+        Transaction.objects.filter(transaction_type=transaction_type)
+        .select_related("account", "category", "card", "statement")
+        .order_by("-date", "-created_at")
+    )

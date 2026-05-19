@@ -26,4 +26,5 @@ urlpatterns = [
     path("", include("imports.urls")),
     path("", include("insights.urls")),
     path("", include("goals.urls")),
+    path("", include("transactions.urls")),
 ]

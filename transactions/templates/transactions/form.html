@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Novo lancamento - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Novo lancamento</h1>
+            <p class="muted">Registre receitas, despesas, ajustes e compras no cartao.</p>
+        </div>
+    </header>
+
+    <section class="panel">
+        <form class="form-grid" method="post" action="{% url 'transactions:create' %}">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="app-message">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% for field in form %}
+                <label class="form-field" for="{{ field.id_for_label }}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="field-error">{{ field.errors|join:", " }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+
+            <div class="action-row">
+                <button class="button" type="submit">Salvar</button>
+                <a class="button button-secondary" href="{% url 'transactions:list' %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}
