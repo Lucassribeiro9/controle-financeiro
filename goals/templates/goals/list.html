@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Objetivos - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Objetivos</h1>
+            <p class="muted">Acompanhe objetivos ativos e progresso do periodo.</p>
+        </div>
+
+        <form class="period-form" method="get" action="{% url 'goals:list' %}">
+            <label>
+                <span>Mes</span>
+                <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+            </label>
+            <label>
+                <span>Ano</span>
+                <input name="year" type="number" min="2000" value="{{ year }}" required>
+            </label>
+            <button class="button" type="submit">Filtrar</button>
+        </form>
+    </header>
+
+    <div class="action-row">
+        <a class="button button-secondary" href="{% url 'goals:monthly-goals' %}?year={{ year }}&month={{ month }}">Ver metas mensais</a>
+    </div>
+
+    <div class="item-list page-section">
+        {% for item in goal_summaries %}
+            {% with goal=item.goal progress=item.progress %}
+                <article class="goal-card">
+                    <div>
+                        <div class="card-title-row">
+                            <h2>
+                                <a href="{% url 'goals:detail' goal.id %}?year={{ year }}&month={{ month }}">{{ goal.name }}</a>
+                            </h2>
+                            <span class="tag">{{ goal.get_goal_type_display }}</span>
+                        </div>
+
+                        <dl class="detail-list">
+                            <div>
+                                <dt>Valor alvo</dt>
+                                <dd>R$ {{ goal.target_amount }}</dd>
+                            </div>
+                            <div>
+                                <dt>Valor atual</dt>
+                                <dd>R$ {{ progress.current_amount }}</dd>
+                            </div>
+                            <div>
+                                <dt>Progresso</dt>
+                                <dd>{{ progress.progress_percent }}%</dd>
+                            </div>
+                            <div>
+                                <dt>Inicio</dt>
+                                <dd>{{ goal.start_date }}</dd>
+                            </div>
+                            <div>
+                                <dt>Data alvo</dt>
+                                <dd>{{ goal.target_date|default:"Nao definida" }}</dd>
+                            </div>
+                            <div>
+                                <dt>Status</dt>
+                                <dd>{% if goal.is_active %}Ativo{% else %}Inativo{% endif %}</dd>
+                            </div>
+                            <div>
+                                <dt>Categoria</dt>
+                                <dd>{{ goal.category|default:"Nao vinculada" }}</dd>
+                            </div>
+                            <div>
+                                <dt>Contas</dt>
+                                <dd>
+                                    {% for account in goal.accounts.all %}
+                                        {{ account }}{% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        Nao vinculadas
+                                    {% endfor %}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Restante</dt>
+                                <dd>R$ {{ progress.remaining_amount }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </article>
+            {% endwith %}
+        {% empty %}
+            <section class="panel">
+                <p class="empty">Nenhum objetivo ativo cadastrado.</p>
+            </section>
+        {% endfor %}
+    </div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Metas mensais - {{ month }}/{{ year }}{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Metas mensais</h1>
+            <p class="muted">{{ month }}/{{ year }}</p>
+        </div>
+
+        <form class="period-form" method="get" action="{% url 'goals:monthly-goals' %}">
+            <label>
+                <span>Mes</span>
+                <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+            </label>
+            <label>
+                <span>Ano</span>
+                <input name="year" type="number" min="2000" value="{{ year }}" required>
+            </label>
+            <button class="button" type="submit">Filtrar</button>
+        </form>
+    </header>
+
+    <div class="action-row">
+        <a class="button button-secondary" href="{% url 'goals:list' %}?year={{ year }}&month={{ month }}">Ver objetivos</a>
+    </div>
+
+    <section class="panel page-section">
+        {% if monthly_goals %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Objetivo</th>
+                        <th>Status</th>
+                        <th>Atual</th>
+                        <th>Alvo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for monthly_goal in monthly_goals %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'goals:detail' monthly_goal.goal.id %}?year={{ year }}&month={{ month }}">
+                                    {{ monthly_goal.goal.name }}
+                                </a>
+                            </td>
+                            <td><span class="status">{{ monthly_goal.get_status_display }}</span></td>
+                            <td>R$ {{ monthly_goal.current_amount }}</td>
+                            <td>R$ {{ monthly_goal.target_amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhuma meta mensal no periodo.</p>
+        {% endif %}
+    </section>
+{% endblock %}
