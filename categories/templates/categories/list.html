@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Categorias - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Categorias</h1>
+            <p class="muted">Cadastre categorias e subcategorias usadas nas classificacoes.</p>
+        </div>
+
+        <a class="button" href="{% url 'categories:create' %}">Nova categoria</a>
+    </header>
+
+    <section class="panel page-section">
+        {% if categories %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th>Categoria pai</th>
+                        <th>Subcategorias</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'categories:update' category.id %}">
+                                    {{ category.name }}
+                                </a>
+                            </td>
+                            <td>{{ category.parent|default:"Categoria raiz" }}</td>
+                            <td>{{ category.children_count }}</td>
+                            <td>
+                                <span class="status">
+                                    {% if category.is_active %}Ativa{% else %}Inativa{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhuma categoria cadastrada.</p>
+        {% endif %}
+    </section>
+{% endblock %}
