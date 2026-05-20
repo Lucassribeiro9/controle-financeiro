@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ account.name }} - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>{{ account.name }}</h1>
+            <p class="muted">{{ account.institution }}</p>
+        </div>
+
+        <a class="button" href="{% url 'accounts:update' account.id %}">Editar conta</a>
+    </header>
+
+    <section class="panel">
+        <dl class="detail-list detail-list-compact">
+            <div>
+                <dt>Instituicao</dt>
+                <dd>{{ account.institution }}</dd>
+            </div>
+            <div>
+                <dt>Tipo</dt>
+                <dd>{{ account.get_account_type_display }}</dd>
+            </div>
+            <div>
+                <dt>Moeda</dt>
+                <dd>{{ account.currency }}</dd>
+            </div>
+            <div>
+                <dt>Saldo atual</dt>
+                <dd>{{ account.currency }} {{ account.balance }}</dd>
+            </div>
+            <div>
+                <dt>Status</dt>
+                <dd>{% if account.is_active %}Ativa{% else %}Inativa{% endif %}</dd>
+            </div>
+            <div>
+                <dt>Atualizada em</dt>
+                <dd>{{ account.updated_at }}</dd>
+            </div>
+        </dl>
+    </section>
+
+    <div class="action-row page-section">
+        <a class="button button-secondary" href="{% url 'accounts:list' %}">Voltar</a>
+    </div>
+{% endblock %}

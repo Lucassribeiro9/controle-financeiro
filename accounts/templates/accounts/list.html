@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Contas - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Contas</h1>
+            <p class="muted">Saldos por conta, tipo, instituicao e moeda.</p>
+        </div>
+
+        <a class="button" href="{% url 'accounts:create' %}">Nova conta</a>
+    </header>
+
+    <div class="item-list page-section">
+        {% for summary in account_summary %}
+            <section class="panel">
+                <div class="card-title-row">
+                    <div>
+                        <h2>{{ summary.currency }}</h2>
+                        <p class="muted">{{ summary.currency_label }}</p>
+                    </div>
+                    <div>
+                        <strong>{{ summary.currency }} {{ summary.total_balance }}</strong>
+                        <p class="muted">
+                            {{ summary.active_count }} ativa(s), {{ summary.inactive_count }} inativa(s)
+                        </p>
+                    </div>
+                </div>
+
+                <table class="data-table page-section">
+                    <thead>
+                        <tr>
+                            <th>Conta</th>
+                            <th>Instituicao</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in summary.accounts %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'accounts:detail' account.id %}">
+                                        {{ account.name }}
+                                    </a>
+                                </td>
+                                <td>{{ account.institution }}</td>
+                                <td>{{ account.get_account_type_display }}</td>
+                                <td>
+                                    <span class="status">
+                                        {% if account.is_active %}Ativa{% else %}Inativa{% endif %}
+                                    </span>
+                                </td>
+                                <td>{{ account.currency }} {{ account.balance }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% empty %}
+            <section class="panel">
+                <p class="empty">Nenhuma conta cadastrada.</p>
+            </section>
+        {% endfor %}
+    </div>
+{% endblock %}
