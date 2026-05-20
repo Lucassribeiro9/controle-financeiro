@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}{{ plan.description }} - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>{{ plan.description }}</h1>
+            <p class="muted">{{ plan.card }} - {{ plan.get_status_display }}</p>
+        </div>
+
+        <a class="button button-secondary" href="{% url 'installments:list' %}">Voltar</a>
+    </header>
+
+    <section class="panel">
+        <div class="card-title-row">
+            <h2>Resumo</h2>
+            <span class="tag">{{ plan.get_status_display }}</span>
+        </div>
+
+        <dl class="detail-list">
+            <div>
+                <dt>Total</dt>
+                <dd>R$ {{ plan.total_amount }}</dd>
+            </div>
+            <div>
+                <dt>Parcela base</dt>
+                <dd>R$ {{ plan.installment_amount }}</dd>
+            </div>
+            <div>
+                <dt>Parcelas</dt>
+                <dd>{{ progress.generated_count }}/{{ plan.total_installments }}</dd>
+            </div>
+            <div>
+                <dt>Pagas</dt>
+                <dd>{{ progress.paid_count }}</dd>
+            </div>
+            <div>
+                <dt>Primeira parcela</dt>
+                <dd>{{ plan.first_installment_date }}</dd>
+            </div>
+            <div>
+                <dt>Categoria</dt>
+                <dd>{{ plan.category|default:"Nao vinculada" }}</dd>
+            </div>
+        </dl>
+    </section>
+
+    {% if plan.status != "canceled" %}
+        <section class="panel page-section">
+            <h2>Acoes</h2>
+            <form method="post" action="{% url 'installments:cancel' plan.id %}">
+                {% csrf_token %}
+                <button class="button button-danger" type="submit">Cancelar parcelamento</button>
+            </form>
+        </section>
+    {% endif %}
+
+    <section class="panel page-section">
+        <h2>Parcelas geradas</h2>
+        {% if transactions %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Parcela</th>
+                        <th>Data</th>
+                        <th>Fatura</th>
+                        <th>Status</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.installment_number }}/{{ plan.total_installments }}</td>
+                            <td>{{ transaction.date }}</td>
+                            <td>{{ transaction.statement|default:"Nao vinculada" }}</td>
+                            <td><span class="status">{{ transaction.get_status_display }}</span></td>
+                            <td>R$ {{ transaction.amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhuma parcela gerada.</p>
+        {% endif %}
+    </section>
+{% endblock %}

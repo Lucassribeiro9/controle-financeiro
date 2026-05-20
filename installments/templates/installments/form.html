@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Novo parcelamento - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Novo parcelamento</h1>
+            <p class="muted">Gere parcelas mensais em faturas de cartao de credito.</p>
+        </div>
+    </header>
+
+    <section class="panel">
+        <form class="form-grid" method="post" action="{% url 'installments:create' %}">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="app-message">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% for field in form %}
+                <label class="form-field" for="{{ field.id_for_label }}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="field-error">{{ field.errors|join:", " }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+
+            <div class="action-row">
+                <button class="button" type="submit">Salvar</button>
+                <a class="button button-secondary" href="{% url 'installments:list' %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

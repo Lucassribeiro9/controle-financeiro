@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "accounts",
     "categories",
     "cards",
+    "installments",
     "transactions",
     "recurrences",
     "goals",

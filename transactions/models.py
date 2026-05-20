@@ -80,6 +80,19 @@ class Transaction(models.Model):
         blank=True,
         related_name="transactions",
     )
+    installment_plan = models.ForeignKey(
+        "installments.InstallmentPlan",
+        verbose_name="Plano de parcelamento",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+    )
+    installment_number = models.PositiveIntegerField(
+        "Numero da parcela",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         """Define metadados de exibicao, ordenacao e unicidade."""
@@ -112,6 +125,26 @@ class Transaction(models.Model):
 
         if self.statement_id and self.card_id and self.statement.card_id != self.card_id:
             raise ValidationError({"statement": "Fatura deve pertencer ao cartao da transacao."})
+
+        if self.installment_plan_id:
+            if self.transaction_type != self.TransactionType.CARD_PURCHASE:
+                raise ValidationError(
+                    {
+                        "installment_plan": "Parcelamento exige transacao de compra no cartao."
+                    }
+                )
+            if self.card_id and self.installment_plan.card_id != self.card_id:
+                raise ValidationError(
+                    {"installment_plan": "Parcelamento deve pertencer ao cartao da transacao."}
+                )
+            if self.installment_number is None:
+                raise ValidationError(
+                    {"installment_number": "Parcela exige numero da parcela."}
+                )
+            if self.installment_number > self.installment_plan.total_installments:
+                raise ValidationError(
+                    {"installment_number": "Numero da parcela excede o total do plano."}
+                )
 
     def __str__(self) -> str:
         """Retorna uma descricao curta para exibicao no admin e logs."""
