@@ -102,3 +102,63 @@ class TransactionForm(forms.Form):
             self.add_error("account", "Lancamento exige conta financeira.")
 
         return cleaned_data
+
+
+class TransferForm(forms.Form):
+    """Form para criar transferencias entre contas usando services."""
+
+    description = forms.CharField(label="Descricao", max_length=255)
+    amount = forms.DecimalField(label="Valor", max_digits=14, decimal_places=2)
+    from_account = forms.ModelChoiceField(
+        label="Conta origem",
+        queryset=FinancialAccount.objects.none(),
+    )
+    destination_account = forms.ModelChoiceField(
+        label="Conta destino",
+        queryset=FinancialAccount.objects.none(),
+    )
+    date = forms.DateField(
+        label="Data",
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    notes = forms.CharField(
+        label="Observacoes",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 4}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        """Configura querysets de contas ativas."""
+
+        super().__init__(*args, **kwargs)
+
+        accounts = FinancialAccount.objects.filter(is_active=True).order_by("name")
+        self.fields["from_account"].queryset = accounts
+        self.fields["destination_account"].queryset = accounts
+
+    def clean_amount(self):
+        """Valida que o valor informado e positivo."""
+
+        amount = self.cleaned_data["amount"]
+        if amount <= 0:
+            raise forms.ValidationError("Valor deve ser maior que zero.")
+        return amount
+
+    def clean(self):
+        """Valida que origem e destino sao contas diferentes."""
+
+        cleaned_data = super().clean()
+        from_account = cleaned_data.get("from_account")
+        destination_account = cleaned_data.get("destination_account")
+
+        if (
+            from_account is not None
+            and destination_account is not None
+            and from_account == destination_account
+        ):
+            self.add_error(
+                "destination_account",
+                "Conta de destino deve ser diferente da conta de origem.",
+            )
+
+        return cleaned_data

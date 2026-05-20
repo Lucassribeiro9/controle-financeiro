@@ -6,14 +6,15 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import TransactionForm
+from .forms import TransactionForm, TransferForm
 from .models import Transaction
 from .selectors import (
     get_transactions_by_status,
     get_transactions_by_type,
     get_transactions_for_period,
+    get_transfers_for_period,
 )
-from .services import create_transaction
+from .services import create_transaction, create_transfer
 
 
 def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
@@ -99,7 +100,50 @@ def transaction_detail_page(
     )
 
 
-def _add_validation_errors_to_form(form: TransactionForm, exc: ValidationError) -> None:
+def transfer_list_page(request: HttpRequest) -> HttpResponse:
+    """Renderiza a lista de transferencias entre contas."""
+
+    year, month = _get_period_from_request(request)
+    transfers = get_transfers_for_period(year=year, month=month)
+
+    return render(
+        request,
+        "transactions/transfers.html",
+        {
+            "year": year,
+            "month": month,
+            "transfers": transfers,
+        },
+    )
+
+
+def transfer_create_page(request: HttpRequest) -> HttpResponse:
+    """Renderiza e processa o formulario de criacao de transferencia."""
+
+    if request.method == "POST":
+        form = TransferForm(request.POST)
+        if form.is_valid():
+            try:
+                create_transfer(**form.cleaned_data)
+            except ValidationError as exc:
+                _add_validation_errors_to_form(form, exc)
+            else:
+                messages.success(request, "Transferencia criada com sucesso.")
+                return redirect("transactions:transfers")
+    else:
+        form = TransferForm(initial={"date": timezone.localdate()})
+
+    return render(
+        request,
+        "transactions/transfer_form.html",
+        {"form": form},
+    )
+
+
+def _add_validation_errors_to_form(
+    form: TransactionForm | TransferForm,
+    exc: ValidationError,
+) -> None:
     """Transfere erros de validacao de model/service para o form."""
 
     if hasattr(exc, "message_dict"):

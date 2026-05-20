@@ -17,6 +17,7 @@ from transactions.selectors import (
     get_transactions_by_status,
     get_transactions_by_type,
     get_transactions_for_period,
+    get_transfers_for_period,
 )
 
 
@@ -204,6 +205,43 @@ class TransactionSelectorTests(TestCase):
         total = get_monthly_transfers_total(year=2026, month=5)
 
         self.assertEqual(total, Decimal("450.00"))
+
+    def test_transfer_does_not_affect_monthly_income_or_expense_totals(self):
+        """Transferencia nao deve afetar totais mensais de receita/despesa."""
+
+        Transfer.objects.create(
+            description="Aporte reserva",
+            amount=Decimal("300.00"),
+            from_account=self.account,
+            destination_account=self.destination_account,
+            date=date(2026, 5, 8),
+        )
+
+        self.assertEqual(get_monthly_income_total(year=2026, month=5), Decimal("0.00"))
+        self.assertEqual(get_monthly_expense_total(year=2026, month=5), Decimal("0.00"))
+        self.assertEqual(get_monthly_transfers_total(year=2026, month=5), Decimal("300.00"))
+
+    def test_get_transfers_for_period_lists_month_items(self):
+        """Deve listar transferencias do periodo informado."""
+
+        may_transfer = Transfer.objects.create(
+            description="Aporte reserva",
+            amount=Decimal("300.00"),
+            from_account=self.account,
+            destination_account=self.destination_account,
+            date=date(2026, 5, 8),
+        )
+        Transfer.objects.create(
+            description="Outro mes",
+            amount=Decimal("200.00"),
+            from_account=self.account,
+            destination_account=self.destination_account,
+            date=date(2026, 6, 8),
+        )
+
+        transfers = list(get_transfers_for_period(year=2026, month=5))
+
+        self.assertEqual(transfers, [may_transfer])
 
     def test_monthly_totals_return_zero_when_there_are_no_records(self):
         """Deve retornar Decimal zero quando nao houver registros."""
