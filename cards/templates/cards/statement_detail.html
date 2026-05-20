@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Fatura {{ statement }} - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Fatura {{ statement.month }}/{{ statement.year }}</h1>
+            <p class="muted">{{ statement.card }} - {{ statement.card.institution }}</p>
+        </div>
+
+        <a class="button button-secondary" href="{% url 'cards:statements' %}">Voltar</a>
+    </header>
+
+    <section class="panel">
+        <div class="card-title-row">
+            <h2>{{ statement.card }}</h2>
+            <span class="tag">{{ statement.get_status_display }}</span>
+        </div>
+
+        <dl class="detail-list">
+            <div>
+                <dt>Mes/Ano</dt>
+                <dd>{{ statement.month }}/{{ statement.year }}</dd>
+            </div>
+            <div>
+                <dt>Valor esperado</dt>
+                <dd>R$ {{ statement.expected_amount }}</dd>
+            </div>
+            <div>
+                <dt>Valor fechado</dt>
+                <dd>R$ {{ statement.closed_amount }}</dd>
+            </div>
+            <div>
+                <dt>Valor pago</dt>
+                <dd>R$ {{ statement.paid_amount }}</dd>
+            </div>
+            <div>
+                <dt>Fechamento</dt>
+                <dd>{{ statement.closing_date }}</dd>
+            </div>
+            <div>
+                <dt>Vencimento</dt>
+                <dd>{{ statement.due_date }}</dd>
+            </div>
+            <div>
+                <dt>Conta de pagamento</dt>
+                <dd>{{ statement.payment_account|default:"Nao vinculada" }}</dd>
+            </div>
+            <div>
+                <dt>Status</dt>
+                <dd>{{ statement.get_status_display }}</dd>
+            </div>
+        </dl>
+    </section>
+
+    <section class="panel page-section">
+        <h2>Acoes da fatura</h2>
+        <div class="action-row">
+            <form method="post" action="{% url 'cards:statement-detail' statement.id %}">
+                {% csrf_token %}
+                <button class="button button-secondary" type="submit">Fechar fatura</button>
+            </form>
+
+            <form class="inline-form" method="post" action="{% url 'cards:pay-statement' statement.id %}">
+                {% csrf_token %}
+                <label class="sr-only" for="{{ payment_form.amount.id_for_label }}">{{ payment_form.amount.label }}</label>
+                {{ payment_form.amount }}
+                <button class="button" type="submit">Pagar</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="panel page-section">
+        <h2>Transacoes vinculadas</h2>
+        {% if transactions %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Descricao</th>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.description }}</td>
+                            <td>{{ transaction.date }}</td>
+                            <td>{{ transaction.get_transaction_type_display }}</td>
+                            <td><span class="status">{{ transaction.get_status_display }}</span></td>
+                            <td>R$ {{ transaction.amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhuma transacao vinculada a esta fatura.</p>
+        {% endif %}
+    </section>
+{% endblock %}
