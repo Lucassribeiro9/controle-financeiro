@@ -16,6 +16,7 @@ Aplicativo web local para controle financeiro pessoal com Django.
   - [Fase 7 - Dashboards e Relatórios](#fase-7---dashboards-e-relatórios)
   - [Fase 8 - Importações XLSX, CSV e OFX](#fase-8---importações-xlsx-csv-e-ofx)
   - [Fase 9 - Insights e Sugestões Automáticas](#fase-9---insights-e-sugestões-automáticas)
+  - [Fase 9.1 - Interfaces Operacionais e Parcelamentos](#fase-91---interfaces-operacionais-e-parcelamentos)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -262,6 +263,35 @@ Regras importantes:
 - Silenciar um insight cria um padrão ignorado para evitar sugestões futuras semelhantes.
 - `source_key` evita duplicidade mensal de sugestões.
 
+## Fase 9.1 - Interfaces Operacionais e Parcelamentos
+
+Status: concluída
+
+Implementado:
+
+- Primeiras interfaces HTML para contas, cartões, faturas, categorias e instituições.
+- Fluxo próprio de transferências entre contas, separado de `Transaction`.
+- App `installments` para domínio de parcelamentos.
+- Model `InstallmentPlan`.
+- Vínculo de `Transaction` com `installment_plan` e `installment_number`.
+- Services para criar, gerar parcelas, cancelar e acompanhar progresso de parcelamentos.
+- Selectors para listar parcelamentos ativos, por cartão, detalhe e próximos do fim.
+- Templates, forms, views e rotas para parcelamentos.
+- Templates, forms, views e rotas para os principais cadastros operacionais.
+- Testes de views, selectors, services e regras de domínio para os fluxos criados.
+
+Regras importantes:
+
+- Transferência usa `Transfer` e `create_transfer`, não uma `Transaction` comum.
+- Transferências não entram nos totais mensais de receitas ou despesas.
+- Pagamento de fatura continua passando por `pay_statement`.
+- Parcelamento é uma compra única representada por `InstallmentPlan`.
+- Parcelamento gera N transações `card_purchase`, uma para cada parcela.
+- Cada parcela é associada à fatura correta do cartão.
+- A soma das parcelas fecha exatamente com o valor total.
+- A última parcela ajusta diferenças de centavos.
+- Cancelar parcelamento não apaga parcelas já geradas.
+
 ## Documentação Detalhada
 
 Para detalhes técnicos das fases:
@@ -275,6 +305,7 @@ Para detalhes técnicos das fases:
 - `docs/phases/fase-7-dashboards-e-relatorios.md`
 - `docs/phases/fase-8-importacoes-xlsx-csv-ofx.md`
 - `docs/phases/fase-9-insights-e-sugestoes.md`
+- `docs/phases/fase-9-1-interfaces-operacionais-e-parcelamentos.md`
 
 ## Roadmap
 
