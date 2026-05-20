@@ -663,7 +663,81 @@ Entregue o núcleo previsto para insights e sugestões automáticas: app `insigh
 
 Itens de evolução permanecem no backlog técnico para ciclos seguintes: sugestão de recorrência a partir de padrões detectados, insights de fatura próxima do vencimento, insights de saldo baixo em benefício, integração visual com o dashboard mensal, heurísticas por descrição/dia da semana e análise de histórico entre meses.
 
-## 15. Fase 10 - Taxas, Moeda e Evoluções
+## 15. Fase 9.1 - Interfaces Operacionais e Parcelamentos
+
+### Objetivo
+
+Consolidar as primeiras telas operacionais do sistema e implementar o domínio de parcelamentos antes de avançar para novas evoluções externas.
+
+Esta fase não existia no plano original como uma fase independente. Ela foi registrada como Fase 9.1 por representar uma evolução transversal entre os cadastros fundamentais, transações, cartões/faturas e usabilidade do sistema.
+
+### Status atual
+
+Status em 2026-05-20: concluída.
+
+### Branches sugeridas
+
+```text
+feat/accounts-ui
+feat/cards-ui
+feat/categories-ui
+feat/institutions-ui
+feat/transfers-ui
+feat/installments
+```
+
+### Entregas principais
+
+- Interfaces HTML para contas financeiras.
+- Interfaces HTML para cartões e faturas.
+- Interfaces HTML para categorias e subcategorias.
+- Interfaces HTML para instituições financeiras.
+- Fluxo próprio para transferências entre contas.
+- App próprio `installments`.
+- Model `InstallmentPlan`.
+- Vínculo de parcelas geradas com `Transaction`.
+- Forms, views, urls, templates, services e selectors para parcelamentos.
+
+### Regras
+
+- Cadastros operacionais devem ser simples, confiáveis e testados.
+- Transferência não é `Transaction`; transferência usa `Transfer`.
+- Transferência movimenta saldo entre contas sem afetar receitas e despesas.
+- Fatura não deve ser manipulada com `form.save()` para pagamento; pagamento passa por `pay_statement`.
+- Parcelamento é uma compra única que gera N parcelas como `card_purchase`.
+- Cada parcela deve entrar na fatura correta conforme a regra do cartão.
+- A soma das parcelas deve bater com o total, com ajuste de centavos na última parcela.
+- Cancelar parcelamento não apaga parcelas já geradas.
+
+### Testes
+
+- Listar, criar e editar contas.
+- Listar, criar e editar cartões.
+- Listar, detalhar, fechar e pagar faturas.
+- Listar, criar e editar categorias.
+- Listar, criar e editar instituições.
+- Criar transferência, atualizar saldos e validar origem/destino.
+- Garantir que transferência não afeta totais mensais de receita/despesa.
+- Criar parcelamento de 10x.
+- Gerar N transações de parcela.
+- Associar parcelas às faturas corretas.
+- Validar soma total das parcelas e ajuste de centavos.
+- Cancelar parcelamento mantendo parcelas geradas.
+
+### Critério de pronto
+
+- Usuário consegue operar os cadastros principais sem entrar no Django Admin.
+- Transferências possuem fluxo próprio e separado de lançamentos comuns.
+- Parcelamentos possuem domínio próprio, geração de parcelas e vínculo com faturas.
+- Testes cobrem os principais fluxos de tela, services e selectors.
+
+### Fechamento da fase
+
+Entregues as interfaces operacionais iniciais para cadastros fundamentais, cartões/faturas, transferências e parcelamentos. O app `installments` foi criado como domínio próprio entre transações, cartões e faturas, com model, services, selectors, views, templates, migrations e testes.
+
+Itens de evolução permanecem no backlog técnico: edição controlada de parcelamentos, política explícita para cancelar parcelas futuras, integração visual mais rica com faturas e dashboard, e UX dinâmica para alternar campos de cartões por tipo.
+
+## 16. Fase 10 - Taxas, Moeda e Evoluções
 
 ### Objetivo
 
@@ -701,7 +775,7 @@ feature/cdi-estimates
 - Conta em dólar pode ser estimada em reais.
 - Porquinho com CDI pode ter rendimento estimado.
 
-## 16. Ordem Recomendada de Estudos Durante o Projeto
+## 17. Ordem Recomendada de Estudos Durante o Projeto
 
 ### Enquanto faz Fase 1
 
@@ -765,7 +839,15 @@ feature/cdi-estimates
 - Sugestões aprováveis.
 - Design de produto.
 
-## 17. Definition of Done Geral
+### Enquanto faz Fase 9.1
+
+- Forms e templates Django.
+- Views baseadas em services.
+- Fluxos POST seguros.
+- Migrations entre apps.
+- Modelagem de domínio intermediário.
+
+## 18. Definition of Done Geral
 
 Uma tarefa só está pronta quando:
 
@@ -778,7 +860,7 @@ Uma tarefa só está pronta quando:
 - Tem migration revisada, se alterou model.
 - Tem documentação curta quando cria uma regra importante.
 
-## 18. Primeira Sequência de Trabalho Recomendada
+## 19. Primeira Sequência de Trabalho Recomendada
 
 1. Criar repositório Git.
 2. Criar README inicial.
