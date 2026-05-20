@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Faturas - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Faturas</h1>
+            <p class="muted">Acompanhe valores esperados, fechados e pagos.</p>
+        </div>
+
+        <a class="button button-secondary" href="{% url 'cards:list' %}">Ver cartoes</a>
+    </header>
+
+    <section class="panel page-section">
+        {% if statements %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Cartao</th>
+                        <th>Mes/Ano</th>
+                        <th>Esperado</th>
+                        <th>Fechado</th>
+                        <th>Pago</th>
+                        <th>Status</th>
+                        <th>Vencimento</th>
+                        <th>Conta pagamento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for statement in statements %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'cards:statement-detail' statement.id %}">
+                                    {{ statement.card }}
+                                </a>
+                                <p class="muted">{{ statement.card.institution }}</p>
+                            </td>
+                            <td>{{ statement.month }}/{{ statement.year }}</td>
+                            <td>R$ {{ statement.expected_amount }}</td>
+                            <td>R$ {{ statement.closed_amount }}</td>
+                            <td>R$ {{ statement.paid_amount }}</td>
+                            <td><span class="status">{{ statement.get_status_display }}</span></td>
+                            <td>{{ statement.due_date }}</td>
+                            <td>{{ statement.payment_account|default:"Nao vinculada" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhuma fatura encontrada.</p>
+        {% endif %}
+    </section>
+{% endblock %}
