@@ -90,3 +90,13 @@ def get_transactions_by_type(*, transaction_type):
         .select_related("account", "category", "card", "statement")
         .order_by("-date", "-created_at")
     )
+
+
+def get_transfers_for_period(*, year, month):
+    """Lista transferencias de um periodo com contas carregadas."""
+
+    return (
+        Transfer.objects.filter(date__year=year, date__month=month)
+        .select_related("from_account", "destination_account")
+        .order_by("-date", "-created_at")
+    )

@@ -9,7 +9,10 @@
             <p class="muted">{{ month }}/{{ year }}</p>
         </div>
 
-        <a class="button" href="{% url 'transactions:create' %}">Novo lancamento</a>
+        <div class="action-row">
+            <a class="button button-secondary" href="{% url 'transactions:transfers' %}">Ver transferencias</a>
+            <a class="button" href="{% url 'transactions:create' %}">Novo lancamento</a>
+        </div>
     </header>
 
     <form class="period-form" method="get" action="{% url 'transactions:list' %}">

@@ -11,7 +11,7 @@ from accounts.models import FinancialAccount
 from cards.models import Card
 from categories.models import Category
 from institutions.models import Institution
-from transactions.models import Transaction
+from transactions.models import Transaction, Transfer
 
 
 class TransactionViewTests(TestCase):
@@ -189,3 +189,131 @@ class TransactionViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/detail.html")
         self.assertContains(response, "Mercado")
+
+
+class TransferViewTests(TestCase):
+    """Garante telas de listagem e criacao de transferencias."""
+
+    def setUp(self):
+        """Cria contas base para os cenarios de transferencia."""
+
+        self.institution = Institution.objects.create(name="Inter", code="077")
+        self.source_account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.destination_account = FinancialAccount.objects.create(
+            name="Porquinho reserva",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.PIGGY_BANK,
+            balance=Decimal("200.00"),
+        )
+
+    def test_transfer_list_page_returns_success(self):
+        """Deve renderizar a lista de transferencias."""
+
+        Transfer.objects.create(
+            description="Aporte reserva",
+            amount=Decimal("300.00"),
+            from_account=self.source_account,
+            destination_account=self.destination_account,
+            date=date(2026, 5, 8),
+        )
+
+        response = self.client.get(
+            reverse("transactions:transfers"),
+            data={"year": 2026, "month": 5},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "transactions/transfers.html")
+        self.assertContains(response, "Aporte reserva")
+        self.assertContains(response, "Conta corrente")
+        self.assertContains(response, "Porquinho reserva")
+
+    def test_transfer_list_page_uses_current_period_by_default(self):
+        """Deve usar periodo atual quando query string nao informar periodo."""
+
+        today = timezone.localdate()
+
+        response = self.client.get(reverse("transactions:transfers"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["year"], today.year)
+        self.assertEqual(response.context["month"], today.month)
+
+    def test_transfer_create_page_returns_form(self):
+        """Deve renderizar formulario de transferencia."""
+
+        response = self.client.get(reverse("transactions:transfer-create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "transactions/transfer_form.html")
+        self.assertContains(response, "Nova transferencia")
+
+    def test_post_create_transfer_uses_service(self):
+        """Deve criar transferencia usando o service."""
+
+        response = self.client.post(
+            reverse("transactions:transfer-create"),
+            data={
+                "description": "Aporte reserva",
+                "amount": "300.00",
+                "from_account": self.source_account.id,
+                "destination_account": self.destination_account.id,
+                "date": "2026-05-08",
+                "notes": "Reserva mensal",
+            },
+        )
+        transfer = Transfer.objects.get(description="Aporte reserva")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("transactions:transfers"))
+        self.assertEqual(transfer.amount, Decimal("300.00"))
+        self.assertEqual(transfer.notes, "Reserva mensal")
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_post_create_transfer_updates_balances(self):
+        """Deve reduzir origem e aumentar destino."""
+
+        self.client.post(
+            reverse("transactions:transfer-create"),
+            data={
+                "description": "Aporte reserva",
+                "amount": "300.00",
+                "from_account": self.source_account.id,
+                "destination_account": self.destination_account.id,
+                "date": "2026-05-08",
+                "notes": "",
+            },
+        )
+        self.source_account.refresh_from_db()
+        self.destination_account.refresh_from_db()
+
+        self.assertEqual(self.source_account.balance, Decimal("700.00"))
+        self.assertEqual(self.destination_account.balance, Decimal("500.00"))
+
+    def test_post_create_transfer_rejects_same_source_and_destination(self):
+        """Nao deve permitir mesma conta de origem e destino."""
+
+        response = self.client.post(
+            reverse("transactions:transfer-create"),
+            data={
+                "description": "Transferencia invalida",
+                "amount": "300.00",
+                "from_account": self.source_account.id,
+                "destination_account": self.source_account.id,
+                "date": "2026-05-08",
+                "notes": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "transactions/transfer_form.html")
+        self.assertContains(
+            response,
+            "Conta de destino deve ser diferente da conta de origem.",
+        )
+        self.assertEqual(Transfer.objects.count(), 0)
