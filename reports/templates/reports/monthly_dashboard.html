@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Dashboard financeiro - {{ month }}/{{ year }}{% endblock %}
 
@@ -26,15 +27,15 @@
     <div class="summary-grid dashboard-summary" aria-label="Resumo financeiro do mes">
         <div class="metric-card">
             <span>Receitas</span>
-            <strong class="income">R$ {{ income_total }}</strong>
+            <strong class="income">{{ income_total|brl }}</strong>
         </div>
         <div class="metric-card">
             <span>Despesas</span>
-            <strong class="expense">R$ {{ expense_total }}</strong>
+            <strong class="expense">{{ expense_total|brl }}</strong>
         </div>
         <div class="metric-card">
             <span>Saldo do mes</span>
-            <strong>R$ {{ monthly_balance }}</strong>
+            <strong>{{ monthly_balance|brl }}</strong>
         </div>
     </div>
 
@@ -60,7 +61,7 @@
                         <span
                             class="chart-bar{% if point.is_negative %} is-negative{% endif %}"
                             style="--bar-height: {{ point.bar_height }}%;"
-                            title="{{ point.label }}: R$ {{ point.balance }}"
+                            title="{{ point.label }}: {{ point.balance|brl }}"
                         ></span>
                     </span>
                     <span class="chart-label">{{ point.label }}</span>
@@ -85,7 +86,7 @@
                             </span>
                             <span class="composition-copy">
                                 <span>{{ item.category_name }}</span>
-                                <strong>R$ {{ item.total_amount }}</strong>
+                                <strong>{{ item.total_amount|brl }}</strong>
                             </span>
                         </div>
                     {% endfor %}
@@ -96,7 +97,7 @@
                         {% for item in category_expenses %}
                             <tr>
                                 <td>{{ item.category__name|default:"Sem categoria" }}</td>
-                                <td>R$ {{ item.total_amount }}</td>
+                                <td>{{ item.total_amount|brl }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -120,7 +121,7 @@
                         {% for item in net_worth %}
                             <tr>
                                 <td>{{ item.currency }}</td>
-                                <td>{{ item.total }}</td>
+                                <td>{% if item.currency == "BRL" %}{{ item.total|brl }}{% else %}{{ item.currency }} {{ item.total }}{% endif %}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -146,7 +147,7 @@
                             <tr>
                                 <td>{{ statement.card.name }}</td>
                                 <td><span class="status">{{ statement.status }}</span></td>
-                                <td>R$ {{ statement.closed_amount }}</td>
+                                <td>{{ statement.closed_amount|brl }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -172,7 +173,7 @@
                             <tr>
                                 <td>{{ monthly_goal.goal.name }}</td>
                                 <td><span class="status">{{ monthly_goal.status }}</span></td>
-                                <td>R$ {{ monthly_goal.current_amount }}</td>
+                                <td>{{ monthly_goal.current_amount|brl }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
