@@ -1,280 +1,185 @@
-<!doctype html>
-<html lang="pt-br">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard financeiro - {{ month }}/{{ year }}</title>
-    <style>
-        :root {
-            color-scheme: light;
-            --bg: #f7f8fa;
-            --surface: #ffffff;
-            --text: #1f2933;
-            --muted: #667085;
-            --line: #d9dee7;
-            --accent: #0f766e;
-            --income: #166534;
-            --expense: #b42318;
-        }
+{% extends "base.html" %}
 
-        * {
-            box-sizing: border-box;
-        }
+{% block title %}Dashboard financeiro - {{ month }}/{{ year }}{% endblock %}
 
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--text);
-            font-family: Arial, Helvetica, sans-serif;
-            line-height: 1.45;
-        }
-
-        main {
-            width: min(1120px, calc(100% - 32px));
-            margin: 0 auto;
-            padding: 32px 0;
-        }
-
-        header {
-            margin-bottom: 24px;
-        }
-
-        h1,
-        h2 {
-            margin: 0;
-            letter-spacing: 0;
-        }
-
-        h1 {
-            font-size: 28px;
-        }
-
-        h2 {
-            font-size: 18px;
-            margin-bottom: 12px;
-        }
-
-        .muted {
-            color: var(--muted);
-            margin: 6px 0 0;
-        }
-
-        .summary {
-            display: grid;
-            gap: 12px;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            margin-bottom: 24px;
-        }
-
-        .metric,
-        section {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 16px;
-        }
-
-        .metric span {
-            color: var(--muted);
-            display: block;
-            font-size: 13px;
-            margin-bottom: 8px;
-        }
-
-        .metric strong {
-            display: block;
-            font-size: 24px;
-        }
-
-        .income {
-            color: var(--income);
-        }
-
-        .expense {
-            color: var(--expense);
-        }
-
-        .grid {
-            display: grid;
-            gap: 16px;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th,
-        td {
-            border-bottom: 1px solid var(--line);
-            padding: 10px 0;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            color: var(--muted);
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        td:last-child,
-        th:last-child {
-            text-align: right;
-        }
-
-        .empty {
-            color: var(--muted);
-            margin: 0;
-        }
-
-        .status {
-            color: var(--accent);
-            font-weight: 700;
-        }
-
-        @media (max-width: 760px) {
-            main {
-                width: min(100% - 20px, 1120px);
-                padding: 20px 0;
-            }
-
-            .summary,
-            .grid {
-                grid-template-columns: 1fr;
-            }
-
-            h1 {
-                font-size: 24px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <main>
-        <header>
+{% block content %}
+    <header class="page-header dashboard-header">
+        <div>
             <h1>Dashboard financeiro</h1>
             <p class="muted">{{ month }}/{{ year }}</p>
-        </header>
+        </div>
 
-        <div class="summary" aria-label="Resumo financeiro do mes">
-            <div class="metric">
-                <span>Receitas</span>
-                <strong class="income">R$ {{ income_total }}</strong>
+        <form class="period-form" method="get" action="{% url 'reports:monthly-dashboard-page' %}">
+            <input name="range" type="hidden" value="{{ range_months }}">
+            <label>
+                <span>Mes</span>
+                <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+            </label>
+            <label>
+                <span>Ano</span>
+                <input name="year" type="number" min="2000" value="{{ year }}" required>
+            </label>
+            <button class="button" type="submit">Filtrar</button>
+        </form>
+    </header>
+
+    <div class="summary-grid dashboard-summary" aria-label="Resumo financeiro do mes">
+        <div class="metric-card">
+            <span>Receitas</span>
+            <strong class="income">R$ {{ income_total }}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Despesas</span>
+            <strong class="expense">R$ {{ expense_total }}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Saldo do mes</span>
+            <strong>R$ {{ monthly_balance }}</strong>
+        </div>
+    </div>
+
+    <section class="panel chart-panel">
+        <div class="panel-title-row">
+            <div>
+                <h2>Evolucao financeira</h2>
+                <p class="muted">Saldo mensal dos ultimos {{ range_months }} meses</p>
             </div>
-            <div class="metric">
-                <span>Despesas</span>
-                <strong class="expense">R$ {{ expense_total }}</strong>
-            </div>
-            <div class="metric">
-                <span>Saldo do mes</span>
-                <strong>R$ {{ monthly_balance }}</strong>
+
+            <div class="segment-control" aria-label="Intervalo do grafico">
+                <a class="{% if range_months == 6 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=6">6 meses</a>
+                <a class="{% if range_months == 12 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=12">12 meses</a>
+                <a class="{% if range_months == 24 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=24">24 meses</a>
             </div>
         </div>
 
-        <div class="grid">
-            <section>
-                <h2>Gastos por categoria</h2>
-                {% if category_expenses %}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Categoria</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in category_expenses %}
-                                <tr>
-                                    <td>{{ item.category__name|default:"Sem categoria" }}</td>
-                                    <td>R$ {{ item.total_amount }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="empty">Nenhuma despesa no periodo.</p>
-                {% endif %}
-            </section>
-
-            <section>
-                <h2>Patrimonio por moeda</h2>
-                {% if net_worth %}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Moeda</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in net_worth %}
-                                <tr>
-                                    <td>{{ item.currency }}</td>
-                                    <td>{{ item.total }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="empty">Nenhuma conta ativa cadastrada.</p>
-                {% endif %}
-            </section>
-
-            <section>
-                <h2>Faturas do mes</h2>
-                {% if card_statements %}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Cartao</th>
-                                <th>Status</th>
-                                <th>Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for statement in card_statements %}
-                                <tr>
-                                    <td>{{ statement.card.name }}</td>
-                                    <td><span class="status">{{ statement.status }}</span></td>
-                                    <td>R$ {{ statement.closed_amount }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="empty">Nenhuma fatura no periodo.</p>
-                {% endif %}
-            </section>
-
-            <section>
-                <h2>Metas mensais</h2>
-                {% if goal_summary %}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Meta</th>
-                                <th>Status</th>
-                                <th>Atual</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for monthly_goal in goal_summary %}
-                                <tr>
-                                    <td>{{ monthly_goal.goal.name }}</td>
-                                    <td><span class="status">{{ monthly_goal.status }}</span></td>
-                                    <td>R$ {{ monthly_goal.current_amount }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="empty">Nenhuma meta mensal no periodo.</p>
-                {% endif %}
-            </section>
+        <div class="cashflow-chart" aria-label="Grafico de evolucao financeira mensal">
+            {% for point in cashflow_series %}
+                <div class="chart-column">
+                    <span class="chart-value{% if point.is_negative %} is-negative{% endif %}">{{ point.value_label }}</span>
+                    <span class="chart-bar-wrap">
+                        <span
+                            class="chart-bar{% if point.is_negative %} is-negative{% endif %}"
+                            style="--bar-height: {{ point.bar_height }}%;"
+                            title="{{ point.label }}: R$ {{ point.balance }}"
+                        ></span>
+                    </span>
+                    <span class="chart-label">{{ point.label }}</span>
+                </div>
+            {% endfor %}
         </div>
-    </main>
-</body>
-</html>
+    </section>
+
+    <div class="dashboard-grid">
+        <section class="panel composition-panel">
+            <h2>Gastos por categoria</h2>
+            {% if category_expense_share %}
+                <div class="composition-list">
+                    {% for item in category_expense_share %}
+                        <div class="composition-item">
+                            <span
+                                class="donut-meter"
+                                style="--share: {{ item.percentage }}%; --share-color: {{ item.color }};"
+                                aria-label="{{ item.category_name }} representa {{ item.percentage }}% das despesas"
+                            >
+                                <span>{{ item.percentage }}%</span>
+                            </span>
+                            <span class="composition-copy">
+                                <span>{{ item.category_name }}</span>
+                                <strong>R$ {{ item.total_amount }}</strong>
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% elif category_expenses %}
+                <table class="data-table">
+                    <tbody>
+                        {% for item in category_expenses %}
+                            <tr>
+                                <td>{{ item.category__name|default:"Sem categoria" }}</td>
+                                <td>R$ {{ item.total_amount }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty">Nenhuma despesa no periodo.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Patrimonio por moeda</h2>
+            {% if net_worth %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Moeda</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in net_worth %}
+                            <tr>
+                                <td>{{ item.currency }}</td>
+                                <td>{{ item.total }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty">Nenhuma conta ativa cadastrada.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Faturas do mes</h2>
+            {% if card_statements %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Cartao</th>
+                            <th>Status</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for statement in card_statements %}
+                            <tr>
+                                <td>{{ statement.card.name }}</td>
+                                <td><span class="status">{{ statement.status }}</span></td>
+                                <td>R$ {{ statement.closed_amount }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty">Nenhuma fatura no periodo.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Metas mensais</h2>
+            {% if goal_summary %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Meta</th>
+                            <th>Status</th>
+                            <th>Atual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for monthly_goal in goal_summary %}
+                            <tr>
+                                <td>{{ monthly_goal.goal.name }}</td>
+                                <td><span class="status">{{ monthly_goal.status }}</span></td>
+                                <td>R$ {{ monthly_goal.current_amount }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty">Nenhuma meta mensal no periodo.</p>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}
