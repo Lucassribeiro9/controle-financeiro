@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastrar CDI - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Cadastrar CDI</h1>
+            <p class="muted">Informe o CDI anual em decimal.</p>
+        </div>
+    </header>
+
+    <section class="panel">
+        <form class="form-grid" method="post">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="app-message">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+                <label class="form-field" for="{{ field.id_for_label }}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="field-error">{{ field.errors|join:", " }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+
+            <div class="action-row">
+                <button class="button" type="submit">Salvar</button>
+                <a class="button button-secondary" href="{% url 'rates:list' %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}
