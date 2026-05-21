@@ -55,6 +55,18 @@ class MonthlyDashboardViewTests(TestCase):
         self.assertEqual(response.context["month"], 5)
         self.assertTemplateUsed(response, "reports/monthly_dashboard.html")
 
+    def test_monthly_dashboard_page_uses_query_range(self):
+        """Deve renderizar o dashboard usando intervalo visual informado."""
+
+        response = self.client.get(
+            reverse("reports:monthly-dashboard-page"),
+            data={"year": 2026, "month": 5, "range": 6},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["range_months"], 6)
+        self.assertContains(response, "6 meses")
+
     def test_monthly_dashboard_page_uses_current_period_by_default(self):
         """Deve usar o mes atual quando a query string nao informar periodo."""
 

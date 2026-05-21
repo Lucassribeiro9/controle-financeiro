@@ -16,6 +16,15 @@ def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
     return year, month
 
 
+def _get_range_from_request(request: HttpRequest) -> int:
+    """Extrai o intervalo do grafico da query string."""
+
+    try:
+        return int(request.GET.get("range") or 12)
+    except ValueError:
+        return 12
+
+
 def _render_monthly_dashboard(
     request: HttpRequest,
     *,
@@ -24,7 +33,12 @@ def _render_monthly_dashboard(
 ) -> HttpResponse:
     """Renderiza o dashboard mensal para o periodo informado."""
 
-    context = get_monthly_dashboard(year=year, month=month)
+    range_months = _get_range_from_request(request)
+    context = get_monthly_dashboard(
+        year=year,
+        month=month,
+        range_months=range_months,
+    )
     return render(request, "reports/monthly_dashboard.html", context)
 
 
