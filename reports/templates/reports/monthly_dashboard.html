@@ -3,13 +3,14 @@
 {% block title %}Dashboard financeiro - {{ month }}/{{ year }}{% endblock %}
 
 {% block content %}
-    <header class="page-header">
+    <header class="page-header dashboard-header">
         <div>
             <h1>Dashboard financeiro</h1>
             <p class="muted">{{ month }}/{{ year }}</p>
         </div>
 
         <form class="period-form" method="get" action="{% url 'reports:monthly-dashboard-page' %}">
+            <input name="range" type="hidden" value="{{ range_months }}">
             <label>
                 <span>Mes</span>
                 <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
@@ -22,7 +23,7 @@
         </form>
     </header>
 
-    <div class="summary-grid" aria-label="Resumo financeiro do mes">
+    <div class="summary-grid dashboard-summary" aria-label="Resumo financeiro do mes">
         <div class="metric-card">
             <span>Receitas</span>
             <strong class="income">R$ {{ income_total }}</strong>
@@ -37,17 +38,60 @@
         </div>
     </div>
 
+    <section class="panel chart-panel">
+        <div class="panel-title-row">
+            <div>
+                <h2>Evolucao financeira</h2>
+                <p class="muted">Saldo mensal dos ultimos {{ range_months }} meses</p>
+            </div>
+
+            <div class="segment-control" aria-label="Intervalo do grafico">
+                <a class="{% if range_months == 6 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=6">6 meses</a>
+                <a class="{% if range_months == 12 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=12">12 meses</a>
+                <a class="{% if range_months == 24 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=24">24 meses</a>
+            </div>
+        </div>
+
+        <div class="cashflow-chart" aria-label="Grafico de evolucao financeira mensal">
+            {% for point in cashflow_series %}
+                <div class="chart-column">
+                    <span class="chart-value{% if point.is_negative %} is-negative{% endif %}">{{ point.value_label }}</span>
+                    <span class="chart-bar-wrap">
+                        <span
+                            class="chart-bar{% if point.is_negative %} is-negative{% endif %}"
+                            style="--bar-height: {{ point.bar_height }}%;"
+                            title="{{ point.label }}: R$ {{ point.balance }}"
+                        ></span>
+                    </span>
+                    <span class="chart-label">{{ point.label }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
     <div class="dashboard-grid">
-        <section class="panel">
+        <section class="panel composition-panel">
             <h2>Gastos por categoria</h2>
-            {% if category_expenses %}
+            {% if category_expense_share %}
+                <div class="composition-list">
+                    {% for item in category_expense_share %}
+                        <div class="composition-item">
+                            <span
+                                class="donut-meter"
+                                style="--share: {{ item.percentage }}%; --share-color: {{ item.color }};"
+                                aria-label="{{ item.category_name }} representa {{ item.percentage }}% das despesas"
+                            >
+                                <span>{{ item.percentage }}%</span>
+                            </span>
+                            <span class="composition-copy">
+                                <span>{{ item.category_name }}</span>
+                                <strong>R$ {{ item.total_amount }}</strong>
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% elif category_expenses %}
                 <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Categoria</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
                     <tbody>
                         {% for item in category_expenses %}
                             <tr>

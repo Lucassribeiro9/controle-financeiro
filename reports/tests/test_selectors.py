@@ -13,8 +13,10 @@ from institutions.models import Institution
 from reports.selectors import (
     get_account_net_worth,
     get_card_statements,
+    get_category_expense_share,
     get_category_expense_breakdown,
     get_goal_summary,
+    get_monthly_cashflow_series,
     get_monthly_dashboard,
     get_monthly_expense_total,
     get_monthly_income_total,
@@ -169,6 +171,84 @@ class ReportSelectorTests(TestCase):
         self.assertEqual(breakdown[1]["category_id"], self.transport_category.id)
         self.assertEqual(breakdown[1]["total_amount"], Decimal("50.00"))
 
+    def test_category_expense_share_calculates_visual_percentages(self):
+        """Deve calcular percentuais por categoria para o painel visual."""
+
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.food_category,
+            date=date(2026, 5, 10),
+        )
+        Transaction.objects.create(
+            description="Onibus",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.transport_category,
+            date=date(2026, 5, 12),
+        )
+
+        share = get_category_expense_share(year=2026, month=5)
+
+        self.assertEqual(share[0]["category_name"], "Alimentacao")
+        self.assertEqual(share[0]["total_amount"], Decimal("300.00"))
+        self.assertEqual(share[0]["percentage"], 75)
+        self.assertEqual(share[1]["category_name"], "Transporte")
+        self.assertEqual(share[1]["percentage"], 25)
+
+    def test_monthly_cashflow_series_returns_visual_periods(self):
+        """Deve montar serie mensal com saldo e altura das barras."""
+
+        Transaction.objects.create(
+            description="Receita antiga",
+            amount=Decimal("1200.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2025, 12, 5),
+        )
+        Transaction.objects.create(
+            description="Despesa abril",
+            amount=Decimal("1000.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.food_category,
+            date=date(2026, 4, 10),
+        )
+        Transaction.objects.create(
+            description="Salario",
+            amount=Decimal("5000.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 5),
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.food_category,
+            date=date(2026, 5, 10),
+        )
+
+        series = get_monthly_cashflow_series(year=2026, month=5, range_months=6)
+
+        self.assertEqual(len(series), 6)
+        self.assertEqual(series[0]["label"], "dez/2025")
+        self.assertEqual(series[-1]["label"], "mai/2026")
+        self.assertEqual(series[-1]["balance"], Decimal("4700.00"))
+        self.assertEqual(series[-1]["value_label"], "4,7 mil")
+        self.assertEqual(series[-1]["bar_height"], 100)
+        self.assertTrue(series[-2]["is_negative"])
+
     def test_account_net_worth_groups_active_accounts_by_currency(self):
         """Deve somar patrimonio por moeda considerando apenas contas ativas."""
 
@@ -283,4 +363,7 @@ class ReportSelectorTests(TestCase):
         self.assertEqual(dashboard["income_total"], Decimal("5000.00"))
         self.assertEqual(dashboard["expense_total"], Decimal("300.00"))
         self.assertEqual(dashboard["monthly_balance"], Decimal("4700.00"))
+        self.assertEqual(dashboard["range_months"], 12)
+        self.assertEqual(dashboard["cashflow_series"][-1]["balance"], Decimal("4700.00"))
         self.assertEqual(dashboard["category_expenses"][0]["total_amount"], Decimal("300.00"))
+        self.assertEqual(dashboard["category_expense_share"][0]["percentage"], 100)

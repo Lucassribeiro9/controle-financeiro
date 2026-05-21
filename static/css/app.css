@@ -188,6 +188,167 @@ h2 {
     margin-bottom: 12px;
 }
 
+.chart-panel {
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.panel-title-row {
+    align-items: start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.panel-title-row .muted {
+    font-size: 13px;
+}
+
+.segment-control {
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+}
+
+.segment-control a {
+    border-radius: 999px;
+    color: var(--text);
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 700;
+    justify-content: center;
+    min-width: 72px;
+    padding: 8px 12px;
+}
+
+.segment-control a.active {
+    background: var(--text);
+    color: #ffffff;
+}
+
+.cashflow-chart {
+    align-items: end;
+    display: flex;
+    gap: 14px;
+    min-height: 292px;
+    overflow-x: auto;
+    padding: 8px 4px 4px;
+}
+
+.chart-column {
+    align-items: center;
+    display: grid;
+    flex: 0 0 54px;
+    grid-template-rows: 28px 190px 54px;
+    justify-items: center;
+    min-width: 54px;
+}
+
+.chart-value {
+    color: #059669;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.chart-value.is-negative {
+    color: var(--expense);
+}
+
+.chart-bar-wrap {
+    align-items: end;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    height: 190px;
+    justify-content: center;
+    width: 100%;
+}
+
+.chart-bar {
+    background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+    border-radius: 999px;
+    box-shadow: 0 10px 18px rgba(5, 150, 105, 0.18);
+    display: block;
+    height: var(--bar-height);
+    min-height: 10px;
+    width: 18px;
+}
+
+.chart-bar.is-negative {
+    background: linear-gradient(180deg, #ef4444 0%, #b42318 100%);
+    box-shadow: 0 10px 18px rgba(180, 35, 24, 0.16);
+}
+
+.chart-label {
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1;
+    margin-top: 10px;
+    transform: rotate(-48deg);
+    transform-origin: center;
+    white-space: nowrap;
+}
+
+.composition-list {
+    display: grid;
+    gap: 18px 20px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.composition-item {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+    min-width: 0;
+}
+
+.donut-meter {
+    align-items: center;
+    background: conic-gradient(var(--share-color) var(--share), #d9dee7 0);
+    border-radius: 50%;
+    display: inline-flex;
+    flex: 0 0 52px;
+    height: 52px;
+    justify-content: center;
+    position: relative;
+    width: 52px;
+}
+
+.donut-meter::before {
+    background: var(--surface);
+    border-radius: 50%;
+    content: "";
+    inset: 7px;
+    position: absolute;
+}
+
+.donut-meter span {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    position: relative;
+}
+
+.composition-copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.composition-copy span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.composition-copy strong {
+    font-size: 16px;
+}
+
 .data-table {
     border-collapse: collapse;
     width: 100%;
@@ -489,8 +650,23 @@ h2 {
     .summary-grid,
     .dashboard-grid,
     .shortcut-grid,
-    .detail-list {
+    .detail-list,
+    .composition-list {
         grid-template-columns: 1fr;
+    }
+
+    .panel-title-row {
+        display: grid;
+    }
+
+    .segment-control {
+        display: flex;
+        width: 100%;
+    }
+
+    .segment-control a {
+        flex: 1;
+        min-width: 0;
     }
 
     .action-row,
