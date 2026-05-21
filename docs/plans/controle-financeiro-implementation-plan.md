@@ -492,6 +492,10 @@ Itens de interface dedicada, seletores para dashboard, acompanhamento proporcion
 
 Criar visualização útil dos dados.
 
+### Status atual
+
+Status em 2026-05-14: concluída (escopo MVP).
+
 ### Branches sugeridas
 
 ```text
@@ -529,11 +533,21 @@ feature/reports
 - Usuário consegue abrir o painel e entender o mês.
 - Dados principais aparecem sem precisar entrar no Admin.
 
+### Fechamento da fase
+
+Entregue o núcleo previsto para dashboards e relatórios: app `reports`, selectors para totais mensais, gastos por categoria, patrimônio por moeda, faturas e metas, payload consolidado do dashboard mensal, rota, view, template inicial e cobertura automatizada de selectors e view.
+
+Itens de visualização avançada, filtros, navegação entre meses, gráficos com Chart.js e integração com insights permanecem no backlog técnico para ciclos seguintes.
+
 ## 13. Fase 8 - Importações XLSX, CSV e OFX
 
 ### Objetivo
 
 Permitir entrada de dados externos com revisão.
+
+### Status atual
+
+Status em 2026-05-14: concluída.
 
 ### Branches sugeridas
 
@@ -576,11 +590,21 @@ feature/ofx-import
 
 - Usuário consegue importar dados e revisar antes de confirmar.
 
+### Fechamento da fase
+
+Entregue o núcleo previsto para importações: app `imports`, model `ImportedTransaction`, importers CSV, XLSX e OFX, normalização para `ImportedTransactionRow`, staging de importações pendentes, confirmação criando `Transaction`, descarte sem criação de transação real, detecção de duplicidade por `external_id` ou `import_hash`, selector de revisão, rotas iniciais e cobertura automatizada de importers, services, selectors e views.
+
+Itens de interface HTML dedicada, sugestão configurável de categoria, sugestão de cartão, reconciliação avançada com recorrências, suporte a variações adicionais de OFX por banco e leitura avançada de planilhas XLSX permanecem no backlog técnico para ciclos seguintes.
+
 ## 14. Fase 9 - Insights e Sugestões Automáticas
 
 ### Objetivo
 
 Criar sugestões educativas e aprováveis.
+
+### Status atual
+
+Status em 2026-05-15: concluída (escopo MVP).
 
 ### Branches sugeridas
 
@@ -614,15 +638,16 @@ feature/suggested-goals
 
 ### Services
 
-- `detect_recurring_habits`
+- `get_category_expense_total`
 - `suggest_category_limit`
-- `suggest_monthly_goal`
+- `detect_recurrent_habits`
 - `approve_insight`
 - `ignore_insight`
+- `silence_insight`
 
 ### Testes
 
-- Detectar padrão semanal.
+- Detectar padrão recorrente por categoria.
 - Criar sugestão pendente.
 - Aprovar sugestão e criar meta.
 - Ignorar sugestão sem afetar dados.
@@ -632,11 +657,95 @@ feature/suggested-goals
 
 - O app gera sugestões úteis e o usuário controla o que será aplicado.
 
-## 15. Fase 10 - Taxas, Moeda e Evoluções
+### Fechamento da fase
+
+Entregue o núcleo previsto para insights e sugestões automáticas: app `insights`, model `Insight`, model `IgnoredPattern`, admin, migrations, services para sugestão de limite por categoria, detecção inicial de hábitos recorrentes, aprovação, ignorar e silenciar sugestões, selectors, rotas JSON iniciais e cobertura automatizada de models, services, selectors e views.
+
+Itens de evolução permanecem no backlog técnico para ciclos seguintes: sugestão de recorrência a partir de padrões detectados, insights de fatura próxima do vencimento, insights de saldo baixo em benefício, integração visual com o dashboard mensal, heurísticas por descrição/dia da semana e análise de histórico entre meses.
+
+## 15. Fase 9.1 - Interfaces Operacionais e Parcelamentos
 
 ### Objetivo
 
-Adicionar dados externos e melhorias avançadas.
+Consolidar as primeiras telas operacionais do sistema e implementar o domínio de parcelamentos antes de avançar para novas evoluções externas.
+
+Esta fase não existia no plano original como uma fase independente. Ela foi registrada como Fase 9.1 por representar uma evolução transversal entre os cadastros fundamentais, transações, cartões/faturas e usabilidade do sistema.
+
+### Status atual
+
+Status em 2026-05-20: concluída.
+
+### Branches sugeridas
+
+```text
+feat/accounts-ui
+feat/cards-ui
+feat/categories-ui
+feat/institutions-ui
+feat/transfers-ui
+feat/installments
+```
+
+### Entregas principais
+
+- Interfaces HTML para contas financeiras.
+- Interfaces HTML para cartões e faturas.
+- Interfaces HTML para categorias e subcategorias.
+- Interfaces HTML para instituições financeiras.
+- Fluxo próprio para transferências entre contas.
+- App próprio `installments`.
+- Model `InstallmentPlan`.
+- Vínculo de parcelas geradas com `Transaction`.
+- Forms, views, urls, templates, services e selectors para parcelamentos.
+
+### Regras
+
+- Cadastros operacionais devem ser simples, confiáveis e testados.
+- Transferência não é `Transaction`; transferência usa `Transfer`.
+- Transferência movimenta saldo entre contas sem afetar receitas e despesas.
+- Fatura não deve ser manipulada com `form.save()` para pagamento; pagamento passa por `pay_statement`.
+- Parcelamento é uma compra única que gera N parcelas como `card_purchase`.
+- Cada parcela deve entrar na fatura correta conforme a regra do cartão.
+- A soma das parcelas deve bater com o total, com ajuste de centavos na última parcela.
+- Cancelar parcelamento não apaga parcelas já geradas.
+
+### Testes
+
+- Listar, criar e editar contas.
+- Listar, criar e editar cartões.
+- Listar, detalhar, fechar e pagar faturas.
+- Listar, criar e editar categorias.
+- Listar, criar e editar instituições.
+- Criar transferência, atualizar saldos e validar origem/destino.
+- Garantir que transferência não afeta totais mensais de receita/despesa.
+- Criar parcelamento de 10x.
+- Gerar N transações de parcela.
+- Associar parcelas às faturas corretas.
+- Validar soma total das parcelas e ajuste de centavos.
+- Cancelar parcelamento mantendo parcelas geradas.
+
+### Critério de pronto
+
+- Usuário consegue operar os cadastros principais sem entrar no Django Admin.
+- Transferências possuem fluxo próprio e separado de lançamentos comuns.
+- Parcelamentos possuem domínio próprio, geração de parcelas e vínculo com faturas.
+- Testes cobrem os principais fluxos de tela, services e selectors.
+
+### Fechamento da fase
+
+Entregues as interfaces operacionais iniciais para cadastros fundamentais, cartões/faturas, transferências e parcelamentos. O app `installments` foi criado como domínio próprio entre transações, cartões e faturas, com model, services, selectors, views, templates, migrations e testes.
+
+Itens de evolução permanecem no backlog técnico: edição controlada de parcelamentos, política explícita para cancelar parcelas futuras, integração visual mais rica com faturas e dashboard, e UX dinâmica para alternar campos de cartões por tipo.
+
+## 16. Fase 10 - Taxas, CDI e Rendimentos
+
+### Objetivo
+
+Adicionar taxas de referência e estimativas educativas de rendimento.
+
+### Status atual
+
+Status em 2026-05-21: concluída
 
 ### Branches sugeridas
 
@@ -649,28 +758,40 @@ feature/cdi-estimates
 ### Models iniciais
 
 - `ReferenceRate`
+- `AccountYieldConfig`
 
 ### Regras
 
-- Dólar pode ser atualizado via Banco Central.
 - CDI começa manual/configurável.
-- Histórico de taxas deve ser salvo.
-- Falha de API usa último valor conhecido.
+- Histórico de CDI deve ser salvo como taxa anual em decimal financeiro.
+- Uma conta pode ter configuração de rendimento própria.
+- Percentual do CDI é salvo como percentual humano.
 - Rendimento é estimado, não garantia exata.
+- Dólar, Banco Central, CDI automático, TR, poupança, imposto, IOF e liquidez ficam para evolução futura.
 
 ### Testes
 
 - Salvar taxa manual.
-- Buscar último dólar conhecido.
-- Calcular saldo estimado em BRL.
-- Usar taxa antiga quando atualização falhar.
+- Buscar último CDI cadastrado.
+- Simular rendimento a 100%, 110% e 80% do CDI.
+- Estimar rendimento pelo saldo atual da conta.
+- Estimar rendimento por valor informado.
+- Tratar falta de CDI sem quebrar a tela de resumo.
 
 ### Critério de pronto
 
-- Conta em dólar pode ser estimada em reais.
 - Porquinho com CDI pode ter rendimento estimado.
+- Usuário consegue cadastrar CDI manual.
+- Usuário consegue configurar conta com percentual do CDI.
+- Usuário consegue simular rendimento por valor e prazo.
 
-## 16. Ordem Recomendada de Estudos Durante o Projeto
+### Fechamento da fase
+
+Entregue o primeiro corte da Fase 10 focado somente em CDI manual e estimativas por porcentagem do CDI. O app `rates` foi criado com models, admin, services, selectors, forms, views, templates, rotas, menu lateral, migration e cobertura automatizada de models, services, selectors e views.
+
+Itens fora desta fase ficam no backlog: atualização automática pelo Banco Central, dólar, contas em moeda estrangeira convertidas para BRL, TR, poupança, impostos, IOF, liquidez, vencimento de aplicação e comparação entre produtos.
+
+## 17. Ordem Recomendada de Estudos Durante o Projeto
 
 ### Enquanto faz Fase 1
 
@@ -734,7 +855,15 @@ feature/cdi-estimates
 - Sugestões aprováveis.
 - Design de produto.
 
-## 17. Definition of Done Geral
+### Enquanto faz Fase 9.1
+
+- Forms e templates Django.
+- Views baseadas em services.
+- Fluxos POST seguros.
+- Migrations entre apps.
+- Modelagem de domínio intermediário.
+
+## 18. Definition of Done Geral
 
 Uma tarefa só está pronta quando:
 
@@ -747,7 +876,7 @@ Uma tarefa só está pronta quando:
 - Tem migration revisada, se alterou model.
 - Tem documentação curta quando cria uma regra importante.
 
-## 18. Primeira Sequência de Trabalho Recomendada
+## 19. Primeira Sequência de Trabalho Recomendada
 
 1. Criar repositório Git.
 2. Criar README inicial.

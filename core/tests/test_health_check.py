@@ -11,3 +11,12 @@ class HealthCheckTests(SimpleTestCase):
         response = self.client.get(reverse('core:health-check'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'OK')
+
+    def test_home_return_ok(self):
+        """Testa se a pagina inicial renderiza corretamente."""
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/home.html")
+        self.assertContains(response, "Dashboard mensal")

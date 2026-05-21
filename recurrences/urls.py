@@ -8,6 +8,11 @@ app_name = "recurrences"
 
 urlpatterns = [
     path(
+        "recurrences/month/page/",
+        views.forecasts_filter_page,
+        name="forecasts-filter-page",
+    ),
+    path(
         "recurrences/month/<int:year>/<int:month>/",
         views.monthly_forecasts,
         name="monthly-forecasts",
@@ -26,5 +31,10 @@ urlpatterns = [
         "recurrences/forecasts/<int:transaction_id>/adjust/",
         views.adjust_forecast,
         name="adjust-forecast",
+    ),
+    path(
+        "recurrences/month/<int:year>/<int:month>/page/",
+        views.forecasts_page,
+        name="forecasts-page",
     ),
 ]

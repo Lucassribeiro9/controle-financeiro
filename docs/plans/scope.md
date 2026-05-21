@@ -538,7 +538,7 @@ flowchart TB
 
 ### **10.2 Domínios do Sistema**
 
-Contas e
+Contas
 
 ```mermaid
 flowchart LR

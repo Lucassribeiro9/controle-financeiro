@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Importar transacoes - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Importacoes</h1>
+            <p class="muted">Envie um arquivo CSV, XLSX ou OFX para criar transacoes importadas para revisao.</p>
+        </div>
+    </header>
+
+    <section class="panel">
+        <form class="form-grid" method="post" action="{% url 'imports:upload' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <label class="form-field">
+                <span>Formato do arquivo</span>
+                <select name="source_type" required>
+                    {% for value, label in source_types %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="form-field">
+                <span>Arquivo</span>
+                <input type="file" name="file" accept=".csv,.xlsx,.ofx" required>
+            </label>
+
+            <label class="form-field">
+                <span>Conta sugerida</span>
+                <select name="account_id">
+                    <option value="">Sem conta sugerida</option>
+                    {% for account in accounts %}
+                        <option value="{{ account.id }}">{{ account.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <div class="action-row">
+                <button class="button" type="submit">Enviar arquivo</button>
+                <a class="button button-secondary" href="{% url 'imports:review-page' %}">Revisar importacoes</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

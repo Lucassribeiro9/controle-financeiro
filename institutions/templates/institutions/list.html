@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Instituicoes - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Instituicoes</h1>
+            <p class="muted">Bancos, corretoras, carteiras e emissores usados no controle financeiro.</p>
+        </div>
+
+        <a class="button" href="{% url 'institutions:create' %}">Nova instituicao</a>
+    </header>
+
+    <section class="panel page-section">
+        {% if institutions %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Codigo</th>
+                        <th>Status</th>
+                        <th>Contas</th>
+                        <th>Cartoes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for institution in institutions %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'institutions:update' institution.id %}">
+                                    {{ institution.name }}
+                                </a>
+                                {% if institution.official_name %}
+                                    <p class="muted">{{ institution.official_name }}</p>
+                                {% endif %}
+                            </td>
+                            <td>{{ institution.code|default:"Nao informado" }}</td>
+                            <td>
+                                <span class="status">
+                                    {% if institution.is_active %}Ativa{% else %}Inativa{% endif %}
+                                </span>
+                            </td>
+                            <td>{{ institution.accounts_count }}</td>
+                            <td>{{ institution.cards_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhuma instituicao cadastrada.</p>
+        {% endif %}
+    </section>
+{% endblock %}

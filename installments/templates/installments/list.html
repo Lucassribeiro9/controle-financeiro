@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Parcelamentos - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Parcelamentos</h1>
+            <p class="muted">Compras parceladas geradas como compras no cartao.</p>
+        </div>
+
+        <a class="button" href="{% url 'installments:create' %}">Novo parcelamento</a>
+    </header>
+
+    <section class="panel page-section">
+        {% if installment_plans %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Descricao</th>
+                        <th>Cartao</th>
+                        <th>Total</th>
+                        <th>Parcelas</th>
+                        <th>Primeira parcela</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in installment_plans %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'installments:detail' plan.id %}">
+                                    {{ plan.description }}
+                                </a>
+                                {% if plan.category %}
+                                    <p class="muted">{{ plan.category }}</p>
+                                {% endif %}
+                            </td>
+                            <td>{{ plan.card }}</td>
+                            <td>R$ {{ plan.total_amount }}</td>
+                            <td>{{ plan.generated_count }}/{{ plan.total_installments }}</td>
+                            <td>{{ plan.first_installment_date }}</td>
+                            <td><span class="status">{{ plan.get_status_display }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhum parcelamento ativo encontrado.</p>
+        {% endif %}
+    </section>
+{% endblock %}

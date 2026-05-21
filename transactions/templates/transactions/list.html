@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Lancamentos - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Lancamentos</h1>
+            <p class="muted">{{ month }}/{{ year }}</p>
+        </div>
+
+        <div class="action-row">
+            <a class="button button-secondary" href="{% url 'transactions:transfers' %}">Ver transferencias</a>
+            <a class="button" href="{% url 'transactions:create' %}">Novo lancamento</a>
+        </div>
+    </header>
+
+    <form class="period-form" method="get" action="{% url 'transactions:list' %}">
+        <label>
+            <span>Mes</span>
+            <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+        </label>
+        <label>
+            <span>Ano</span>
+            <input name="year" type="number" min="2000" value="{{ year }}" required>
+        </label>
+        <label>
+            <span>Status</span>
+            <select name="status">
+                <option value="">Todos</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Tipo</span>
+            <select name="transaction_type">
+                <option value="">Todos</option>
+                {% for value, label in transaction_type_choices %}
+                    <option value="{{ value }}" {% if transaction_type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button class="button" type="submit">Filtrar</button>
+    </form>
+
+    <section class="panel page-section">
+        {% if transactions %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Descricao</th>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Conta/Cartao</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'transactions:detail' transaction.id %}">
+                                    {{ transaction.description }}
+                                </a>
+                                {% if transaction.category %}
+                                    <p class="muted">{{ transaction.category }}</p>
+                                {% endif %}
+                            </td>
+                            <td>{{ transaction.date }}</td>
+                            <td>{{ transaction.get_transaction_type_display }}</td>
+                            <td><span class="status">{{ transaction.get_status_display }}</span></td>
+                            <td>
+                                {% if transaction.card %}
+                                    {{ transaction.card }}
+                                {% else %}
+                                    {{ transaction.account|default:"Nao informada" }}
+                                {% endif %}
+                            </td>
+                            <td>R$ {{ transaction.amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhum lancamento encontrado.</p>
+        {% endif %}
+    </section>
+{% endblock %}

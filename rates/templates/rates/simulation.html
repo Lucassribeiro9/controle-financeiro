@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Simular rendimento - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Simular rendimento</h1>
+            <p class="muted">Estime rendimento por conta configurada.</p>
+        </div>
+    </header>
+
+    <section class="panel">
+        <form class="form-grid" method="post">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="app-message">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+                <label class="form-field" for="{{ field.id_for_label }}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="field-error">{{ field.errors|join:", " }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+
+            <div class="action-row">
+                <button class="button" type="submit">Simular</button>
+                <a class="button button-secondary" href="{% url 'rates:list' %}">Voltar</a>
+            </div>
+        </form>
+    </section>
+
+    {% if estimate %}
+        <div class="summary-grid page-section">
+            <div class="metric-card">
+                <span>Valor inicial</span>
+                <strong>R$ {{ estimate.initial_amount }}</strong>
+            </div>
+            <div class="metric-card">
+                <span>Valor final estimado</span>
+                <strong>R$ {{ estimate.final_amount }}</strong>
+            </div>
+            <div class="metric-card">
+                <span>Rendimento estimado</span>
+                <strong>R$ {{ estimate.estimated_yield }}</strong>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

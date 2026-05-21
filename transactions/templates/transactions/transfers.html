@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Transferencias - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Transferencias</h1>
+            <p class="muted">{{ month }}/{{ year }}</p>
+        </div>
+
+        <div class="action-row">
+            <a class="button button-secondary" href="{% url 'transactions:list' %}">Ver lancamentos</a>
+            <a class="button" href="{% url 'transactions:transfer-create' %}">Nova transferencia</a>
+        </div>
+    </header>
+
+    <form class="period-form" method="get" action="{% url 'transactions:transfers' %}">
+        <label>
+            <span>Mes</span>
+            <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+        </label>
+        <label>
+            <span>Ano</span>
+            <input name="year" type="number" min="2000" value="{{ year }}" required>
+        </label>
+        <button class="button" type="submit">Filtrar</button>
+    </form>
+
+    <section class="panel page-section">
+        {% if transfers %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Descricao</th>
+                        <th>Data</th>
+                        <th>Origem</th>
+                        <th>Destino</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transfer in transfers %}
+                        <tr>
+                            <td>
+                                {{ transfer.description }}
+                                {% if transfer.notes %}
+                                    <p class="muted">{{ transfer.notes }}</p>
+                                {% endif %}
+                            </td>
+                            <td>{{ transfer.date }}</td>
+                            <td>{{ transfer.from_account }}</td>
+                            <td>{{ transfer.destination_account }}</td>
+                            <td>R$ {{ transfer.amount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhuma transferencia encontrada.</p>
+        {% endif %}
+    </section>
+{% endblock %}

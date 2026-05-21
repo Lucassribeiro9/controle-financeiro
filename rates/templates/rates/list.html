@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Rendimentos - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Rendimentos</h1>
+            <p class="muted">CDI manual e estimativas educativas por conta.</p>
+        </div>
+
+        <div class="action-row">
+            <a class="button" href="{% url 'rates:create' %}">Cadastrar CDI</a>
+            <a class="button button-secondary" href="{% url 'rates:yield-config-create' %}">Configurar conta</a>
+            <a class="button button-secondary" href="{% url 'rates:simulate' %}">Simular</a>
+        </div>
+    </header>
+
+    <div class="summary-grid">
+        <div class="metric-card">
+            <span>CDI anual</span>
+            <strong>{% if latest_cdi %}{{ latest_cdi.value }}{% else %}Nao cadastrado{% endif %}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Data da taxa</span>
+            <strong>{% if latest_cdi %}{{ latest_cdi.date }}{% else %}-{% endif %}</strong>
+        </div>
+        <div class="metric-card">
+            <span>Periodo estimado</span>
+            <strong>{{ months }} meses</strong>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <section class="panel">
+            <h2>Contas configuradas</h2>
+            {% if yield_summary %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Conta</th>
+                            <th>% CDI</th>
+                            <th>Final</th>
+                            <th>Rendimento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in yield_summary %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'rates:yield-config-edit' item.config.id %}">
+                                        {{ item.config.account.name }}
+                                    </a>
+                                    {% if item.error %}
+                                        <p class="muted">{{ item.error }}</p>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.config.cdi_percentage|default:"-" }}</td>
+                                <td>{% if item.estimate %}R$ {{ item.estimate.final_amount }}{% else %}-{% endif %}</td>
+                                <td>{% if item.estimate %}R$ {{ item.estimate.estimated_yield }}{% else %}-{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty">Nenhuma conta com rendimento configurado.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Historico do CDI</h2>
+            {% if rate_history %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rate in rate_history %}
+                            <tr>
+                                <td>{{ rate.date }}</td>
+                                <td>{{ rate.value }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty">Nenhuma taxa CDI cadastrada.</p>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}

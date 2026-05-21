@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Cartoes - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Cartoes</h1>
+            <p class="muted">Cartoes de credito, beneficio, transporte e pre-pagos.</p>
+        </div>
+
+        <div class="action-row">
+            <a class="button button-secondary" href="{% url 'cards:statements' %}">Ver faturas</a>
+            <a class="button" href="{% url 'cards:create' %}">Novo cartao</a>
+        </div>
+    </header>
+
+    <section class="panel page-section">
+        {% if cards %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Instituicao</th>
+                        <th>Tipo</th>
+                        <th>Limite</th>
+                        <th>Fechamento</th>
+                        <th>Vencimento</th>
+                        <th>Conta pagamento</th>
+                        <th>Saldo estimado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for card in cards %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'cards:update' card.id %}">{{ card.name }}</a>
+                                <p class="muted">{% if card.is_active %}Ativo{% else %}Inativo{% endif %}</p>
+                            </td>
+                            <td>{{ card.institution }}</td>
+                            <td>{{ card.get_card_type_display }}</td>
+                            <td>R$ {{ card.credit_limit|default:"0.00" }}</td>
+                            <td>{{ card.statement_closing_day|default:"Nao informado" }}</td>
+                            <td>{{ card.statement_due_day|default:"Nao informado" }}</td>
+                            <td>{{ card.payment_account|default:"Nao vinculada" }}</td>
+                            <td>R$ {{ card.estimated_balance|default:"0.00" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="empty">Nenhum cartao cadastrado.</p>
+        {% endif %}
+    </section>
+{% endblock %}
