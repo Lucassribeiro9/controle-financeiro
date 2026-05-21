@@ -109,4 +109,7 @@ class MonthlyDashboardViewTests(TestCase):
         self.assertEqual(response.context["income_total"], Decimal("5000.00"))
         self.assertEqual(response.context["expense_total"], Decimal("300.00"))
         self.assertEqual(response.context["monthly_balance"], Decimal("4700.00"))
+        self.assertContains(response, "R$ 5.000,00")
+        self.assertContains(response, "R$ 300,00")
+        self.assertContains(response, "R$ 4.700,00")
         self.assertContains(response, "Alimentacao")

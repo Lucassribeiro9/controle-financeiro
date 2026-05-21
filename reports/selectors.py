@@ -46,7 +46,7 @@ CHART_COLORS = [
 
 def get_monthly_income_total(*, year: int, month: int):
     """Calcula o total de receitas para um determinado mês e ano."""
-    return (
+    return _to_money(
         Transaction.objects.filter(
             transaction_type=Transaction.TransactionType.INCOME, date__year=year, date__month=month
         )
@@ -57,7 +57,7 @@ def get_monthly_income_total(*, year: int, month: int):
 
 def get_monthly_expense_total(*, year: int, month: int):
     """Calcula o total de despesas para um determinado mês e ano."""
-    return (
+    return _to_money(
         Transaction.objects.filter(
             transaction_type=Transaction.TransactionType.EXPENSE, date__year=year, date__month=month
         )
@@ -68,7 +68,7 @@ def get_monthly_expense_total(*, year: int, month: int):
 
 def get_category_expense_breakdown(*, year: int, month: int):
     """Obtém o detalhamento das despesas por categoria para um determinado mês e ano."""
-    return list(
+    rows = list(
         Transaction.objects.filter(
             transaction_type=Transaction.TransactionType.EXPENSE, date__year=year, date__month=month
         )
@@ -77,6 +77,10 @@ def get_category_expense_breakdown(*, year: int, month: int):
         .annotate(total_amount=Sum("amount"))
         .order_by("-total_amount")
     )
+    for row in rows:
+        row["total_amount"] = _to_money(row["total_amount"])
+
+    return rows
 
 
 def get_category_expense_share(*, year: int, month: int):
@@ -176,7 +180,7 @@ def get_monthly_cashflow_series(*, year: int, month: int, range_months: int = 12
         if period_key not in period_map:
             continue
 
-        total = row["total"] or Decimal("0.00")
+        total = _to_money(row["total"] or Decimal("0.00"))
         if row["transaction_type"] == Transaction.TransactionType.INCOME:
             period_map[period_key]["income_total"] = total
         if row["transaction_type"] == Transaction.TransactionType.EXPENSE:
@@ -296,3 +300,9 @@ def _format_compact_amount(value):
 
     rounded_value = absolute_value.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     return f"{sign}{rounded_value}"
+
+
+def _to_money(value):
+    """Normaliza agregacoes monetarias para duas casas decimais."""
+
+    return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
