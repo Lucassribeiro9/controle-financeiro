@@ -1,11 +1,17 @@
 """Views do app imports."""
 
+from decimal import Decimal
+from decimal import InvalidOperation
+
+from django.contrib import messages
 from django.http import HttpRequest, JsonResponse
-from django.shortcuts import get_object_or_404, render
-from django.views.decorators.http import require_GET, require_POST
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from accounts.models import FinancialAccount
 from categories.models import Category
+from transactions.models import Transaction
 
 from .importers import get_importer_for_source_type
 from .models import ImportedTransaction
@@ -15,6 +21,9 @@ from .services import (
     discard_imported_transaction,
     stage_imported_transactions,
 )
+
+
+REVIEW_NEXT_VALUE = "review-page"
 
 
 def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -> dict:
@@ -37,13 +46,11 @@ def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -
     }
 
 
-@require_POST
-def upload_import(request: HttpRequest) -> JsonResponse:
-    """Recebe arquivo suportado e cria transacoes importadas para revisao."""
-
+def _stage_import_from_request(request: HttpRequest):
+    """Processa o arquivo enviado e cria pendencias para revisao."""
     uploaded_file = request.FILES.get("file")
     if uploaded_file is None:
-        return JsonResponse({"error": "Campo file e obrigatorio."}, status=400)
+        raise ValueError("Campo file e obrigatorio.")
 
     source_type = request.POST.get("source_type", ImportedTransaction.SourceType.CSV)
 
@@ -61,6 +68,52 @@ def upload_import(request: HttpRequest) -> JsonResponse:
             rows=rows,
             suggested_account=suggested_account,
         )
+    except ValueError:
+        raise
+
+    return imported_transactions
+
+
+def _should_redirect_to_review(request: HttpRequest) -> bool:
+    """Identifica envios vindos das telas HTML."""
+
+    return request.POST.get("next") == REVIEW_NEXT_VALUE
+
+
+def _parse_decimal(value):
+    """Converte valor monetario informado no formulario."""
+
+    if value in (None, ""):
+        return None
+
+    normalized_value = str(value).strip()
+    if "," in normalized_value:
+        normalized_value = normalized_value.replace(".", "").replace(",", ".")
+    try:
+        return Decimal(normalized_value)
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError("Valor informado e invalido.") from exc
+
+
+def _parse_transaction_date(value):
+    """Converte data informada no formulario."""
+
+    if value in (None, ""):
+        return None
+
+    parsed_date = parse_date(value)
+    if parsed_date is None:
+        raise ValueError("Data informada e invalida.")
+
+    return parsed_date
+
+
+@require_POST
+def upload_import(request: HttpRequest) -> JsonResponse:
+    """Recebe arquivo suportado e cria transacoes importadas para revisao."""
+
+    try:
+        imported_transactions = _stage_import_from_request(request)
     except ValueError as exc:
         return JsonResponse({"error": str(exc)}, status=400)
 
@@ -108,6 +161,9 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
 
     account_id = request.POST.get("account_id") or imported_transaction.suggested_account_id
     if not account_id:
+        if _should_redirect_to_review(request):
+            messages.error(request, "Informe uma conta para confirmar.")
+            return redirect("imports:review-page")
         return JsonResponse({"error": "Informe account_id para confirmar."}, status=400)
 
     account = get_object_or_404(FinancialAccount, pk=account_id)
@@ -118,6 +174,16 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
         category = get_object_or_404(Category, pk=category_id)
 
     transaction_type = request.POST.get("transaction_type") or None
+    description = request.POST.get("description") or None
+
+    try:
+        amount = _parse_decimal(request.POST.get("amount"))
+        transaction_date = _parse_transaction_date(request.POST.get("date"))
+    except ValueError as exc:
+        if _should_redirect_to_review(request):
+            messages.error(request, str(exc))
+            return redirect("imports:review-page")
+        return JsonResponse({"error": str(exc)}, status=400)
 
     try:
         transaction = confirm_imported_transaction(
@@ -125,9 +191,19 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
             account=account,
             category=category,
             transaction_type=transaction_type,
+            description=description,
+            amount=amount,
+            date=transaction_date,
         )
     except ValueError as exc:
+        if _should_redirect_to_review(request):
+            messages.error(request, str(exc))
+            return redirect("imports:review-page")
         return JsonResponse({"error": str(exc)}, status=400)
+
+    if _should_redirect_to_review(request):
+        messages.success(request, "Importacao confirmada.")
+        return redirect("imports:review-page")
 
     return JsonResponse(
         {
@@ -148,6 +224,10 @@ def discard_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
     )
     discarded = discard_imported_transaction(imported_transaction=imported_transaction)
 
+    if _should_redirect_to_review(request):
+        messages.success(request, "Importacao descartada.")
+        return redirect("imports:review-page")
+
     return JsonResponse(
         {
             "id": discarded.id,
@@ -156,11 +236,24 @@ def discard_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
     )
 
 
-@require_GET
+@require_http_methods(["GET", "POST"])
 def upload_import_page(request: HttpRequest):
     """Renderiza a pagina de upload de arquivos para importacao."""
 
     accounts = FinancialAccount.objects.filter(is_active=True).order_by("name")
+
+    if request.method == "POST":
+        try:
+            imported_transactions = _stage_import_from_request(request)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(
+                request,
+                f"{len(imported_transactions)} transacao(oes) enviada(s) para revisao.",
+            )
+            return redirect("imports:review-page")
+
     return render(
         request,
         "imports/upload.html",
@@ -181,5 +274,79 @@ def review_imports_page(request: HttpRequest):
     return render(
         request,
         "imports/review.html",
-        {"imported_transactions": imported_transactions},
+        {
+            "imported_transactions": imported_transactions,
+            "accounts": FinancialAccount.objects.filter(is_active=True).order_by("name"),
+            "categories": Category.objects.order_by("name"),
+            "transaction_types": [
+                choice
+                for choice in Transaction.TransactionType.choices
+                if choice[0]
+                in [
+                    Transaction.TransactionType.INCOME,
+                    Transaction.TransactionType.EXPENSE,
+                ]
+            ],
+            "review_next_value": REVIEW_NEXT_VALUE,
+        },
     )
+
+
+@require_POST
+def bulk_review_imports(request: HttpRequest):
+    """Confirma ou descarta importacoes selecionadas na tela de revisao."""
+
+    selected_ids = request.POST.getlist("selected_imports")
+    action = request.POST.get("bulk_action")
+
+    if not selected_ids:
+        messages.error(request, "Selecione ao menos uma importacao.")
+        return redirect("imports:review-page")
+
+    queryset = ImportedTransaction.objects.filter(
+        pk__in=selected_ids,
+        status__in=[
+            ImportedTransaction.Status.PENDING,
+            ImportedTransaction.Status.DUPLICATE,
+        ],
+    ).select_related("suggested_account", "suggested_category")
+
+    processed = 0
+    skipped = 0
+
+    if action == "discard":
+        for imported_transaction in queryset:
+            discard_imported_transaction(imported_transaction=imported_transaction)
+            processed += 1
+        messages.success(request, f"{processed} importacao(oes) descartada(s).")
+        return redirect("imports:review-page")
+
+    if action == "confirm":
+        for imported_transaction in queryset:
+            if not imported_transaction.suggested_account_id:
+                skipped += 1
+                continue
+
+            try:
+                confirm_imported_transaction(
+                    imported_transaction=imported_transaction,
+                    account=imported_transaction.suggested_account,
+                    category=imported_transaction.suggested_category,
+                    transaction_type=imported_transaction.suggested_transaction_type,
+                )
+            except ValueError:
+                skipped += 1
+            else:
+                processed += 1
+
+        if processed:
+            messages.success(request, f"{processed} importacao(oes) confirmada(s).")
+        if skipped:
+            messages.error(
+                request,
+                f"{skipped} importacao(oes) precisam de conta e tipo antes de confirmar.",
+            )
+        return redirect("imports:review-page")
+
+    messages.error(request, "Acao em lote invalida.")
+    return redirect("imports:review-page")
