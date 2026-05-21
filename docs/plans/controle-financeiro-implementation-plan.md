@@ -737,11 +737,15 @@ Entregues as interfaces operacionais iniciais para cadastros fundamentais, cart�
 
 Itens de evolução permanecem no backlog técnico: edição controlada de parcelamentos, política explícita para cancelar parcelas futuras, integração visual mais rica com faturas e dashboard, e UX dinâmica para alternar campos de cartões por tipo.
 
-## 16. Fase 10 - Taxas, Moeda e Evoluções
+## 16. Fase 10 - Taxas, CDI e Rendimentos
 
 ### Objetivo
 
-Adicionar dados externos e melhorias avançadas.
+Adicionar taxas de referência e estimativas educativas de rendimento.
+
+### Status atual
+
+Status em 2026-05-21: concluída
 
 ### Branches sugeridas
 
@@ -754,26 +758,38 @@ feature/cdi-estimates
 ### Models iniciais
 
 - `ReferenceRate`
+- `AccountYieldConfig`
 
 ### Regras
 
-- Dólar pode ser atualizado via Banco Central.
 - CDI começa manual/configurável.
-- Histórico de taxas deve ser salvo.
-- Falha de API usa último valor conhecido.
+- Histórico de CDI deve ser salvo como taxa anual em decimal financeiro.
+- Uma conta pode ter configuração de rendimento própria.
+- Percentual do CDI é salvo como percentual humano.
 - Rendimento é estimado, não garantia exata.
+- Dólar, Banco Central, CDI automático, TR, poupança, imposto, IOF e liquidez ficam para evolução futura.
 
 ### Testes
 
 - Salvar taxa manual.
-- Buscar último dólar conhecido.
-- Calcular saldo estimado em BRL.
-- Usar taxa antiga quando atualização falhar.
+- Buscar último CDI cadastrado.
+- Simular rendimento a 100%, 110% e 80% do CDI.
+- Estimar rendimento pelo saldo atual da conta.
+- Estimar rendimento por valor informado.
+- Tratar falta de CDI sem quebrar a tela de resumo.
 
 ### Critério de pronto
 
-- Conta em dólar pode ser estimada em reais.
 - Porquinho com CDI pode ter rendimento estimado.
+- Usuário consegue cadastrar CDI manual.
+- Usuário consegue configurar conta com percentual do CDI.
+- Usuário consegue simular rendimento por valor e prazo.
+
+### Fechamento da fase
+
+Entregue o primeiro corte da Fase 10 focado somente em CDI manual e estimativas por porcentagem do CDI. O app `rates` foi criado com models, admin, services, selectors, forms, views, templates, rotas, menu lateral, migration e cobertura automatizada de models, services, selectors e views.
+
+Itens fora desta fase ficam no backlog: atualização automática pelo Banco Central, dólar, contas em moeda estrangeira convertidas para BRL, TR, poupança, impostos, IOF, liquidez, vencimento de aplicação e comparação entre produtos.
 
 ## 17. Ordem Recomendada de Estudos Durante o Projeto
 
