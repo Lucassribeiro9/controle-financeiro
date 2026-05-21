@@ -17,6 +17,7 @@ Aplicativo web local para controle financeiro pessoal com Django.
   - [Fase 8 - Importações XLSX, CSV e OFX](#fase-8---importações-xlsx-csv-e-ofx)
   - [Fase 9 - Insights e Sugestões Automáticas](#fase-9---insights-e-sugestões-automáticas)
   - [Fase 9.1 - Interfaces Operacionais e Parcelamentos](#fase-91---interfaces-operacionais-e-parcelamentos)
+  - [Fase 10 - CDI Manual e Estimativas de Rendimento](#fase-10---cdi-manual-e-estimativas-de-rendimento)
   - [Documentação Detalhada](#documentação-detalhada)
   - [Roadmap](#roadmap)
 
@@ -292,6 +293,32 @@ Regras importantes:
 - A última parcela ajusta diferenças de centavos.
 - Cancelar parcelamento não apaga parcelas já geradas.
 
+## Fase 10 - CDI Manual e Estimativas de Rendimento
+
+Status: CDI implementado
+
+Implementado:
+
+- App `rates`
+- Model `ReferenceRate` para histórico manual de taxas de referência
+- Model `AccountYieldConfig` para configurar rendimento estimado por conta
+- CDI anual cadastrado manualmente em decimal financeiro, por exemplo `0.1065`
+- Percentual do CDI cadastrado como percentual humano, por exemplo `100.0000`
+- Services para salvar taxa, buscar último CDI, simular CDI e estimar rendimento por conta
+- Selectors para histórico, últimas taxas, configurações ativas e resumo de rendimento
+- Forms, views, urls e templates para CDI, configurações e simulação
+- Link `Rendimentos` no menu lateral
+- Admin de taxas e configurações de rendimento
+- Testes de models, services, selectors e views
+
+Regras importantes:
+
+- Este corte cobre somente CDI manual e estimativas por porcentagem do CDI.
+- Dólar, Banco Central, CDI automático, TR, poupança, imposto, IOF e liquidez ficam fora desta etapa.
+- A estimativa é educativa, não garantia de rentabilidade.
+- Configurações inativas não entram no resumo de rendimento.
+- Conta sem configuração ativa não gera estimativa.
+
 ## Documentação Detalhada
 
 Para detalhes técnicos das fases:
@@ -306,6 +333,7 @@ Para detalhes técnicos das fases:
 - `docs/phases/fase-8-importacoes-xlsx-csv-ofx.md`
 - `docs/phases/fase-9-insights-e-sugestoes.md`
 - `docs/phases/fase-9-1-interfaces-operacionais-e-parcelamentos.md`
+- `docs/phases/fase-10-taxas-cdi-e-rendimentos.md`
 
 ## Roadmap
 
