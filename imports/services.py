@@ -120,6 +120,9 @@ def confirm_imported_transaction(
     account,
     category=None,
     transaction_type=None,
+    description=None,
+    amount=None,
+    date=None,
 ):
     """Confirma uma importacao e cria a transacao real correspondente."""
 
@@ -127,15 +130,18 @@ def confirm_imported_transaction(
         return imported_transaction.confirmed_transaction
 
     transaction_type = transaction_type or imported_transaction.suggested_transaction_type
+    description = description or imported_transaction.normalized_description
+    amount = imported_transaction.amount if amount is None else amount
+    date = date or imported_transaction.date
 
     if not transaction_type:
         raise ValueError("Informe o tipo da transacao antes de confirmar a importacao.")
 
     with db_transaction.atomic():
         transaction = create_transaction(
-            description=imported_transaction.normalized_description,
-            amount=imported_transaction.amount,
-            date=imported_transaction.date,
+            description=description,
+            amount=amount,
+            date=date,
             transaction_type=transaction_type,
             account=account,
             category=category,
@@ -143,11 +149,21 @@ def confirm_imported_transaction(
             notes=f"Importado de {imported_transaction.source_file_name}",
         )
 
+        imported_transaction.normalized_description = description
+        imported_transaction.amount = amount
+        imported_transaction.date = date
         imported_transaction.confirmed_transaction = transaction
         imported_transaction.status = ImportedTransaction.Status.CONFIRMED
         imported_transaction.full_clean()
         imported_transaction.save(
-            update_fields=["confirmed_transaction", "status", "updated_at"]
+            update_fields=[
+                "normalized_description",
+                "amount",
+                "date",
+                "confirmed_transaction",
+                "status",
+                "updated_at",
+            ]
         )
 
     return transaction

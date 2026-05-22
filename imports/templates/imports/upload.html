@@ -11,7 +11,7 @@
     </header>
 
     <section class="panel">
-        <form class="form-grid" method="post" action="{% url 'imports:upload' %}" enctype="multipart/form-data">
+        <form class="form-grid" method="post" action="{% url 'imports:upload-page' %}" enctype="multipart/form-data">
             {% csrf_token %}
 
             <label class="form-field">

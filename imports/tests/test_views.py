@@ -74,6 +74,22 @@ class ImportViewTests(TestCase):
         self.assertContains(response, "Enviar arquivo")
         self.assertContains(response, self.account.name)
 
+    def test_upload_import_page_post_redirects_to_review(self):
+        """Deve processar upload pela tela e abrir revisao em HTML."""
+
+        response = self.client.post(
+            reverse("imports:upload-page"),
+            {
+                "source_type": ImportedTransaction.SourceType.CSV,
+                "account_id": self.account.id,
+                "file": self._csv_file(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("imports:review-page"))
+        self.assertEqual(ImportedTransaction.objects.count(), 2)
+
     def test_upload_import_requires_file(self):
         """Deve rejeitar upload sem arquivo."""
 
@@ -145,6 +161,9 @@ class ImportViewTests(TestCase):
         self.assertTemplateUsed(response, "imports/review.html")
         self.assertContains(response, "Mercado Dia")
         self.assertContains(response, "Confirmar")
+        self.assertContains(response, "Pendente")
+        self.assertContains(response, "Despesa")
+        self.assertContains(response, "R$ 87,45")
 
     def test_confirm_import_creates_transaction(self):
         """Deve confirmar importacao e criar transacao real."""
@@ -175,6 +194,47 @@ class ImportViewTests(TestCase):
         self.assertEqual(imported_transaction.status, ImportedTransaction.Status.CONFIRMED)
         self.assertEqual(Transaction.objects.count(), 1)
         self.assertEqual(self.account.balance, Decimal("912.55"))
+
+    def test_confirm_import_from_page_redirects_and_uses_edited_fields(self):
+        """Deve confirmar pela tela usando os campos editaveis."""
+
+        imported_transaction = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_account=self.account,
+            suggested_category=self.category,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+        response = self.client.post(
+            reverse(
+                "imports:confirm",
+                kwargs={"imported_transaction_id": imported_transaction.id},
+            ),
+            {
+                "next": "review-page",
+                "description": "Mercado ajustado",
+                "date": "2026-05-11",
+                "amount": "90.50",
+                "account_id": self.account.id,
+                "category_id": self.category.id,
+                "transaction_type": Transaction.TransactionType.EXPENSE,
+            },
+        )
+
+        transaction = Transaction.objects.get()
+        imported_transaction.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("imports:review-page"))
+        self.assertEqual(transaction.description, "Mercado ajustado")
+        self.assertEqual(transaction.amount, Decimal("90.50"))
+        self.assertEqual(transaction.date, date(2026, 5, 11))
+        self.assertEqual(imported_transaction.status, ImportedTransaction.Status.CONFIRMED)
 
     def test_confirm_import_requires_account(self):
         """Deve exigir conta quando nao houver sugestao salva."""
@@ -224,3 +284,108 @@ class ImportViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(imported_transaction.status, ImportedTransaction.Status.DISCARDED)
         self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_discard_import_from_page_redirects_to_review(self):
+        """Deve descartar pela tela e voltar para a revisao."""
+
+        imported_transaction = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+        response = self.client.post(
+            reverse(
+                "imports:discard",
+                kwargs={"imported_transaction_id": imported_transaction.id},
+            ),
+            {"next": "review-page"},
+        )
+
+        imported_transaction.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("imports:review-page"))
+        self.assertEqual(imported_transaction.status, ImportedTransaction.Status.DISCARDED)
+
+    def test_bulk_review_discards_selected_imports(self):
+        """Deve descartar importacoes selecionadas em lote."""
+
+        first = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+        second = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Padaria",
+            normalized_description="Padaria",
+            amount=Decimal("20.00"),
+            date=date(2026, 5, 11),
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+        response = self.client.post(
+            reverse("imports:bulk-review"),
+            {
+                "bulk_action": "discard",
+                "selected_imports": [first.id, second.id],
+            },
+        )
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(first.status, ImportedTransaction.Status.DISCARDED)
+        self.assertEqual(second.status, ImportedTransaction.Status.DISCARDED)
+
+    def test_bulk_review_confirms_selected_imports_with_suggestions(self):
+        """Deve confirmar em lote quando os itens possuem sugestoes minimas."""
+
+        first = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_account=self.account,
+            suggested_category=self.category,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+        second = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Salario",
+            normalized_description="Salario",
+            amount=Decimal("5000.00"),
+            date=date(2026, 5, 5),
+            suggested_account=self.account,
+            suggested_transaction_type=Transaction.TransactionType.INCOME,
+        )
+
+        response = self.client.post(
+            reverse("imports:bulk-review"),
+            {
+                "bulk_action": "confirm",
+                "selected_imports": [first.id, second.id],
+            },
+        )
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(first.status, ImportedTransaction.Status.CONFIRMED)
+        self.assertEqual(second.status, ImportedTransaction.Status.CONFIRMED)
+        self.assertEqual(Transaction.objects.count(), 2)
