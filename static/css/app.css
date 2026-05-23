@@ -7,14 +7,34 @@
     --surface: #ffffff;
     --surface-muted: #f9fafb;
     --text: #1f2937;
-    --muted: #667085;
+    --muted: #526071;
     --line: #d9dee7;
     --accent: #0f766e;
     --accent-soft: #e6f5f2;
     --income: #166534;
     --expense: #b42318;
+    --success: #047857;
+    --success-soft: #dff7ed;
+    --warning: #a16207;
+    --warning-soft: #fef3c7;
+    --danger: #b42318;
+    --danger-soft: #fee4e2;
+    --info: #0f5fa8;
+    --info-soft: #dbeafe;
+    --neutral: #475467;
+    --neutral-soft: #eef2f6;
+    --focus-ring: #14b8a6;
     --radius: 8px;
+    --radius-pill: 999px;
     --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    --shadow-subtle: 0 8px 24px rgba(15, 23, 42, 0.06);
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
 }
 
 * {
@@ -34,6 +54,16 @@ a {
     text-decoration: none;
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+    outline: 3px solid rgba(20, 184, 166, 0.35);
+    outline-offset: 2px;
+}
+
 h1,
 h2 {
     letter-spacing: 0;
@@ -46,6 +76,24 @@ h1 {
 
 h2 {
     font-size: 18px;
+}
+
+.skip-link {
+    background: var(--accent);
+    border-radius: var(--radius);
+    color: #ffffff;
+    font-weight: 700;
+    left: 16px;
+    padding: 10px 14px;
+    position: fixed;
+    top: 12px;
+    transform: translateY(-140%);
+    transition: transform 0.16s ease;
+    z-index: 20;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
 }
 
 .app-shell {
@@ -112,6 +160,10 @@ h2 {
     padding: 32px;
 }
 
+.app-main:focus {
+    outline: none;
+}
+
 .app-messages {
     display: grid;
     gap: 10px;
@@ -156,6 +208,13 @@ h2 {
 
 .metric-card {
     box-shadow: var(--shadow);
+}
+
+.surface-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
 }
 
 .metric-card span {
@@ -369,6 +428,27 @@ h2 {
     text-transform: uppercase;
 }
 
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.data-table .text-right,
+.text-right {
+    text-align: right;
+}
+
+.data-table .text-nowrap,
+.text-nowrap {
+    white-space: nowrap;
+}
+
+.data-table .text-break,
+.text-break {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .data-table td:last-child,
 .data-table th:last-child {
     text-align: right;
@@ -382,6 +462,54 @@ h2 {
 .status {
     color: var(--accent);
     font-weight: 700;
+}
+
+.badge {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 700;
+    gap: 6px;
+    line-height: 1;
+    min-height: 24px;
+    padding: 5px 9px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.badge::before {
+    background: currentColor;
+    border-radius: 50%;
+    content: "";
+    height: 6px;
+    width: 6px;
+}
+
+.badge-success {
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.badge-warning {
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.badge-danger {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.badge-info {
+    background: var(--info-soft);
+    color: var(--info);
+}
+
+.badge-neutral {
+    background: var(--neutral-soft);
+    color: var(--neutral);
 }
 
 .shortcut-grid {
@@ -490,7 +618,7 @@ h2 {
 
 .tag {
     background: var(--accent-soft);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     color: var(--accent);
     display: inline-flex;
     font-size: 12px;
@@ -533,6 +661,14 @@ h2 {
     gap: 16px;
 }
 
+.filter-bar {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: end;
+}
+
 .form-field {
     display: grid;
     gap: 8px;
@@ -549,7 +685,9 @@ h2 {
 .form-field textarea,
 .inline-form input,
 .period-form input,
-.period-form select {
+.period-form select,
+.filter-bar input,
+.filter-bar select {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -629,10 +767,22 @@ h2 {
     filter: brightness(0.95);
 }
 
+.button:disabled,
+.button[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
 .button-secondary {
     background: var(--surface);
     border-color: var(--line);
     color: var(--text);
+}
+
+.button-neutral {
+    background: var(--neutral-soft);
+    border-color: var(--neutral-soft);
+    color: var(--neutral);
 }
 
 .button-danger {
@@ -678,6 +828,7 @@ h2 {
 
     .page-header,
     .period-form,
+    .filter-bar,
     .bulk-action-bar {
         display: grid;
         justify-content: stretch;
@@ -715,6 +866,8 @@ h2 {
     .inline-form input,
     .period-form input,
     .period-form select,
+    .filter-bar input,
+    .filter-bar select,
     .button {
         width: 100%;
     }
