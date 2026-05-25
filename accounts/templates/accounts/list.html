@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Contas - Controle Financeiro{% endblock %}
 
@@ -21,7 +22,7 @@
                         <p class="muted">{{ summary.currency_label }}</p>
                     </div>
                     <div>
-                        <strong>{{ summary.currency }} {{ summary.total_balance }}</strong>
+                        <strong>{{ summary.total_balance|currency:summary.currency }}</strong>
                         <p class="muted">
                             {{ summary.active_count }} ativa(s), {{ summary.inactive_count }} inativa(s)
                         </p>
@@ -53,7 +54,7 @@
                                         {% if account.is_active %}Ativa{% else %}Inativa{% endif %}
                                     </span>
                                 </td>
-                                <td>{{ account.currency }} {{ account.balance }}</td>
+                                <td>{{ account.balance|currency:account.currency }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

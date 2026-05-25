@@ -2,6 +2,7 @@
 
 from django import forms
 
+from core.forms import BRDecimalField
 from institutions.models import Institution
 
 from .models import FinancialAccount
@@ -9,6 +10,8 @@ from .models import FinancialAccount
 
 class FinancialAccountForm(forms.ModelForm):
     """Formulario para cadastrar e editar contas financeiras."""
+
+    balance = BRDecimalField(label="Saldo atual", max_digits=14, decimal_places=2)
 
     class Meta:
         model = FinancialAccount
@@ -20,15 +23,11 @@ class FinancialAccountForm(forms.ModelForm):
             "balance",
             "is_active",
         ]
-        widgets = {
-            "balance": forms.NumberInput(attrs={"step": "0.01"}),
-        }
         labels = {
             "name": "Nome",
             "institution": "Instituição",
             "account_type": "Tipo",
             "currency": "Moeda",
-            "balance": "Saldo atual",
             "is_active": "Ativa",
         }
 

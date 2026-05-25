@@ -3,6 +3,8 @@
 from django import forms
 
 from accounts.models import FinancialAccount
+from core.forms import BRDecimalField
+from core.forms import BRIntegerField
 from institutions.models import Institution
 
 from .models import Card
@@ -10,6 +12,31 @@ from .models import Card
 
 class CardForm(forms.ModelForm):
     """Formulario para cadastrar e editar cartoes."""
+
+    credit_limit = BRDecimalField(
+        label="Limite",
+        max_digits=14,
+        decimal_places=2,
+        required=False,
+    )
+    statement_closing_day = BRIntegerField(
+        label="Dia de fechamento",
+        min_value=1,
+        max_value=31,
+        required=False,
+    )
+    statement_due_day = BRIntegerField(
+        label="Dia de vencimento",
+        min_value=1,
+        max_value=31,
+        required=False,
+    )
+    estimated_balance = BRDecimalField(
+        label="Saldo estimado",
+        max_digits=14,
+        decimal_places=2,
+        required=False,
+    )
 
     class Meta:
         model = Card
@@ -24,19 +51,11 @@ class CardForm(forms.ModelForm):
             "estimated_balance",
             "is_active",
         ]
-        widgets = {
-            "credit_limit": forms.NumberInput(attrs={"step": "0.01"}),
-            "estimated_balance": forms.NumberInput(attrs={"step": "0.01"}),
-        }
         labels = {
             "name": "Nome",
             "institution": "Instituição",
             "card_type": "Tipo",
-            "credit_limit": "Limite",
-            "statement_closing_day": "Dia de fechamento",
-            "statement_due_day": "Dia de vencimento",
             "payment_account": "Conta padrão de pagamento",
-            "estimated_balance": "Saldo estimado",
             "is_active": "Ativo",
         }
 
@@ -85,12 +104,11 @@ class CardForm(forms.ModelForm):
 class StatementPaymentForm(forms.Form):
     """Formulario para pagar total ou parcialmente uma fatura."""
 
-    amount = forms.DecimalField(
+    amount = BRDecimalField(
         label="Valor pago",
         max_digits=14,
         decimal_places=2,
         required=False,
-        widget=forms.NumberInput(attrs={"step": "0.01"}),
     )
 
     def __init__(self, *args, statement=None, **kwargs):

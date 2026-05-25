@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Simular rendimento - Controle Financeiro{% endblock %}
 
@@ -39,15 +40,15 @@
         <div class="summary-grid page-section">
             <div class="metric-card">
                 <span>Valor inicial</span>
-                <strong>R$ {{ estimate.initial_amount }}</strong>
+                <strong>{{ estimate.initial_amount|brl }}</strong>
             </div>
             <div class="metric-card">
                 <span>Valor final estimado</span>
-                <strong>R$ {{ estimate.final_amount }}</strong>
+                <strong>{{ estimate.final_amount|brl }}</strong>
             </div>
             <div class="metric-card">
                 <span>Rendimento estimado</span>
-                <strong>R$ {{ estimate.estimated_yield }}</strong>
+                <strong>{{ estimate.estimated_yield|brl }}</strong>
             </div>
         </div>
     {% endif %}

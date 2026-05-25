@@ -41,7 +41,7 @@
                     <dl class="detail-list">
                         <div>
                             <dt>Data original</dt>
-                            <dd>{{ imported_transaction.date }}</dd>
+                            <dd>{{ imported_transaction.date|date_br }}</dd>
                         </div>
                         <div>
                             <dt>Valor original</dt>
@@ -65,12 +65,12 @@
 
                     <label class="form-field">
                         <span>Data</span>
-                        <input name="date" type="date" value="{{ imported_transaction.date|date:'Y-m-d' }}" required>
+                        <input name="date" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="dd/mm/aaaa" value="{{ imported_transaction.date|date_br }}" required>
                     </label>
 
                     <label class="form-field">
                         <span>Valor</span>
-                        <input name="amount" type="number" step="0.01" min="0.01" value="{{ imported_transaction.amount }}" required>
+                        <input name="amount" type="text" inputmode="decimal" placeholder="0,00" value="{{ imported_transaction.amount|decimal_ptbr }}" required>
                     </label>
 
                     <label class="form-field">

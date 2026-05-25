@@ -3,6 +3,10 @@
 from django import forms
 
 from accounts.models import FinancialAccount
+from core.forms import AnnualRateField
+from core.forms import BRDateField
+from core.forms import BRDecimalField
+from core.forms import BRIntegerField
 
 from .models import AccountYieldConfig, ReferenceRate
 
@@ -10,12 +14,9 @@ from .models import AccountYieldConfig, ReferenceRate
 class ReferenceRateForm(forms.Form):
     """Formulario para cadastrar CDI anual manual."""
 
-    date = forms.DateField(
-        label="Data",
-        widget=forms.DateInput(attrs={"type": "date"}),
-    )
-    value = forms.DecimalField(
-        label="CDI anual em decimal, exemplo 0.1065",
+    date = BRDateField(label="Data")
+    value = AnnualRateField(
+        label="CDI anual (%)",
         max_digits=18,
         decimal_places=8,
     )
@@ -37,17 +38,20 @@ class ReferenceRateForm(forms.Form):
 class AccountYieldConfigForm(forms.ModelForm):
     """Formulario para configurar rendimento de uma conta."""
 
+    cdi_percentage = BRDecimalField(
+        label="Percentual do CDI",
+        max_digits=8,
+        decimal_places=4,
+        required=False,
+    )
+
     class Meta:
         model = AccountYieldConfig
         fields = ["account", "yield_type", "cdi_percentage", "is_active"]
         labels = {
             "account": "Conta",
             "yield_type": "Tipo de rendimento",
-            "cdi_percentage": "Percentual do CDI",
             "is_active": "Ativa",
-        }
-        widgets = {
-            "cdi_percentage": forms.NumberInput(attrs={"step": "0.0001"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -84,12 +88,12 @@ class YieldSimulationForm(forms.Form):
         label="Conta",
         queryset=FinancialAccount.objects.none(),
     )
-    amount = forms.DecimalField(
+    amount = BRDecimalField(
         label="Valor inicial",
         max_digits=14,
         decimal_places=2,
     )
-    months = forms.IntegerField(label="Meses", min_value=1)
+    months = BRIntegerField(label="Meses", min_value=1)
 
     def __init__(self, *args, **kwargs):
         """Lista apenas contas com configuracao ativa."""

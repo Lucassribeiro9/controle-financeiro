@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Cartões - Controle Financeiro{% endblock %}
 
@@ -39,11 +40,11 @@
                             </td>
                             <td>{{ card.institution }}</td>
                             <td>{{ card.get_card_type_display }}</td>
-                            <td>R$ {{ card.credit_limit|default:"0.00" }}</td>
+                            <td>{{ card.credit_limit|brl }}</td>
                             <td>{{ card.statement_closing_day|default:"Não informado" }}</td>
                             <td>{{ card.statement_due_day|default:"Não informado" }}</td>
                             <td>{{ card.payment_account|default:"Não vinculada" }}</td>
-                            <td>R$ {{ card.estimated_balance|default:"0.00" }}</td>
+                            <td>{{ card.estimated_balance|brl }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

@@ -1,11 +1,11 @@
 """Views do app recurrences."""
 
-from decimal import Decimal, InvalidOperation
-
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
+
+from core.forms import normalize_decimal
 
 from .models import Recurrence
 from transactions.models import Transaction
@@ -152,8 +152,8 @@ def adjust_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
         return JsonResponse({"error": "Campo amount é obrigatório."}, status=400)
 
     try:
-        new_amount = Decimal(amount_raw)
-    except InvalidOperation:
+        new_amount = normalize_decimal(amount_raw)
+    except ValueError:
         return JsonResponse({"error": "Campo amount inválido."}, status=400)
 
     if new_amount <= 0:

@@ -1,16 +1,14 @@
 """Views do app imports."""
 
-from decimal import Decimal
-from decimal import InvalidOperation
-
 from django.contrib import messages
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from accounts.models import FinancialAccount
 from categories.models import Category
+from core.forms import normalize_decimal
+from core.forms import parse_br_date
 from transactions.models import Transaction
 
 from .importers import get_importer_for_source_type
@@ -86,12 +84,9 @@ def _parse_decimal(value):
     if value in (None, ""):
         return None
 
-    normalized_value = str(value).strip()
-    if "," in normalized_value:
-        normalized_value = normalized_value.replace(".", "").replace(",", ".")
     try:
-        return Decimal(normalized_value)
-    except (InvalidOperation, ValueError) as exc:
+        return normalize_decimal(value)
+    except ValueError as exc:
         raise ValueError("Valor informado é inválido.") from exc
 
 
@@ -101,11 +96,12 @@ def _parse_transaction_date(value):
     if value in (None, ""):
         return None
 
-    parsed_date = parse_date(value)
-    if parsed_date is None:
+    try:
+        return parse_br_date(value)
+    except ValueError as exc:
         raise ValueError("Data informada é inválida.")
-
-    return parsed_date
+    except Exception as exc:
+        raise ValueError("Data informada é inválida.") from exc
 
 
 @require_POST

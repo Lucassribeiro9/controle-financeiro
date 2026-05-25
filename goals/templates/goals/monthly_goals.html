@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Metas mensais - {{ month }}/{{ year }}{% endblock %}
 
@@ -12,11 +13,11 @@
         <form class="period-form" method="get" action="{% url 'goals:monthly-goals' %}">
             <label>
                 <span>Mês</span>
-                <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+                <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
             </label>
             <label>
                 <span>Ano</span>
-                <input name="year" type="number" min="2000" value="{{ year }}" required>
+                <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
             </label>
             <button class="button" type="submit">Filtrar</button>
         </form>
@@ -46,8 +47,8 @@
                                 </a>
                             </td>
                             <td><span class="status">{{ monthly_goal.get_status_display }}</span></td>
-                            <td>R$ {{ monthly_goal.current_amount }}</td>
-                            <td>R$ {{ monthly_goal.target_amount }}</td>
+                            <td>{{ monthly_goal.current_amount|brl }}</td>
+                            <td>{{ monthly_goal.target_amount|brl }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

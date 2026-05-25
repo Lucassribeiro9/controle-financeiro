@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Parcelamentos - Controle Financeiro{% endblock %}
 
@@ -37,9 +38,9 @@
                                 {% endif %}
                             </td>
                             <td>{{ plan.card }}</td>
-                            <td>R$ {{ plan.total_amount }}</td>
+                            <td>{{ plan.total_amount|brl }}</td>
                             <td>{{ plan.generated_count }}/{{ plan.total_installments }}</td>
-                            <td>{{ plan.first_installment_date }}</td>
+                            <td>{{ plan.first_installment_date|date_br }}</td>
                             <td><span class="status">{{ plan.get_status_display }}</span></td>
                         </tr>
                     {% endfor %}
