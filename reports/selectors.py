@@ -42,6 +42,7 @@ CHART_COLORS = [
     "#7c3aed",
     "#64748b",
 ]
+UNCATEGORIZED_EXPENSE_ALERT_THRESHOLD = 50
 
 
 def get_monthly_income_total(*, year: int, month: int):
@@ -212,6 +213,46 @@ def get_monthly_cashflow_series(*, year: int, month: int, range_months: int = 12
     return series
 
 
+def get_dashboard_chart_payload(*, year: int, month: int, range_months: int = 12):
+    """Monta payload serializavel para os graficos do dashboard."""
+
+    cashflow_series = get_monthly_cashflow_series(
+        year=year,
+        month=month,
+        range_months=range_months,
+    )
+    category_share = get_category_expense_share(year=year, month=month)
+
+    return {
+        "labels": [item["label"] for item in cashflow_series],
+        "income": [_chart_number(item["income_total"]) for item in cashflow_series],
+        "expenses": [_chart_number(item["expense_total"]) for item in cashflow_series],
+        "balance": [_chart_number(item["balance"]) for item in cashflow_series],
+        "categories": {
+            "labels": [item["category_name"] for item in category_share],
+            "values": [_chart_number(item["total_amount"]) for item in category_share],
+            "colors": [item["color"] for item in category_share],
+        },
+        "currency": "BRL",
+    }
+
+
+def get_uncategorized_expense_alert(*, year: int, month: int):
+    """Destaca quando gastos sem categoria concentram parte relevante do mes."""
+
+    for item in get_category_expense_share(year=year, month=month):
+        if (
+            item["category_name"] == "Sem categoria"
+            and item["percentage"] >= UNCATEGORIZED_EXPENSE_ALERT_THRESHOLD
+        ):
+            return {
+                "percentage": item["percentage"],
+                "amount": item["total_amount"],
+            }
+
+    return None
+
+
 def get_monthly_dashboard(*, year: int, month: int, range_months: int = 12):
     """Montar o payload completo do painel mensal, incluindo despesas por categoria, patrimônio por moeda, extratos de cartão e resumo de metas."""
     income_total = get_monthly_income_total(year=year, month=month)
@@ -228,6 +269,15 @@ def get_monthly_dashboard(*, year: int, month: int, range_months: int = 12):
             year=year,
             month=month,
             range_months=range_months,
+        ),
+        "chartjs_payload": get_dashboard_chart_payload(
+            year=year,
+            month=month,
+            range_months=range_months,
+        ),
+        "uncategorized_expense_alert": get_uncategorized_expense_alert(
+            year=year,
+            month=month,
         ),
         "category_expenses": get_category_expense_breakdown(year=year, month=month),
         "category_expense_share": get_category_expense_share(year=year, month=month),
@@ -306,3 +356,7 @@ def _to_money(value):
     """Normaliza agregacoes monetarias para duas casas decimais."""
 
     return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _chart_number(value):
+    return float(_to_money(value))
