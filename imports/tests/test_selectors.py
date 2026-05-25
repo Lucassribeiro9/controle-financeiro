@@ -77,3 +77,45 @@ class ImportSelectorTests(TestCase):
         )
 
         self.assertEqual(imports, [discarded])
+
+    def test_get_imported_transactions_for_review_filters_by_file_type_and_period(self):
+        """Deve combinar filtros de arquivo, tipo e periodo."""
+
+        expected = ImportedTransaction.objects.create(
+            source_file_name="nubank.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            status=ImportedTransaction.Status.PENDING,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="inter.ofx",
+            source_type=ImportedTransaction.SourceType.OFX,
+            raw_description="Padaria",
+            normalized_description="Padaria",
+            amount=Decimal("20.00"),
+            date=date(2026, 5, 11),
+            status=ImportedTransaction.Status.PENDING,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="nubank.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Antigo",
+            normalized_description="Antigo",
+            amount=Decimal("10.00"),
+            date=date(2026, 4, 20),
+            status=ImportedTransaction.Status.PENDING,
+        )
+
+        imports = list(
+            get_imported_transactions_for_review(
+                source_file_name="nubank.csv",
+                source_type=ImportedTransaction.SourceType.CSV,
+                start_date="2026-05-01",
+                end_date="2026-05-31",
+            )
+        )
+
+        self.assertEqual(imports, [expected])
