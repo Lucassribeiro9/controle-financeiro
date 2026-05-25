@@ -7,7 +7,7 @@
     <header class="page-header">
         <div>
             <h1>{{ plan.description }}</h1>
-            <p class="muted">{{ plan.card }} - {{ plan.get_status_display }}</p>
+            <p class="muted">{{ plan.card }}</p>
         </div>
 
         <a class="button button-secondary" href="{% url 'installments:list' %}">Voltar</a>
@@ -16,7 +16,7 @@
     <section class="panel">
         <div class="card-title-row">
             <h2>Resumo</h2>
-            <span class="tag">{{ plan.get_status_display }}</span>
+            <span class="{{ plan.status|status_badge_class }}">{{ plan.get_status_display }}</span>
         </div>
 
         <dl class="detail-list">
@@ -60,28 +60,32 @@
     <section class="panel page-section">
         <h2>Parcelas geradas</h2>
         {% if transactions %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Parcela</th>
-                        <th>Data</th>
-                        <th>Fatura</th>
-                        <th>Status</th>
-                        <th>Valor</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for transaction in transactions %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>{{ transaction.installment_number }}/{{ plan.total_installments }}</td>
-                            <td>{{ transaction.date|date_br }}</td>
-                            <td>{{ transaction.statement|default:"Não vinculada" }}</td>
-                            <td><span class="status">{{ transaction.get_status_display }}</span></td>
-                            <td>{{ transaction.amount|brl }}</td>
+                            <th class="cell-count">Parcela</th>
+                            <th class="cell-date">Data</th>
+                            <th>Fatura</th>
+                            <th class="cell-status">Status</th>
+                            <th class="cell-amount">Valor</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                            <tr>
+                                <td class="cell-count">{{ transaction.installment_number }}/{{ plan.total_installments }}</td>
+                                <td class="cell-date">{{ transaction.date|date_br }}</td>
+                                <td>{{ transaction.statement|default:"Não vinculada" }}</td>
+                                <td class="cell-status">
+                                    <span class="{{ transaction.status|status_badge_class }}">{{ transaction.get_status_display }}</span>
+                                </td>
+                                <td class="cell-amount">{{ transaction.amount|brl }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
             <p class="empty">Nenhuma parcela gerada.</p>
         {% endif %}

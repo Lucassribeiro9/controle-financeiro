@@ -29,7 +29,7 @@
                 <div>
                     <div class="card-title-row">
                         <h2>{{ forecast.description }}</h2>
-                        <span class="tag">{{ forecast.status }}</span>
+                        <span class="{{ forecast.status|status_badge_class }}">{{ forecast.get_status_display }}</span>
                     </div>
 
                     <dl class="detail-list">

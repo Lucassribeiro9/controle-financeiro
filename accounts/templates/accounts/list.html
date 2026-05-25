@@ -29,36 +29,38 @@
                     </div>
                 </div>
 
-                <table class="data-table page-section">
-                    <thead>
-                        <tr>
-                            <th>Conta</th>
-                            <th>Instituição</th>
-                            <th>Tipo</th>
-                            <th>Status</th>
-                            <th>Saldo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for account in summary.accounts %}
+                <div class="table-responsive page-section">
+                    <table class="data-table">
+                        <thead>
                             <tr>
-                                <td>
-                                    <a href="{% url 'accounts:detail' account.id %}">
-                                        {{ account.name }}
-                                    </a>
-                                </td>
-                                <td>{{ account.institution }}</td>
-                                <td>{{ account.get_account_type_display }}</td>
-                                <td>
-                                    <span class="status">
-                                        {% if account.is_active %}Ativa{% else %}Inativa{% endif %}
-                                    </span>
-                                </td>
-                                <td>{{ account.balance|currency:account.currency }}</td>
+                                <th class="cell-primary">Conta</th>
+                                <th>Instituição</th>
+                                <th>Tipo</th>
+                                <th class="cell-status">Status</th>
+                                <th class="cell-amount">Saldo</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for account in summary.accounts %}
+                                <tr>
+                                    <td class="cell-primary">
+                                        <a href="{% url 'accounts:detail' account.id %}">
+                                            {{ account.name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ account.institution }}</td>
+                                    <td>{{ account.get_account_type_display }}</td>
+                                    <td class="cell-status">
+                                        <span class="{{ account.is_active|active_badge_class }}">
+                                            {% if account.is_active %}Ativa{% else %}Inativa{% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="cell-amount">{{ account.balance|currency:account.currency }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </section>
         {% empty %}
             <section class="panel">

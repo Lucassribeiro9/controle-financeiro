@@ -46,6 +46,7 @@ class InsightViewTests(TestCase):
         self.assertTemplateUsed(response, "insights/list.html")
         self.assertContains(response, self.insight.title)
         self.assertContains(response, "Aprovar")
+        self.assertContains(response, 'class="badge badge-warning"', html=False)
 
     def test_insight_list_can_filter_by_status(self):
         self.insight.status = Insight.Status.IGNORED

@@ -15,39 +15,43 @@
 
     <section class="panel page-section">
         {% if statements %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Cartão</th>
-                        <th>Mês/Ano</th>
-                        <th>Esperado</th>
-                        <th>Fechado</th>
-                        <th>Pago</th>
-                        <th>Status</th>
-                        <th>Vencimento</th>
-                        <th>Conta pagamento</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for statement in statements %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>
-                                <a href="{% url 'cards:statement-detail' statement.id %}">
-                                    {{ statement.card }}
-                                </a>
-                                <p class="muted">{{ statement.card.institution }}</p>
-                            </td>
-                            <td>{{ statement.month }}/{{ statement.year }}</td>
-                            <td>{{ statement.expected_amount|brl }}</td>
-                            <td>{{ statement.closed_amount|brl }}</td>
-                            <td>{{ statement.paid_amount|brl }}</td>
-                            <td><span class="status">{{ statement.get_status_display }}</span></td>
-                            <td>{{ statement.due_date|date_br }}</td>
-                            <td>{{ statement.payment_account|default:"Não vinculada" }}</td>
+                            <th class="cell-primary">Cartão</th>
+                            <th class="cell-period">Mês/Ano</th>
+                            <th class="cell-amount">Esperado</th>
+                            <th class="cell-amount">Fechado</th>
+                            <th class="cell-amount">Pago</th>
+                            <th class="cell-status">Status</th>
+                            <th class="cell-date">Vencimento</th>
+                            <th>Conta pagamento</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for statement in statements %}
+                            <tr>
+                                <td class="cell-primary">
+                                    <a href="{% url 'cards:statement-detail' statement.id %}">
+                                        {{ statement.card }}
+                                    </a>
+                                    <p class="muted">{{ statement.card.institution }}</p>
+                                </td>
+                                <td class="cell-period">{{ statement.month }}/{{ statement.year }}</td>
+                                <td class="cell-amount">{{ statement.expected_amount|brl }}</td>
+                                <td class="cell-amount">{{ statement.closed_amount|brl }}</td>
+                                <td class="cell-amount">{{ statement.paid_amount|brl }}</td>
+                                <td class="cell-status">
+                                    <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
+                                </td>
+                                <td class="cell-date">{{ statement.due_date|date_br }}</td>
+                                <td>{{ statement.payment_account|default:"Não vinculada" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
             <p class="empty">Nenhuma fatura encontrada.</p>
         {% endif %}

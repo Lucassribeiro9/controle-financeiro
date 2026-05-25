@@ -35,7 +35,7 @@
                             >
                             <span>{{ imported_transaction.raw_description }}</span>
                         </label>
-                        <span class="tag">{{ imported_transaction.get_status_display }}</span>
+                        <span class="{{ imported_transaction.status|status_badge_class }}">{{ imported_transaction.get_status_display }}</span>
                     </div>
 
                     <dl class="detail-list">

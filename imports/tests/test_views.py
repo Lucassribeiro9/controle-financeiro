@@ -164,6 +164,7 @@ class ImportViewTests(TestCase):
         self.assertContains(response, "Pendente")
         self.assertContains(response, "Despesa")
         self.assertContains(response, "R$ 87,45")
+        self.assertContains(response, 'class="badge badge-warning"', html=False)
 
     def test_confirm_import_creates_transaction(self):
         """Deve confirmar importacao e criar transacao real."""

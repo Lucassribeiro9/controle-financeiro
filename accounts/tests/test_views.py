@@ -35,6 +35,7 @@ class AccountViewTests(TestCase):
         self.assertContains(response, "Conta corrente")
         self.assertContains(response, "Inter")
         self.assertContains(response, "Ativa")
+        self.assertContains(response, 'class="badge badge-success"', html=False)
 
     def test_account_list_page_shows_currency_grouping(self):
         """Deve exibir agrupamento por moeda calculado pelo selector."""

@@ -76,23 +76,25 @@
 
             <section class="panel">
                 <h2>Contas vinculadas</h2>
-                {% if goal.accounts.all %}
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Conta</th>
-                                <th>Saldo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for account in goal.accounts.all %}
+                    {% if goal.accounts.all %}
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
                                 <tr>
-                                    <td>{{ account }}</td>
-                                    <td>{{ account.balance|currency:account.currency }}</td>
+                                    <th>Conta</th>
+                                    <th class="cell-amount">Saldo</th>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {% for account in goal.accounts.all %}
+                                    <tr>
+                                        <td>{{ account }}</td>
+                                        <td class="cell-amount">{{ account.balance|currency:account.currency }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 {% else %}
                     <p class="empty">Nenhuma conta vinculada.</p>
                 {% endif %}
@@ -101,24 +103,28 @@
             <section class="panel">
                 <h2>Metas do período</h2>
                 {% if goal_summary.monthly_goals %}
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Atual</th>
-                                <th>Alvo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for monthly_goal in goal_summary.monthly_goals %}
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
                                 <tr>
-                                    <td><span class="status">{{ monthly_goal.get_status_display }}</span></td>
-                                    <td>{{ monthly_goal.current_amount|brl }}</td>
-                                    <td>{{ monthly_goal.target_amount|brl }}</td>
+                                    <th class="cell-status">Status</th>
+                                    <th class="cell-amount">Atual</th>
+                                    <th class="cell-amount">Alvo</th>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {% for monthly_goal in goal_summary.monthly_goals %}
+                                    <tr>
+                                        <td class="cell-status">
+                                            <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
+                                        </td>
+                                        <td class="cell-amount">{{ monthly_goal.current_amount|brl }}</td>
+                                        <td class="cell-amount">{{ monthly_goal.target_amount|brl }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 {% else %}
                     <p class="empty">Nenhuma meta mensal para este período.</p>
                 {% endif %}

@@ -515,15 +515,23 @@ h2 {
 
 .data-table {
     border-collapse: collapse;
+    table-layout: auto;
     width: 100%;
 }
 
 .data-table th,
 .data-table td {
     border-bottom: 1px solid var(--line);
-    padding: 10px 0;
+    min-width: 0;
+    padding: 12px 12px 12px 0;
     text-align: left;
     vertical-align: top;
+    word-break: break-word;
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+    padding-right: 0;
 }
 
 .data-table th {
@@ -536,6 +544,22 @@ h2 {
 .table-responsive {
     overflow-x: auto;
     width: 100%;
+}
+
+.table-responsive .data-table {
+    min-width: 100%;
+}
+
+.table-responsive-wide .data-table {
+    min-width: 1024px;
+}
+
+.data-table td p.muted {
+    margin: 4px 0 0;
+}
+
+.data-table a {
+    overflow-wrap: anywhere;
 }
 
 .data-table .text-right,
@@ -554,9 +578,50 @@ h2 {
     word-break: break-word;
 }
 
-.data-table td:last-child,
-.data-table th:last-child {
+.data-table .cell-amount,
+.data-table .cell-amount a,
+.data-table .cell-count,
+.data-table .cell-count a {
     text-align: right;
+}
+
+.data-table .cell-date,
+.data-table .cell-period,
+.data-table .cell-status {
+    white-space: nowrap;
+}
+
+.data-table .cell-type {
+    min-width: 160px;
+}
+
+.data-table .cell-code {
+    min-width: 110px;
+}
+
+.data-table .cell-status {
+    min-width: 132px;
+}
+
+.data-table .cell-amount {
+    min-width: 132px;
+    white-space: nowrap;
+}
+
+.data-table .cell-period {
+    min-width: 92px;
+}
+
+.data-table .cell-date {
+    min-width: 118px;
+}
+
+.data-table .cell-primary {
+    min-width: 220px;
+}
+
+.data-table .cell-secondary {
+    min-width: 220px;
 }
 
 .empty {
@@ -582,6 +647,13 @@ h2 {
     padding: 5px 9px;
     vertical-align: middle;
     white-space: nowrap;
+}
+
+.data-table .badge,
+.detail-list .badge,
+.summary-grid .badge,
+.card-title-row .badge {
+    max-width: 100%;
 }
 
 .badge::before {
@@ -723,11 +795,13 @@ h2 {
 
 .tag {
     background: var(--accent-soft);
+    border: 1px solid transparent;
     border-radius: var(--radius-pill);
     color: var(--accent);
     display: inline-flex;
     font-size: 12px;
     font-weight: 700;
+    line-height: 1;
     padding: 4px 8px;
 }
 

@@ -29,30 +29,34 @@
 
     <section class="panel page-section">
         {% if monthly_goals %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Objetivo</th>
-                        <th>Status</th>
-                        <th>Atual</th>
-                        <th>Alvo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for monthly_goal in monthly_goals %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>
-                                <a href="{% url 'goals:detail' monthly_goal.goal.id %}?year={{ year }}&month={{ month }}">
-                                    {{ monthly_goal.goal.name }}
-                                </a>
-                            </td>
-                            <td><span class="status">{{ monthly_goal.get_status_display }}</span></td>
-                            <td>{{ monthly_goal.current_amount|brl }}</td>
-                            <td>{{ monthly_goal.target_amount|brl }}</td>
+                            <th class="cell-primary">Objetivo</th>
+                            <th class="cell-status">Status</th>
+                            <th class="cell-amount">Atual</th>
+                            <th class="cell-amount">Alvo</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for monthly_goal in monthly_goals %}
+                            <tr>
+                                <td class="cell-primary">
+                                    <a href="{% url 'goals:detail' monthly_goal.goal.id %}?year={{ year }}&month={{ month }}">
+                                        {{ monthly_goal.goal.name }}
+                                    </a>
+                                </td>
+                                <td class="cell-status">
+                                    <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
+                                </td>
+                                <td class="cell-amount">{{ monthly_goal.current_amount|brl }}</td>
+                                <td class="cell-amount">{{ monthly_goal.target_amount|brl }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
             <p class="empty">Nenhuma meta mensal no período.</p>
         {% endif %}

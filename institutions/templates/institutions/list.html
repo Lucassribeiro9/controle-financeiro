@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Instituições - Controle Financeiro{% endblock %}
 
@@ -14,39 +15,41 @@
 
     <section class="panel page-section">
         {% if institutions %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Código</th>
-                        <th>Status</th>
-                        <th>Contas</th>
-                        <th>Cartões</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for institution in institutions %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>
-                                <a href="{% url 'institutions:update' institution.id %}">
-                                    {{ institution.name }}
-                                </a>
-                                {% if institution.official_name %}
-                                    <p class="muted">{{ institution.official_name }}</p>
-                                {% endif %}
-                            </td>
-                            <td>{{ institution.code|default:"Não informado" }}</td>
-                            <td>
-                                <span class="status">
-                                    {% if institution.is_active %}Ativa{% else %}Inativa{% endif %}
-                                </span>
-                            </td>
-                            <td>{{ institution.accounts_count }}</td>
-                            <td>{{ institution.cards_count }}</td>
+                            <th class="cell-primary">Nome</th>
+                            <th class="cell-code">Código</th>
+                            <th class="cell-status">Status</th>
+                            <th class="cell-count">Contas</th>
+                            <th class="cell-count">Cartões</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for institution in institutions %}
+                            <tr>
+                                <td class="cell-primary">
+                                    <a href="{% url 'institutions:update' institution.id %}">
+                                        {{ institution.name }}
+                                    </a>
+                                    {% if institution.official_name %}
+                                        <p class="muted">{{ institution.official_name }}</p>
+                                    {% endif %}
+                                </td>
+                                <td class="cell-code">{{ institution.code|default:"Não informado" }}</td>
+                                <td class="cell-status">
+                                    <span class="{{ institution.is_active|active_badge_class }}">
+                                        {% if institution.is_active %}Ativa{% else %}Inativa{% endif %}
+                                    </span>
+                                </td>
+                                <td class="cell-count">{{ institution.accounts_count }}</td>
+                                <td class="cell-count">{{ institution.cards_count }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
             <p class="empty">Nenhuma instituição cadastrada.</p>
         {% endif %}
