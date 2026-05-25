@@ -8,20 +8,6 @@
     </a>
 
     <nav class="app-nav">
-        <a href="/">Início</a>
-        <a href="/reports/month/">Dashboard</a>
-        <a href="/goals/">Objetivos</a>
-        <a href="/accounts/">Contas</a>
-        <a href="/cards/">Cartões</a>
-        <a href="/categories/">Categorias</a>
-        <a href="/institutions/">Instituições</a>
-        <a href="/transactions/">Lançamentos</a>
-        <a href="/transactions/transfers/">Transferências</a>
-        <a href="/installments/">Parcelamentos</a>
-        <a href="/rates/">Rendimentos</a>
-        <a href="/insights/page/">Insights</a>
-        <a href="/imports/review/page/">Importações</a>
-        <a href="/recurrences/month/page/">Recorrências</a>
-        <a href="/admin/">Admin</a>
+        {% include "partials/nav_links.html" with nav_id="sidebar" %}
     </nav>
 </aside>

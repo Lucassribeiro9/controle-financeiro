@@ -1,0 +1,171 @@
+{% with namespace=request.resolver_match.namespace path=request.path %}
+    <div class="app-nav-group">
+        <p id="nav-{{ nav_id }}-main" class="app-nav-group-label">Principal</p>
+        <a class="app-nav-link{% if namespace == "core" %} active{% endif %}" href="/" {% if namespace == "core" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5Z"></path>
+                </svg>
+            </span>
+            <span>Início</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "reports" %} active{% endif %}" href="/reports/month/" {% if namespace == "reports" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 19h16"></path>
+                    <path d="M7 16V9"></path>
+                    <path d="M12 16V5"></path>
+                    <path d="M17 16v-4"></path>
+                </svg>
+            </span>
+            <span>Dashboard</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "goals" %} active{% endif %}" href="/goals/" {% if namespace == "goals" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <circle cx="12" cy="12" r="8"></circle>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </span>
+            <span>Objetivos</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "accounts" %} active{% endif %}" href="/accounts/" {% if namespace == "accounts" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <rect x="3" y="6" width="18" height="13" rx="2"></rect>
+                    <path d="M3 10h18"></path>
+                </svg>
+            </span>
+            <span>Contas</span>
+        </a>
+    </div>
+
+    <div class="app-nav-group">
+        <p id="nav-{{ nav_id }}-operation" class="app-nav-group-label">Operação</p>
+        <a class="app-nav-link{% if namespace == "cards" %} active{% endif %}" href="/cards/" {% if namespace == "cards" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <rect x="3" y="6" width="18" height="12" rx="2"></rect>
+                    <path d="M3 10h18"></path>
+                    <path d="M7 14h3"></path>
+                </svg>
+            </span>
+            <span>Cartões</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "transactions" and "/transactions/transfers/" not in path %} active{% endif %}" href="/transactions/" {% if namespace == "transactions" and "/transactions/transfers/" not in path %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M8 6h13"></path>
+                    <path d="M8 12h13"></path>
+                    <path d="M8 18h13"></path>
+                    <path d="M3 6h.01"></path>
+                    <path d="M3 12h.01"></path>
+                    <path d="M3 18h.01"></path>
+                </svg>
+            </span>
+            <span>Lançamentos</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "transactions" and "/transactions/transfers/" in path %} active{% endif %}" href="/transactions/transfers/" {% if namespace == "transactions" and "/transactions/transfers/" in path %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M7 7h12l-3-3"></path>
+                    <path d="M17 17H5l3 3"></path>
+                </svg>
+            </span>
+            <span>Transferências</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "installments" %} active{% endif %}" href="/installments/" {% if namespace == "installments" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <rect x="5" y="4" width="14" height="16" rx="2"></rect>
+                    <path d="M8 8h8"></path>
+                    <path d="M8 12h8"></path>
+                    <path d="M8 16h5"></path>
+                </svg>
+            </span>
+            <span>Parcelamentos</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "recurrences" %} active{% endif %}" href="/recurrences/month/page/" {% if namespace == "recurrences" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M17 2v4"></path>
+                    <path d="M7 2v4"></path>
+                    <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                    <path d="M3 10h18"></path>
+                </svg>
+            </span>
+            <span>Recorrências</span>
+        </a>
+    </div>
+
+    <div class="app-nav-group">
+        <p id="nav-{{ nav_id }}-data" class="app-nav-group-label">Dados</p>
+        <a class="app-nav-link{% if namespace == "categories" %} active{% endif %}" href="/categories/" {% if namespace == "categories" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 7h7"></path>
+                    <path d="M4 12h12"></path>
+                    <path d="M4 17h9"></path>
+                </svg>
+            </span>
+            <span>Categorias</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "institutions" %} active{% endif %}" href="/institutions/" {% if namespace == "institutions" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 10h16"></path>
+                    <path d="M6 10v8"></path>
+                    <path d="M10 10v8"></path>
+                    <path d="M14 10v8"></path>
+                    <path d="M18 10v8"></path>
+                    <path d="M3 18h18"></path>
+                    <path d="M12 4 4 10h16L12 4Z"></path>
+                </svg>
+            </span>
+            <span>Instituições</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "imports" %} active{% endif %}" href="/imports/review/page/" {% if namespace == "imports" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M12 3v12"></path>
+                    <path d="m7 10 5 5 5-5"></path>
+                    <path d="M5 21h14"></path>
+                </svg>
+            </span>
+            <span>Importações</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "rates" %} active{% endif %}" href="/rates/" {% if namespace == "rates" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 18 9 9l4 5 5-8"></path>
+                    <path d="M4 21h16"></path>
+                </svg>
+            </span>
+            <span>Rendimentos</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "insights" %} active{% endif %}" href="/insights/page/" {% if namespace == "insights" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M9 18h6"></path>
+                    <path d="M10 22h4"></path>
+                    <path d="M8 14a6 6 0 1 1 8 0c-.8.7-1 1.5-1 2H9c0-.5-.2-1.3-1-2Z"></path>
+                </svg>
+            </span>
+            <span>Insights</span>
+        </a>
+    </div>
+
+    <div class="app-nav-group app-nav-group-admin">
+        <p id="nav-{{ nav_id }}-system" class="app-nav-group-label">Sistema</p>
+        <a class="app-nav-link{% if path|slice:":7" == "/admin/" %} active{% endif %}" href="/admin/" {% if path|slice:":7" == "/admin/" %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z"></path>
+                    <path d="M9 12h6"></path>
+                    <path d="M12 9v6"></path>
+                </svg>
+            </span>
+            <span>Admin</span>
+        </a>
+    </div>
+{% endwith %}
