@@ -76,6 +76,11 @@ class TransactionViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/form.html")
         self.assertContains(response, "Novo lançamento")
+        self.assertContains(response, 'data-conditional-form="transaction"', html=False)
+        self.assertContains(response, 'data-conditional-source="transaction-type"', html=False)
+        self.assertContains(response, 'data-conditional-field="transaction-account"', html=False)
+        self.assertContains(response, 'data-conditional-field="transaction-card"', html=False)
+        self.assertContains(response, "js/app.js")
 
     def test_post_create_income_uses_service_and_increases_balance(self):
         """Deve criar receita via service e aumentar saldo da conta."""

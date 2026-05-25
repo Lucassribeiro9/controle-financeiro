@@ -77,6 +77,15 @@ class TransactionForm(forms.Form):
         self.fields["card"].queryset = Card.objects.filter(
             is_active=True
         ).order_by("name")
+        self.fields["transaction_type"].widget.attrs.update(
+            {"data-conditional-source": "transaction-type"}
+        )
+        self.fields["account"].widget.attrs.update(
+            {"data-conditional-field": "transaction-account"}
+        )
+        self.fields["card"].widget.attrs.update(
+            {"data-conditional-field": "transaction-card"}
+        )
 
     def clean_amount(self):
         """Valida que o valor informado e positivo."""

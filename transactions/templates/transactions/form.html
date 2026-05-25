@@ -11,7 +11,7 @@
     </header>
 
     <section class="panel">
-        <form class="form-grid" method="post" action="{% url 'transactions:create' %}">
+        <form class="form-grid" method="post" action="{% url 'transactions:create' %}" data-conditional-form="transaction">
             {% csrf_token %}
 
             {% if form.non_field_errors %}

@@ -44,6 +44,7 @@ class BRDateInput(forms.TextInput):
     def __init__(self, attrs=None):
         default_attrs = {
             "autocomplete": "off",
+            "data-mask": "date",
             "inputmode": "numeric",
             "pattern": r"\d{2}/\d{2}/\d{4}",
             "placeholder": "dd/mm/aaaa",
@@ -66,6 +67,7 @@ class BRDecimalInput(forms.TextInput):
     def __init__(self, attrs=None):
         default_attrs = {
             "autocomplete": "off",
+            "data-mask": "decimal",
             "inputmode": "decimal",
             "placeholder": "0,00",
         }
@@ -87,6 +89,7 @@ class BRIntegerInput(forms.TextInput):
     def __init__(self, attrs=None):
         default_attrs = {
             "autocomplete": "off",
+            "data-mask": "integer",
             "inputmode": "numeric",
             "pattern": r"\d*",
         }
