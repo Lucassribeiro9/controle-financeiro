@@ -13,6 +13,33 @@
 <body>
     <a class="skip-link" href="#content">Pular para o conteúdo</a>
 
+    <header class="mobile-topbar">
+        <a class="mobile-brand" href="/">
+            <span class="app-brand-mark">CF</span>
+            <span>
+                <strong>Controle Financeiro</strong>
+                <small>Visão pessoal</small>
+            </span>
+        </a>
+
+        <details class="mobile-menu">
+            <summary>
+                <span class="menu-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M4 7h16"></path>
+                        <path d="M4 12h16"></path>
+                        <path d="M4 17h16"></path>
+                    </svg>
+                </span>
+                <span>Menu</span>
+            </summary>
+
+            <nav class="mobile-nav-panel" aria-label="Navegação principal">
+                {% include "partials/nav_links.html" with nav_id="mobile" %}
+            </nav>
+        </details>
+    </header>
+
     <div class="app-shell">
         {% include "partials/sidebar.html" %}
 
