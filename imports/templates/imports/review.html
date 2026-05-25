@@ -16,7 +16,7 @@
         <label class="form-field">
             <span>Status</span>
             <select name="status">
-                <option value="">Pendentes e duplicadas</option>
+                <option value="">Todas</option>
                 {% for value, label in filter_options.statuses %}
                     <option value="{{ value }}" {% if active_filters.status == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
@@ -59,7 +59,10 @@
     <form id="bulk-imports-form" class="bulk-action-bar" method="post" action="{% url 'imports:bulk-review' %}">
         {% csrf_token %}
         <input type="hidden" name="review_query" value="{{ review_query_string }}">
-        <span class="muted">Ações em lote para itens selecionados</span>
+        <label class="checkbox-row bulk-select-row">
+            <input type="checkbox" data-bulk-toggle="selected_imports">
+            <span>Selecionar todos</span>
+        </label>
         <div class="action-row">
             <button class="button" type="submit" name="bulk_action" value="confirm">Confirmar selecionadas</button>
             <button class="button button-danger" type="submit" name="bulk_action" value="discard">Descartar selecionadas</button>

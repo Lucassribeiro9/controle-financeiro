@@ -113,7 +113,7 @@ class ImportViewTests(TestCase):
         self.assertIn("Tipo de importacao nao suportado", response.json()["error"])
 
     def test_review_imports_lists_pending_items(self):
-        """Deve listar importacoes pendentes para revisao."""
+        """Deve listar importacoes para revisao."""
 
         ImportedTransaction.objects.create(
             source_file_name="extrato.csv",
@@ -137,8 +137,11 @@ class ImportViewTests(TestCase):
         response = self.client.get(reverse("imports:review"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["count"], 1)
-        self.assertEqual(response.json()["results"][0]["raw_description"], "Mercado Dia")
+        self.assertEqual(response.json()["count"], 2)
+        self.assertEqual(
+            {item["raw_description"] for item in response.json()["results"]},
+            {"Mercado Dia", "Descartado"},
+        )
 
     def test_review_imports_page_lists_pending_items(self):
         """Deve renderizar a pagina de revisao com importacoes pendentes."""
@@ -167,6 +170,8 @@ class ImportViewTests(TestCase):
         self.assertContains(response, 'class="badge badge-warning"', html=False)
         self.assertContains(response, 'class="filter-bar import-filter-bar"', html=False)
         self.assertContains(response, 'class="bulk-action-bar"', html=False)
+        self.assertContains(response, 'data-bulk-toggle="selected_imports"', html=False)
+        self.assertContains(response, "Selecionar todos")
         self.assertContains(response, "<details", html=False)
 
     def test_review_imports_page_filters_items(self):

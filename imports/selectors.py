@@ -23,11 +23,6 @@ def get_imported_transactions_for_review(
 
     if status:
         queryset = queryset.filter(status=status)
-    else:
-        queryset = queryset.filter(status__in=[
-            ImportedTransaction.Status.PENDING,
-            ImportedTransaction.Status.DUPLICATE,
-        ])
 
     if source_file_name:
         queryset = queryset.filter(source_file_name=source_file_name)

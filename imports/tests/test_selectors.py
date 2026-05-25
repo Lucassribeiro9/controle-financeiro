@@ -12,8 +12,8 @@ from imports.selectors import get_imported_transactions_for_review
 class ImportSelectorTests(TestCase):
     """Garante as consultas de apoio para revisao de importacoes."""
 
-    def test_get_imported_transactions_for_review_returns_pending_and_duplicates(self):
-        """Deve listar apenas importacoes que precisam de revisao por padrao."""
+    def test_get_imported_transactions_for_review_returns_all_statuses_by_default(self):
+        """Deve listar todos os status por padrao."""
 
         pending = ImportedTransaction.objects.create(
             source_file_name="extrato.csv",
@@ -34,7 +34,7 @@ class ImportSelectorTests(TestCase):
             status=ImportedTransaction.Status.DUPLICATE,
             import_hash="abc",
         )
-        ImportedTransaction.objects.create(
+        discarded = ImportedTransaction.objects.create(
             source_file_name="extrato.csv",
             source_type=ImportedTransaction.SourceType.CSV,
             raw_description="Descartado",
@@ -46,7 +46,7 @@ class ImportSelectorTests(TestCase):
 
         imports = list(get_imported_transactions_for_review())
 
-        self.assertEqual(imports, [duplicate, pending])
+        self.assertEqual(imports, [discarded, duplicate, pending])
 
     def test_get_imported_transactions_for_review_filters_by_status(self):
         """Deve permitir filtro explicito por status."""
