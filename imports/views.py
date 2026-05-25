@@ -14,6 +14,7 @@ from transactions.models import Transaction
 from .importers import get_importer_for_source_type
 from .models import ImportedTransaction
 from .selectors import get_imported_transactions_for_review
+from .selectors import get_import_review_filter_options
 from .services import (
     confirm_imported_transaction,
     discard_imported_transaction,
@@ -22,6 +23,22 @@ from .services import (
 
 
 REVIEW_NEXT_VALUE = "review-page"
+
+
+def _review_filters_from_request(request: HttpRequest) -> dict:
+    """Extrai filtros da revisao sem incluir valores vazios."""
+
+    return {
+        key: value
+        for key, value in {
+            "status": request.GET.get("status"),
+            "source_file_name": request.GET.get("source_file_name"),
+            "source_type": request.GET.get("source_type"),
+            "start_date": request.GET.get("start_date"),
+            "end_date": request.GET.get("end_date"),
+        }.items()
+        if value
+    }
 
 
 def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -> dict:
@@ -78,6 +95,16 @@ def _should_redirect_to_review(request: HttpRequest) -> bool:
     return request.POST.get("next") == REVIEW_NEXT_VALUE
 
 
+def _redirect_to_review(request: HttpRequest):
+    """Redireciona para a tela mantendo filtros quando vierem no form."""
+
+    query_string = request.POST.get("review_query", "")
+    redirect_url = redirect("imports:review-page")
+    if query_string:
+        redirect_url["Location"] = f"{redirect_url['Location']}?{query_string}"
+    return redirect_url
+
+
 def _parse_decimal(value):
     """Converte valor monetario informado no formulario."""
 
@@ -129,18 +156,9 @@ def upload_import(request: HttpRequest) -> JsonResponse:
 def review_imports(request: HttpRequest) -> JsonResponse:
     """Lista transacoes importadas para revisao."""
 
-    status = request.GET.get("status")
-    queryset = ImportedTransaction.objects.all()
-
-    if status:
-        queryset = queryset.filter(status=status)
-    else:
-        queryset = queryset.filter(
-            status__in=[
-                ImportedTransaction.Status.PENDING,
-                ImportedTransaction.Status.DUPLICATE,
-            ]
-        )
+    queryset = get_imported_transactions_for_review(
+        **_review_filters_from_request(request)
+    )
 
     results = [_serialize_imported_transaction(item) for item in queryset]
     return JsonResponse({"count": len(results), "results": results})
@@ -159,7 +177,7 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
     if not account_id:
         if _should_redirect_to_review(request):
             messages.error(request, "Informe uma conta para confirmar.")
-            return redirect("imports:review-page")
+            return _redirect_to_review(request)
         return JsonResponse({"error": "Informe account_id para confirmar."}, status=400)
 
     account = get_object_or_404(FinancialAccount, pk=account_id)
@@ -178,7 +196,7 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
     except ValueError as exc:
         if _should_redirect_to_review(request):
             messages.error(request, str(exc))
-            return redirect("imports:review-page")
+            return _redirect_to_review(request)
         return JsonResponse({"error": str(exc)}, status=400)
 
     try:
@@ -194,12 +212,12 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
     except ValueError as exc:
         if _should_redirect_to_review(request):
             messages.error(request, str(exc))
-            return redirect("imports:review-page")
+            return _redirect_to_review(request)
         return JsonResponse({"error": str(exc)}, status=400)
 
     if _should_redirect_to_review(request):
         messages.success(request, "Importação confirmada.")
-        return redirect("imports:review-page")
+        return _redirect_to_review(request)
 
     return JsonResponse(
         {
@@ -222,7 +240,7 @@ def discard_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
 
     if _should_redirect_to_review(request):
         messages.success(request, "Importação descartada.")
-        return redirect("imports:review-page")
+        return _redirect_to_review(request)
 
     return JsonResponse(
         {
@@ -265,13 +283,17 @@ def review_imports_page(request: HttpRequest):
     """Renderiza a pagina de revisao de transacoes importadas."""
 
     imported_transactions = get_imported_transactions_for_review(
-        status=request.GET.get("status")
+        **_review_filters_from_request(request)
     )
+    filter_options = get_import_review_filter_options()
     return render(
         request,
         "imports/review.html",
         {
             "imported_transactions": imported_transactions,
+            "filter_options": filter_options,
+            "active_filters": request.GET,
+            "review_query_string": request.GET.urlencode(),
             "accounts": FinancialAccount.objects.filter(is_active=True).order_by("name"),
             "categories": Category.objects.order_by("name"),
             "transaction_types": [
@@ -297,7 +319,7 @@ def bulk_review_imports(request: HttpRequest):
 
     if not selected_ids:
         messages.error(request, "Selecione ao menos uma importação.")
-        return redirect("imports:review-page")
+        return _redirect_to_review(request)
 
     queryset = ImportedTransaction.objects.filter(
         pk__in=selected_ids,
@@ -315,7 +337,7 @@ def bulk_review_imports(request: HttpRequest):
             discard_imported_transaction(imported_transaction=imported_transaction)
             processed += 1
         messages.success(request, f"{processed} importação(ões) descartada(s).")
-        return redirect("imports:review-page")
+        return _redirect_to_review(request)
 
     if action == "confirm":
         for imported_transaction in queryset:
@@ -342,7 +364,7 @@ def bulk_review_imports(request: HttpRequest):
                 request,
                 f"{skipped} importação(ões) precisam de conta e tipo antes de confirmar.",
             )
-        return redirect("imports:review-page")
+        return _redirect_to_review(request)
 
     messages.error(request, "Ação em lote inválida.")
-    return redirect("imports:review-page")
+    return _redirect_to_review(request)

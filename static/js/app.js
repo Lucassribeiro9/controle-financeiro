@@ -91,8 +91,41 @@
         });
     }
 
+    function setupBulkToggles() {
+        document.querySelectorAll("[data-bulk-toggle]").forEach((toggle) => {
+            const fieldName = toggle.dataset.bulkToggle;
+            const checkboxes = Array.from(
+                document.querySelectorAll(`input[type="checkbox"][name="${fieldName}"]`)
+            );
+
+            if (!checkboxes.length) {
+                toggle.disabled = true;
+                return;
+            }
+
+            const syncToggle = function () {
+                const checkedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+                toggle.checked = checkedCount === checkboxes.length;
+                toggle.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+            };
+
+            toggle.addEventListener("change", () => {
+                checkboxes.forEach((checkbox) => {
+                    checkbox.checked = toggle.checked;
+                });
+                syncToggle();
+            });
+
+            checkboxes.forEach((checkbox) => {
+                checkbox.addEventListener("change", syncToggle);
+            });
+            syncToggle();
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
         setupConditionalForms();
         setupMasks();
+        setupBulkToggles();
     });
 }());

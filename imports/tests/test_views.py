@@ -113,7 +113,7 @@ class ImportViewTests(TestCase):
         self.assertIn("Tipo de importacao nao suportado", response.json()["error"])
 
     def test_review_imports_lists_pending_items(self):
-        """Deve listar importacoes pendentes para revisao."""
+        """Deve listar importacoes para revisao."""
 
         ImportedTransaction.objects.create(
             source_file_name="extrato.csv",
@@ -137,8 +137,11 @@ class ImportViewTests(TestCase):
         response = self.client.get(reverse("imports:review"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["count"], 1)
-        self.assertEqual(response.json()["results"][0]["raw_description"], "Mercado Dia")
+        self.assertEqual(response.json()["count"], 2)
+        self.assertEqual(
+            {item["raw_description"] for item in response.json()["results"]},
+            {"Mercado Dia", "Descartado"},
+        )
 
     def test_review_imports_page_lists_pending_items(self):
         """Deve renderizar a pagina de revisao com importacoes pendentes."""
@@ -165,6 +168,49 @@ class ImportViewTests(TestCase):
         self.assertContains(response, "Despesa")
         self.assertContains(response, "R$ 87,45")
         self.assertContains(response, 'class="badge badge-warning"', html=False)
+        self.assertContains(response, 'class="filter-bar import-filter-bar"', html=False)
+        self.assertContains(response, 'class="bulk-action-bar"', html=False)
+        self.assertContains(response, 'data-bulk-toggle="selected_imports"', html=False)
+        self.assertContains(response, "Selecionar todos")
+        self.assertContains(response, "<details", html=False)
+
+    def test_review_imports_page_filters_items(self):
+        """Deve aplicar filtros na pagina de revisao."""
+
+        ImportedTransaction.objects.create(
+            source_file_name="nubank.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_account=self.account,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="inter.ofx",
+            source_type=ImportedTransaction.SourceType.OFX,
+            raw_description="Padaria",
+            normalized_description="Padaria",
+            amount=Decimal("20.00"),
+            date=date(2026, 5, 11),
+            suggested_account=self.account,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+        response = self.client.get(
+            reverse("imports:review-page"),
+            data={
+                "source_file_name": "nubank.csv",
+                "source_type": ImportedTransaction.SourceType.CSV,
+                "start_date": "2026-05-01",
+                "end_date": "2026-05-31",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mercado Dia")
+        self.assertNotContains(response, "Padaria")
 
     def test_confirm_import_creates_transaction(self):
         """Deve confirmar importacao e criar transacao real."""
@@ -218,6 +264,7 @@ class ImportViewTests(TestCase):
             ),
             {
                 "next": "review-page",
+                "review_query": "status=pending",
                 "description": "Mercado ajustado",
                 "date": "11/05/2026",
                 "amount": "90,50",
@@ -231,7 +278,7 @@ class ImportViewTests(TestCase):
         imported_transaction.refresh_from_db()
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("imports:review-page"))
+        self.assertEqual(response.url, f"{reverse('imports:review-page')}?status=pending")
         self.assertEqual(transaction.description, "Mercado ajustado")
         self.assertEqual(transaction.amount, Decimal("90.50"))
         self.assertEqual(transaction.date, date(2026, 5, 11))
