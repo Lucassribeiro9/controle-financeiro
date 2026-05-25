@@ -25,6 +25,7 @@ class InstitutionViewTests(TestCase):
         self.assertContains(response, "Inter")
         self.assertContains(response, "077")
         self.assertContains(response, "Ativa")
+        self.assertContains(response, 'class="badge badge-success"', html=False)
 
     def test_institution_list_page_shows_accounts_and_cards_count(self):
         """Deve exibir quantidade de contas e cartoes vinculados."""

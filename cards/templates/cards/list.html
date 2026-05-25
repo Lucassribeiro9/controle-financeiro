@@ -18,37 +18,43 @@
 
     <section class="panel page-section">
         {% if cards %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Instituição</th>
-                        <th>Tipo</th>
-                        <th>Limite</th>
-                        <th>Fechamento</th>
-                        <th>Vencimento</th>
-                        <th>Conta pagamento</th>
-                        <th>Saldo estimado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for card in cards %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>
-                                <a href="{% url 'cards:update' card.id %}">{{ card.name }}</a>
-                                <p class="muted">{% if card.is_active %}Ativo{% else %}Inativo{% endif %}</p>
-                            </td>
-                            <td>{{ card.institution }}</td>
-                            <td>{{ card.get_card_type_display }}</td>
-                            <td>{{ card.credit_limit|brl }}</td>
-                            <td>{{ card.statement_closing_day|default:"Não informado" }}</td>
-                            <td>{{ card.statement_due_day|default:"Não informado" }}</td>
-                            <td>{{ card.payment_account|default:"Não vinculada" }}</td>
-                            <td>{{ card.estimated_balance|brl }}</td>
+                            <th class="cell-primary">Nome</th>
+                            <th>Instituição</th>
+                            <th>Tipo</th>
+                            <th class="cell-amount">Limite</th>
+                            <th class="cell-count">Fechamento</th>
+                            <th class="cell-count">Vencimento</th>
+                            <th>Conta pagamento</th>
+                            <th class="cell-amount">Saldo estimado</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for card in cards %}
+                            <tr>
+                                <td class="cell-primary">
+                                    <a href="{% url 'cards:update' card.id %}">{{ card.name }}</a>
+                                    <p class="muted">
+                                        <span class="{{ card.is_active|active_badge_class }}">
+                                            {% if card.is_active %}Ativo{% else %}Inativo{% endif %}
+                                        </span>
+                                    </p>
+                                </td>
+                                <td>{{ card.institution }}</td>
+                                <td>{{ card.get_card_type_display }}</td>
+                                <td class="cell-amount">{{ card.credit_limit|brl }}</td>
+                                <td class="cell-count">{{ card.statement_closing_day|default:"Não informado" }}</td>
+                                <td class="cell-count">{{ card.statement_due_day|default:"Não informado" }}</td>
+                                <td>{{ card.payment_account|default:"Não vinculada" }}</td>
+                                <td class="cell-amount">{{ card.estimated_balance|brl }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
             <p class="empty">Nenhum cartão cadastrado.</p>
         {% endif %}

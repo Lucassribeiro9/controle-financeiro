@@ -110,6 +110,7 @@ class GoalViewTests(TestCase):
         self.assertEqual(response.context["monthly_goals"], [self.monthly_goal])
         self.assertEqual(self.monthly_goal.current_amount, Decimal("250.00"))
         self.assertEqual(self.monthly_goal.status, MonthlyGoal.Status.AT_RISK)
+        self.assertContains(response, 'class="badge badge-danger"', html=False)
 
     def test_goal_detail_page_returns_goal_monthly_goals_and_progress(self):
         """Deve renderizar detalhe do objetivo com metas e progresso."""

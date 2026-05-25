@@ -24,7 +24,7 @@
         </div>
         <div class="metric-card">
             <span>Status</span>
-            <strong>{{ transaction.get_status_display }}</strong>
+            <strong><span class="{{ transaction.status|status_badge_class }}">{{ transaction.get_status_display }}</span></strong>
         </div>
     </div>
 

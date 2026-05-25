@@ -110,22 +110,24 @@
         <section class="panel">
             <h2>Patrimônio por moeda</h2>
             {% if net_worth %}
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Moeda</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in net_worth %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
                             <tr>
-                                <td>{{ item.currency }}</td>
-                                <td>{{ item.total|currency:item.currency }}</td>
+                                <th>Moeda</th>
+                                <th class="cell-amount">Total</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for item in net_worth %}
+                                <tr>
+                                    <td>{{ item.currency }}</td>
+                                    <td class="cell-amount">{{ item.total|currency:item.currency }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
                 <p class="empty">Nenhuma conta ativa cadastrada.</p>
             {% endif %}
@@ -134,24 +136,28 @@
         <section class="panel">
             <h2>Faturas do mês</h2>
             {% if card_statements %}
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Cartao</th>
-                            <th>Status</th>
-                            <th>Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for statement in card_statements %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
                             <tr>
-                                <td>{{ statement.card.name }}</td>
-                                <td><span class="status">{{ statement.status }}</span></td>
-                                <td>{{ statement.closed_amount|brl }}</td>
+                                <th>Cartão</th>
+                                <th class="cell-status">Status</th>
+                                <th class="cell-amount">Valor</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for statement in card_statements %}
+                                <tr>
+                                    <td>{{ statement.card.name }}</td>
+                                    <td class="cell-status">
+                                        <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
+                                    </td>
+                                    <td class="cell-amount">{{ statement.closed_amount|brl }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
                 <p class="empty">Nenhuma fatura no período.</p>
             {% endif %}
@@ -160,24 +166,28 @@
         <section class="panel">
             <h2>Metas mensais</h2>
             {% if goal_summary %}
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Meta</th>
-                            <th>Status</th>
-                            <th>Atual</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for monthly_goal in goal_summary %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
                             <tr>
-                                <td>{{ monthly_goal.goal.name }}</td>
-                                <td><span class="status">{{ monthly_goal.status }}</span></td>
-                                <td>{{ monthly_goal.current_amount|brl }}</td>
+                                <th>Meta</th>
+                                <th class="cell-status">Status</th>
+                                <th class="cell-amount">Atual</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for monthly_goal in goal_summary %}
+                                <tr>
+                                    <td>{{ monthly_goal.goal.name }}</td>
+                                    <td class="cell-status">
+                                        <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
+                                    </td>
+                                    <td class="cell-amount">{{ monthly_goal.current_amount|brl }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
                 <p class="empty">Nenhuma meta mensal no período.</p>
             {% endif %}

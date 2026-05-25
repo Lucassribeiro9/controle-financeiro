@@ -62,6 +62,7 @@ class RecurrenceViewsTests(TestCase):
         self.assertTemplateUsed(response, "recurrences/forecasts.html")
         self.assertContains(response, "Internet residencial")
         self.assertContains(response, "Confirmar")
+        self.assertContains(response, 'class="badge badge-info"', html=False)
 
     def test_forecasts_filter_page_uses_query_period(self):
         response = self.client.get(

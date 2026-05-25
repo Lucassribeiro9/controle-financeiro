@@ -13,6 +13,8 @@ from core.templatetags.money import annual_rate
 from core.templatetags.money import currency
 from core.templatetags.money import date_br
 from core.templatetags.money import percentage
+from core.templatetags.money import status_badge_class
+from core.templatetags.money import active_badge_class
 
 
 class FormattingFilterTests(SimpleTestCase):
@@ -33,6 +35,14 @@ class FormattingFilterTests(SimpleTestCase):
     def test_percentage_and_annual_rate_use_pt_br_decimal_separator(self):
         self.assertEqual(percentage(Decimal("100")), "100,00%")
         self.assertEqual(annual_rate(Decimal("0.11")), "11,00% a.a.")
+
+    def test_status_badge_class_maps_common_operational_states(self):
+        self.assertEqual(status_badge_class("paid"), "badge badge-success")
+        self.assertEqual(status_badge_class("pending"), "badge badge-warning")
+        self.assertEqual(status_badge_class("forecasted"), "badge badge-info")
+        self.assertEqual(status_badge_class("ignored"), "badge badge-neutral")
+        self.assertEqual(active_badge_class(True), "badge badge-success")
+        self.assertEqual(active_badge_class(False), "badge badge-neutral")
 
 
 class FormattingFieldTests(SimpleTestCase):

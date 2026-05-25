@@ -176,6 +176,7 @@ class StatementViewTests(TestCase):
         self.assertContains(response, self.card.name)
         self.assertContains(response, f"{statement.month}/{statement.year}")
         self.assertContains(response, "Pendente")
+        self.assertContains(response, 'class="badge badge-warning"', html=False)
 
     def test_statement_detail_page_returns_success(self):
         """Deve renderizar detalhe da fatura."""

@@ -15,37 +15,41 @@
 
     <section class="panel page-section">
         {% if installment_plans %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Descrição</th>
-                        <th>Cartão</th>
-                        <th>Total</th>
-                        <th>Parcelas</th>
-                        <th>Primeira parcela</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for plan in installment_plans %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>
-                                <a href="{% url 'installments:detail' plan.id %}">
-                                    {{ plan.description }}
-                                </a>
-                                {% if plan.category %}
-                                    <p class="muted">{{ plan.category }}</p>
-                                {% endif %}
-                            </td>
-                            <td>{{ plan.card }}</td>
-                            <td>{{ plan.total_amount|brl }}</td>
-                            <td>{{ plan.generated_count }}/{{ plan.total_installments }}</td>
-                            <td>{{ plan.first_installment_date|date_br }}</td>
-                            <td><span class="status">{{ plan.get_status_display }}</span></td>
+                            <th class="cell-primary">Descrição</th>
+                            <th>Cartão</th>
+                            <th class="cell-amount">Total</th>
+                            <th class="cell-count">Parcelas</th>
+                            <th class="cell-date">Primeira parcela</th>
+                            <th class="cell-status">Status</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for plan in installment_plans %}
+                            <tr>
+                                <td class="cell-primary">
+                                    <a href="{% url 'installments:detail' plan.id %}">
+                                        {{ plan.description }}
+                                    </a>
+                                    {% if plan.category %}
+                                        <p class="muted">{{ plan.category }}</p>
+                                    {% endif %}
+                                </td>
+                                <td>{{ plan.card }}</td>
+                                <td class="cell-amount">{{ plan.total_amount|brl }}</td>
+                                <td class="cell-count">{{ plan.generated_count }}/{{ plan.total_installments }}</td>
+                                <td class="cell-date">{{ plan.first_installment_date|date_br }}</td>
+                                <td class="cell-status">
+                                    <span class="{{ plan.status|status_badge_class }}">{{ plan.get_status_display }}</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
             <p class="empty">Nenhum parcelamento ativo encontrado.</p>
         {% endif %}

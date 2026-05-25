@@ -13,6 +13,32 @@ from django.utils.dateparse import parse_datetime
 
 register = template.Library()
 
+STATUS_BADGE_VARIANTS = {
+    "active": "success",
+    "achieved": "success",
+    "approved": "success",
+    "confirmed": "success",
+    "completed": "success",
+    "paid": "success",
+    "pending": "warning",
+    "partially_paid": "warning",
+    "partial": "warning",
+    "duplicate": "warning",
+    "open": "info",
+    "forecasted": "info",
+    "forecast": "info",
+    "on_track": "info",
+    "late": "danger",
+    "missed": "danger",
+    "at_risk": "danger",
+    "canceled": "neutral",
+    "cancelled": "neutral",
+    "discarded": "neutral",
+    "ignored": "neutral",
+    "inactive": "neutral",
+    "silenced": "neutral",
+}
+
 
 @register.filter
 def brl(value):
@@ -94,6 +120,22 @@ def annual_rate(value, decimal_places=2):
     return f"{_format_decimal(amount * Decimal('100'), int(decimal_places))}% a.a."
 
 
+@register.filter
+def status_badge_class(value):
+    """Retorna a classe visual apropriada para um status."""
+
+    normalized = _normalize_status_key(value)
+    variant = STATUS_BADGE_VARIANTS.get(normalized, "neutral")
+    return f"badge badge-{variant}"
+
+
+@register.filter
+def active_badge_class(value):
+    """Retorna a classe visual para estados ativo/inativo."""
+
+    return "badge badge-success" if value else "badge badge-neutral"
+
+
 def _decimal(value):
     if value in (None, ""):
         value = Decimal("0.00")
@@ -126,3 +168,10 @@ def _format_decimal(value, decimal_places):
         integer_part = integer_part[:-3]
 
     return f"{'.'.join(grouped)},{decimal_part}"
+
+
+def _normalize_status_key(value):
+    if value in (None, ""):
+        return ""
+
+    return str(value).strip().lower().replace(" ", "_")
