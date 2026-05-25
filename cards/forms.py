@@ -69,6 +69,21 @@ class CardForm(forms.ModelForm):
             .select_related("institution")
             .order_by("institution__name", "name")
         )
+        self.fields["card_type"].widget.attrs.update(
+            {"data-conditional-source": "card-type"}
+        )
+        for field_name in (
+            "credit_limit",
+            "statement_closing_day",
+            "statement_due_day",
+            "payment_account",
+        ):
+            self.fields[field_name].widget.attrs.update(
+                {"data-conditional-field": "card-credit"}
+            )
+        self.fields["estimated_balance"].widget.attrs.update(
+            {"data-conditional-field": "card-balance"}
+        )
 
     def clean_name(self):
         """Normaliza espacos do nome."""

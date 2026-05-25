@@ -11,7 +11,7 @@
     </header>
 
     <section class="panel">
-        <form class="form-grid" method="post">
+        <form class="form-grid" method="post" data-conditional-form="card">
             {% csrf_token %}
 
             {% if form.non_field_errors %}

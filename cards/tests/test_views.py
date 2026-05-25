@@ -57,6 +57,11 @@ class CardViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "cards/form.html")
         self.assertContains(response, "Novo cartão")
+        self.assertContains(response, 'data-conditional-form="card"', html=False)
+        self.assertContains(response, 'data-conditional-source="card-type"', html=False)
+        self.assertContains(response, 'data-conditional-field="card-credit"', html=False)
+        self.assertContains(response, 'data-conditional-field="card-balance"', html=False)
+        self.assertContains(response, "js/app.js")
 
     def test_post_create_valid_credit_card(self):
         """Deve criar cartao de credito valido."""
