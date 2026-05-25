@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Lancamentos - Controle Financeiro{% endblock %}
+{% block title %}Lançamentos - Controle Financeiro{% endblock %}
 
 {% block content %}
     <header class="page-header">
         <div>
-            <h1>Lancamentos</h1>
+            <h1>Lançamentos</h1>
             <p class="muted">{{ month }}/{{ year }}</p>
         </div>
 
         <div class="action-row">
-            <a class="button button-secondary" href="{% url 'transactions:transfers' %}">Ver transferencias</a>
-            <a class="button" href="{% url 'transactions:create' %}">Novo lancamento</a>
+            <a class="button button-secondary" href="{% url 'transactions:transfers' %}">Ver transferências</a>
+            <a class="button" href="{% url 'transactions:create' %}">Novo lançamento</a>
         </div>
     </header>
 
     <form class="period-form" method="get" action="{% url 'transactions:list' %}">
         <label>
-            <span>Mes</span>
+            <span>Mês</span>
             <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
         </label>
         <label>
@@ -50,11 +50,11 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Descricao</th>
+                        <th>Descrição</th>
                         <th>Data</th>
                         <th>Tipo</th>
                         <th>Status</th>
-                        <th>Conta/Cartao</th>
+                        <th>Conta/Cartão</th>
                         <th>Valor</th>
                     </tr>
                 </thead>
@@ -76,7 +76,7 @@
                                 {% if transaction.card %}
                                     {{ transaction.card }}
                                 {% else %}
-                                    {{ transaction.account|default:"Nao informada" }}
+                                    {{ transaction.account|default:"Não informada" }}
                                 {% endif %}
                             </td>
                             <td>R$ {{ transaction.amount }}</td>
@@ -85,7 +85,7 @@
                 </tbody>
             </table>
         {% else %}
-            <p class="empty">Nenhum lancamento encontrado.</p>
+            <p class="empty">Nenhum lançamento encontrado.</p>
         {% endif %}
     </section>
 {% endblock %}

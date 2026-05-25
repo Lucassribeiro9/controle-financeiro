@@ -32,7 +32,7 @@ def card_create_page(request: HttpRequest) -> HttpResponse:
         form = CardForm(request.POST)
         if form.is_valid():
             card = form.save()
-            messages.success(request, "Cartao criado com sucesso.")
+            messages.success(request, "Cartão criado com sucesso.")
             return redirect("cards:list")
     else:
         form = CardForm()
@@ -42,7 +42,7 @@ def card_create_page(request: HttpRequest) -> HttpResponse:
         "cards/form.html",
         {
             "form": form,
-            "form_title": "Novo cartao",
+            "form_title": "Novo cartão",
             "submit_label": "Salvar",
         },
     )
@@ -60,7 +60,7 @@ def card_update_page(request: HttpRequest, card_id: int) -> HttpResponse:
         form = CardForm(request.POST, instance=card)
         if form.is_valid():
             form.save()
-            messages.success(request, "Cartao atualizado com sucesso.")
+            messages.success(request, "Cartão atualizado com sucesso.")
             return redirect("cards:list")
     else:
         form = CardForm(instance=card)
@@ -71,8 +71,8 @@ def card_update_page(request: HttpRequest, card_id: int) -> HttpResponse:
         {
             "form": form,
             "card": card,
-            "form_title": "Editar cartao",
-            "submit_label": "Salvar alteracoes",
+            "form_title": "Editar cartão",
+            "submit_label": "Salvar alterações",
         },
     )
 

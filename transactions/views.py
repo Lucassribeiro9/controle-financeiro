@@ -66,7 +66,7 @@ def transaction_create_page(request: HttpRequest) -> HttpResponse:
             except ValidationError as exc:
                 _add_validation_errors_to_form(form, exc)
             else:
-                messages.success(request, "Lancamento criado com sucesso.")
+                messages.success(request, "Lançamento criado com sucesso.")
                 return redirect("transactions:detail", transaction_id=transaction.id)
     else:
         form = TransactionForm(
@@ -128,7 +128,7 @@ def transfer_create_page(request: HttpRequest) -> HttpResponse:
             except ValidationError as exc:
                 _add_validation_errors_to_form(form, exc)
             else:
-                messages.success(request, "Transferencia criada com sucesso.")
+                messages.success(request, "Transferência criada com sucesso.")
                 return redirect("transactions:transfers")
     else:
         form = TransferForm(initial={"date": timezone.localdate()})

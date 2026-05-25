@@ -12,7 +12,7 @@
 
             <form class="period-form" method="get" action="{% url 'goals:detail' goal.id %}">
                 <label>
-                    <span>Mes</span>
+                    <span>Mês</span>
                     <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
                 </label>
                 <label>
@@ -59,16 +59,16 @@
                         <dd>R$ {{ progress.remaining_amount }}</dd>
                     </div>
                     <div>
-                        <dt>Inicio</dt>
+                        <dt>Início</dt>
                         <dd>{{ goal.start_date }}</dd>
                     </div>
                     <div>
                         <dt>Data alvo</dt>
-                        <dd>{{ goal.target_date|default:"Nao definida" }}</dd>
+                        <dd>{{ goal.target_date|default:"Não definida" }}</dd>
                     </div>
                     <div>
                         <dt>Categoria</dt>
-                        <dd>{{ goal.category|default:"Nao vinculada" }}</dd>
+                        <dd>{{ goal.category|default:"Não vinculada" }}</dd>
                     </div>
                 </dl>
             </section>
@@ -98,7 +98,7 @@
             </section>
 
             <section class="panel">
-                <h2>Metas do periodo</h2>
+                <h2>Metas do período</h2>
                 {% if goal_summary.monthly_goals %}
                     <table class="data-table">
                         <thead>
@@ -119,7 +119,7 @@
                         </tbody>
                     </table>
                 {% else %}
-                    <p class="empty">Nenhuma meta mensal para este periodo.</p>
+                    <p class="empty">Nenhuma meta mensal para este período.</p>
                 {% endif %}
             </section>
         </div>

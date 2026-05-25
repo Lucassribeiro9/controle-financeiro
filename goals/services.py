@@ -71,7 +71,7 @@ def calculate_goal_progress(
         if year is None or month is None:
             raise ValidationError(
                 {
-                    "period": "Objetivos de reducao exigem ano e mes para calcular progresso."
+                    "period": "Objetivos de redução exigem ano e mês para calcular progresso."
                 }
             )
         current_amount = _get_reduction_current_amount(
@@ -80,7 +80,7 @@ def calculate_goal_progress(
             month=month,
         )
     else:
-        raise ValidationError({"goal_type": "Tipo de objetivo invalido."})
+        raise ValidationError({"goal_type": "Tipo de objetivo inválido."})
 
     progress_percent = _percent(
         current_amount=current_amount,

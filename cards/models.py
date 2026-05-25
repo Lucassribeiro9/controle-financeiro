@@ -10,15 +10,15 @@ class Card(models.Model):
     class CardType(models.TextChoices):
         """Define os tipos de cartao suportados no cadastro inicial."""
 
-        CREDIT = "credit", "Credito"
-        BENEFIT = "benefit", "Beneficio"
+        CREDIT = "credit", "Crédito"
+        BENEFIT = "benefit", "Benefício"
         TRANSPORT = "transport", "Transporte"
-        PREPAID = "prepaid", "Pre-pago"
+        PREPAID = "prepaid", "Pré-pago"
 
     name = models.CharField("Nome", max_length=120)
     institution = models.ForeignKey(
         "institutions.Institution",
-        verbose_name="Instituicao",
+        verbose_name="Instituição",
         on_delete=models.PROTECT,
         related_name="cards",
     )
@@ -43,7 +43,7 @@ class Card(models.Model):
     )
     payment_account = models.ForeignKey(
         "accounts.FinancialAccount",
-        verbose_name="Conta padrao de pagamento",
+        verbose_name="Conta padrão de pagamento",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
@@ -65,8 +65,8 @@ class Card(models.Model):
     class Meta:
         """Define metadados de exibicao e restricao de unicidade."""
 
-        verbose_name = "Cartao"
-        verbose_name_plural = "Cartoes"
+        verbose_name = "Cartão"
+        verbose_name_plural = "Cartões"
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(
@@ -83,22 +83,22 @@ class Card(models.Model):
         if self.card_type == self.CardType.CREDIT:
             if self.credit_limit is None:
                 raise ValidationError(
-                    {"credit_limit": "Cartao de credito exige limite."}
+                    {"credit_limit": "Cartão de crédito exige limite."}
                 )
             if self.statement_closing_day is None:
                 raise ValidationError(
                     {
-                        "statement_closing_day": "Cartao de credito exige dia de fechamento."
+                        "statement_closing_day": "Cartão de crédito exige dia de fechamento."
                     }
                 )
             if self.statement_due_day is None:
                 raise ValidationError(
-                    {"statement_due_day": "Cartao de credito exige dia de vencimento."}
+                    {"statement_due_day": "Cartão de crédito exige dia de vencimento."}
                 )
             if self.payment_account is None:
                 raise ValidationError(
                     {
-                        "payment_account": "Cartao de credito exige conta padrao de pagamento."
+                        "payment_account": "Cartão de crédito exige conta padrão de pagamento."
                     }
                 )
         
@@ -106,7 +106,7 @@ class Card(models.Model):
 
         if self.card_type == self.CardType.BENEFIT and self.estimated_balance is None:
             raise ValidationError(
-                {"estimated_balance": "Cartao de beneficio exige saldo estimado."}
+                {"estimated_balance": "Cartão de benefício exige saldo estimado."}
             )
 
         if (
@@ -123,11 +123,11 @@ class Card(models.Model):
             )
 
         if self.credit_limit is not None and self.credit_limit < Decimal("0"):
-            raise ValidationError({"credit_limit": "Limite nao pode ser negativo."})
+            raise ValidationError({"credit_limit": "Limite não pode ser negativo."})
 
         if self.estimated_balance is not None and self.estimated_balance < Decimal("0"):
             raise ValidationError(
-                {"estimated_balance": "Saldo estimado nao pode ser negativo."}
+                {"estimated_balance": "Saldo estimado não pode ser negativo."}
             )
 
     def __str__(self) -> str:
@@ -142,7 +142,7 @@ class CardStatement(models.Model):
     class StatementStatus(models.TextChoices):
         """Define os status possiveis de uma fatura."""
 
-        FORECASTED = "forecasted", "Previsao"
+        FORECASTED = "forecasted", "Previsão"
         LATE = "late", "Atrasada"
         OPEN = "open", "Aberta"
         PENDING = "pending", "Pendente"
@@ -152,12 +152,12 @@ class CardStatement(models.Model):
 
     card = models.ForeignKey(
         Card,
-        verbose_name="Cartao",
+        verbose_name="Cartão",
         on_delete=models.CASCADE,
         related_name="statements",
     )
     year = models.PositiveSmallIntegerField("Ano")
-    month = models.PositiveSmallIntegerField("Mes")
+    month = models.PositiveSmallIntegerField("Mês")
     closed_amount = models.DecimalField(
         "Valor fechado",
         max_digits=14,
@@ -198,8 +198,8 @@ class CardStatement(models.Model):
     class Meta:
         """Define metadados de exibicao e restricao de unicidade."""
 
-        verbose_name = "Fatura do cartao"
-        verbose_name_plural = "Faturas do cartao"
+        verbose_name = "Fatura do cartão"
+        verbose_name_plural = "Faturas do cartão"
         ordering = ["-year", "-month", "card"]
         constraints = [
             models.UniqueConstraint(
@@ -214,10 +214,10 @@ class CardStatement(models.Model):
         super().clean()
 
         if self.month is not None and not 1 <= self.month <= 12:
-            raise ValidationError({"month": "Mes deve estar entre 1 e 12."})
+            raise ValidationError({"month": "Mês deve estar entre 1 e 12."})
 
         if self.card_id and self.card.card_type != Card.CardType.CREDIT:
-            raise ValidationError({"card": "Apenas cartoes de credito podem ter faturas."})
+            raise ValidationError({"card": "Apenas cartões de crédito podem ter faturas."})
 
         if self.card_id and self.payment_account_id is None:
             self.payment_account = self.card.payment_account
@@ -229,7 +229,7 @@ class CardStatement(models.Model):
         }
         for field_name, value in amount_fields.items():
             if value is not None and value < Decimal("0"):
-                raise ValidationError({field_name: "Valor nao pode ser negativo."})
+                raise ValidationError({field_name: "Valor não pode ser negativo."})
 
         if (
             self.closed_amount is not None
@@ -237,7 +237,7 @@ class CardStatement(models.Model):
             and self.closed_amount > Decimal("0")
             and self.paid_amount > self.closed_amount
         ):
-            raise ValidationError({"paid_amount": "Valor pago nao pode superar o valor fechado."})
+            raise ValidationError({"paid_amount": "Valor pago não pode superar o valor fechado."})
 
     def __str__(self) -> str:
         """Retorna uma descricao curta da fatura."""

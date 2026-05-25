@@ -125,11 +125,11 @@ def estimate_account_yield(*, account, months, amount=None):
         yield_config = account.yield_config
     except ObjectDoesNotExist as exc:
         raise ValidationError(
-            {"yield_config": "Conta nao possui configuracao de rendimento."}
+            {"yield_config": "Conta não possui configuração de rendimento."}
         ) from exc
 
     if not yield_config.is_active:
-        raise ValidationError({"yield_config": "Configuracao de rendimento esta inativa."})
+        raise ValidationError({"yield_config": "Configuração de rendimento está inativa."})
 
     if yield_config.yield_type == AccountYieldConfig.YieldType.NONE:
         initial_amount = initial_amount.quantize(MONEY)
@@ -158,7 +158,7 @@ def estimate_account_yield(*, account, months, amount=None):
             **estimate,
         }
 
-    raise ValidationError({"yield_type": "Tipo de rendimento invalido."})
+    raise ValidationError({"yield_type": "Tipo de rendimento inválido."})
 
 
 def _calculate_monthly_rate(*, effective_annual_rate):

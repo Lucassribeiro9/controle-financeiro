@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Instituicoes - Controle Financeiro{% endblock %}
+{% block title %}Instituições - Controle Financeiro{% endblock %}
 
 {% block content %}
     <header class="page-header">
         <div>
-            <h1>Instituicoes</h1>
+            <h1>Instituições</h1>
             <p class="muted">Bancos, corretoras, carteiras e emissores usados no controle financeiro.</p>
         </div>
 
-        <a class="button" href="{% url 'institutions:create' %}">Nova instituicao</a>
+        <a class="button" href="{% url 'institutions:create' %}">Nova instituição</a>
     </header>
 
     <section class="panel page-section">
@@ -18,10 +18,10 @@
                 <thead>
                     <tr>
                         <th>Nome</th>
-                        <th>Codigo</th>
+                        <th>Código</th>
                         <th>Status</th>
                         <th>Contas</th>
-                        <th>Cartoes</th>
+                        <th>Cartões</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -35,7 +35,7 @@
                                     <p class="muted">{{ institution.official_name }}</p>
                                 {% endif %}
                             </td>
-                            <td>{{ institution.code|default:"Nao informado" }}</td>
+                            <td>{{ institution.code|default:"Não informado" }}</td>
                             <td>
                                 <span class="status">
                                     {% if institution.is_active %}Ativa{% else %}Inativa{% endif %}
@@ -48,7 +48,7 @@
                 </tbody>
             </table>
         {% else %}
-            <p class="empty">Nenhuma instituicao cadastrada.</p>
+            <p class="empty">Nenhuma instituição cadastrada.</p>
         {% endif %}
     </section>
 {% endblock %}

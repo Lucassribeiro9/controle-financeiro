@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 {% load money %}
 
-{% block title %}Revisar importacoes - Controle Financeiro{% endblock %}
+{% block title %}Revisar importações - Controle Financeiro{% endblock %}
 
 {% block content %}
     <header class="page-header">
         <div>
-            <h1>Revisar importacoes</h1>
-            <p class="muted">Confira transacoes importadas antes de confirmar ou descartar.</p>
+            <h1>Revisar importações</h1>
+            <p class="muted">Confira transações importadas antes de confirmar ou descartar.</p>
         </div>
         <a class="button" href="{% url 'imports:upload-page' %}">Novo upload</a>
     </header>
 
     <form id="bulk-imports-form" class="bulk-action-bar" method="post" action="{% url 'imports:bulk-review' %}">
         {% csrf_token %}
-        <span class="muted">Acoes em lote para itens selecionados</span>
+        <span class="muted">Ações em lote para itens selecionados</span>
         <div class="action-row">
             <button class="button" type="submit" name="bulk_action" value="confirm">Confirmar selecionadas</button>
             <button class="button button-danger" type="submit" name="bulk_action" value="discard">Descartar selecionadas</button>
@@ -59,7 +59,7 @@
                     <input type="hidden" name="next" value="{{ review_next_value }}">
 
                     <label class="form-field">
-                        <span>Descricao</span>
+                        <span>Descrição</span>
                         <input name="description" type="text" value="{{ imported_transaction.normalized_description }}" required>
                     </label>
 
@@ -116,7 +116,7 @@
             </article>
         {% empty %}
             <section class="panel">
-                <p class="empty">Nenhuma importacao pendente no momento.</p>
+                <p class="empty">Nenhuma importação pendente no momento.</p>
             </section>
         {% endfor %}
     </div>

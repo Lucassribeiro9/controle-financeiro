@@ -75,7 +75,7 @@ class TransactionViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/form.html")
-        self.assertContains(response, "Novo lancamento")
+        self.assertContains(response, "Novo lançamento")
 
     def test_post_create_income_uses_service_and_increases_balance(self):
         """Deve criar receita via service e aumentar saldo da conta."""
@@ -167,7 +167,7 @@ class TransactionViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/form.html")
-        self.assertContains(response, "Lancamento exige conta financeira.")
+        self.assertContains(response, "Lançamento exige conta financeira.")
         self.assertEqual(Transaction.objects.count(), 0)
 
     def test_transaction_detail_page_returns_success(self):
@@ -251,7 +251,7 @@ class TransferViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/transfer_form.html")
-        self.assertContains(response, "Nova transferencia")
+        self.assertContains(response, "Nova transferência")
 
     def test_post_create_transfer_uses_service(self):
         """Deve criar transferencia usando o service."""

@@ -30,12 +30,12 @@ class CardForm(forms.ModelForm):
         }
         labels = {
             "name": "Nome",
-            "institution": "Instituicao",
+            "institution": "Instituição",
             "card_type": "Tipo",
             "credit_limit": "Limite",
             "statement_closing_day": "Dia de fechamento",
             "statement_due_day": "Dia de vencimento",
-            "payment_account": "Conta padrao de pagamento",
+            "payment_account": "Conta padrão de pagamento",
             "estimated_balance": "Saldo estimado",
             "is_active": "Ativo",
         }
@@ -76,7 +76,7 @@ class CardForm(forms.ModelForm):
         if duplicate_cards.exists():
             self.add_error(
                 "name",
-                "Ja existe um cartao com este nome nesta instituicao.",
+                "Já existe um cartão com este nome nesta instituição.",
             )
 
         return cleaned_data
@@ -113,7 +113,7 @@ class StatementPaymentForm(forms.Form):
             remaining_amount = self.statement.closed_amount - self.statement.paid_amount
             if amount > remaining_amount:
                 raise forms.ValidationError(
-                    "Valor de pagamento nao pode superar o saldo da fatura."
+                    "Valor de pagamento não pode superar o saldo da fatura."
                 )
 
         return amount

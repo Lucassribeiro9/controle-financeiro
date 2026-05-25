@@ -68,7 +68,7 @@ def account_update_page(request: HttpRequest, account_id: int) -> HttpResponse:
             "form": form,
             "account": account,
             "form_title": "Editar conta",
-            "submit_label": "Salvar alteracoes",
+            "submit_label": "Salvar alterações",
         },
     )
 

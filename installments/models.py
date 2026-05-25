@@ -11,10 +11,10 @@ class InstallmentPlan(models.Model):
         """Status possiveis para o plano de parcelamento."""
 
         ACTIVE = "active", "Ativo"
-        COMPLETED = "completed", "Concluido"
+        COMPLETED = "completed", "Concluído"
         CANCELED = "canceled", "Cancelado"
 
-    description = models.CharField("Descricao", max_length=255)
+    description = models.CharField("Descrição", max_length=255)
     total_amount = models.DecimalField(
         "Valor total",
         max_digits=14,
@@ -29,7 +29,7 @@ class InstallmentPlan(models.Model):
     first_installment_date = models.DateField("Data da primeira parcela")
     card = models.ForeignKey(
         "cards.Card",
-        verbose_name="Cartao",
+        verbose_name="Cartão",
         on_delete=models.PROTECT,
         related_name="installment_plans",
     )
@@ -77,7 +77,7 @@ class InstallmentPlan(models.Model):
             )
 
         if self.card_id and self.card.card_type != self.card.CardType.CREDIT:
-            raise ValidationError({"card": "Parcelamento exige cartao de credito."})
+            raise ValidationError({"card": "Parcelamento exige cartão de crédito."})
 
     def __str__(self) -> str:
         """Retorna uma descricao curta do parcelamento."""

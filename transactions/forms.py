@@ -20,7 +20,7 @@ ALLOWED_TRANSACTION_TYPES = [
 class TransactionForm(forms.Form):
     """Form para criar lancamentos financeiros usando services."""
 
-    description = forms.CharField(label="Descricao", max_length=255)
+    description = forms.CharField(label="Descrição", max_length=255)
     amount = forms.DecimalField(label="Valor", max_digits=14, decimal_places=2)
     transaction_type = forms.ChoiceField(
         label="Tipo",
@@ -50,7 +50,7 @@ class TransactionForm(forms.Form):
         required=False,
     )
     card = forms.ModelChoiceField(
-        label="Cartao",
+        label="Cartão",
         queryset=Card.objects.none(),
         required=False,
     )
@@ -59,7 +59,7 @@ class TransactionForm(forms.Form):
         widget=forms.DateInput(attrs={"type": "date"}),
     )
     notes = forms.CharField(
-        label="Observacoes",
+        label="Observações",
         required=False,
         widget=forms.Textarea(attrs={"rows": 4}),
     )
@@ -97,9 +97,9 @@ class TransactionForm(forms.Form):
 
         if transaction_type == Transaction.TransactionType.CARD_PURCHASE:
             if card is None:
-                self.add_error("card", "Compra no cartao exige cartao vinculado.")
+                self.add_error("card", "Compra no cartão exige cartão vinculado.")
         elif transaction_type in ALLOWED_TRANSACTION_TYPES and account is None:
-            self.add_error("account", "Lancamento exige conta financeira.")
+            self.add_error("account", "Lançamento exige conta financeira.")
 
         return cleaned_data
 
@@ -107,7 +107,7 @@ class TransactionForm(forms.Form):
 class TransferForm(forms.Form):
     """Form para criar transferencias entre contas usando services."""
 
-    description = forms.CharField(label="Descricao", max_length=255)
+    description = forms.CharField(label="Descrição", max_length=255)
     amount = forms.DecimalField(label="Valor", max_digits=14, decimal_places=2)
     from_account = forms.ModelChoiceField(
         label="Conta origem",
@@ -122,7 +122,7 @@ class TransferForm(forms.Form):
         widget=forms.DateInput(attrs={"type": "date"}),
     )
     notes = forms.CharField(
-        label="Observacoes",
+        label="Observações",
         required=False,
         widget=forms.Textarea(attrs={"rows": 4}),
     )

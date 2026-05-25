@@ -50,7 +50,7 @@ def _stage_import_from_request(request: HttpRequest):
     """Processa o arquivo enviado e cria pendencias para revisao."""
     uploaded_file = request.FILES.get("file")
     if uploaded_file is None:
-        raise ValueError("Campo file e obrigatorio.")
+        raise ValueError("Campo file é obrigatório.")
 
     source_type = request.POST.get("source_type", ImportedTransaction.SourceType.CSV)
 
@@ -92,7 +92,7 @@ def _parse_decimal(value):
     try:
         return Decimal(normalized_value)
     except (InvalidOperation, ValueError) as exc:
-        raise ValueError("Valor informado e invalido.") from exc
+        raise ValueError("Valor informado é inválido.") from exc
 
 
 def _parse_transaction_date(value):
@@ -103,7 +103,7 @@ def _parse_transaction_date(value):
 
     parsed_date = parse_date(value)
     if parsed_date is None:
-        raise ValueError("Data informada e invalida.")
+        raise ValueError("Data informada é inválida.")
 
     return parsed_date
 
@@ -202,7 +202,7 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
         return JsonResponse({"error": str(exc)}, status=400)
 
     if _should_redirect_to_review(request):
-        messages.success(request, "Importacao confirmada.")
+        messages.success(request, "Importação confirmada.")
         return redirect("imports:review-page")
 
     return JsonResponse(
@@ -225,7 +225,7 @@ def discard_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
     discarded = discard_imported_transaction(imported_transaction=imported_transaction)
 
     if _should_redirect_to_review(request):
-        messages.success(request, "Importacao descartada.")
+        messages.success(request, "Importação descartada.")
         return redirect("imports:review-page")
 
     return JsonResponse(
@@ -250,7 +250,7 @@ def upload_import_page(request: HttpRequest):
         else:
             messages.success(
                 request,
-                f"{len(imported_transactions)} transacao(oes) enviada(s) para revisao.",
+                f"{len(imported_transactions)} transação(ões) enviada(s) para revisão.",
             )
             return redirect("imports:review-page")
 
@@ -300,7 +300,7 @@ def bulk_review_imports(request: HttpRequest):
     action = request.POST.get("bulk_action")
 
     if not selected_ids:
-        messages.error(request, "Selecione ao menos uma importacao.")
+        messages.error(request, "Selecione ao menos uma importação.")
         return redirect("imports:review-page")
 
     queryset = ImportedTransaction.objects.filter(
@@ -318,7 +318,7 @@ def bulk_review_imports(request: HttpRequest):
         for imported_transaction in queryset:
             discard_imported_transaction(imported_transaction=imported_transaction)
             processed += 1
-        messages.success(request, f"{processed} importacao(oes) descartada(s).")
+        messages.success(request, f"{processed} importação(ões) descartada(s).")
         return redirect("imports:review-page")
 
     if action == "confirm":
@@ -340,13 +340,13 @@ def bulk_review_imports(request: HttpRequest):
                 processed += 1
 
         if processed:
-            messages.success(request, f"{processed} importacao(oes) confirmada(s).")
+            messages.success(request, f"{processed} importação(ões) confirmada(s).")
         if skipped:
             messages.error(
                 request,
-                f"{skipped} importacao(oes) precisam de conta e tipo antes de confirmar.",
+                f"{skipped} importação(ões) precisam de conta e tipo antes de confirmar.",
             )
         return redirect("imports:review-page")
 
-    messages.error(request, "Acao em lote invalida.")
+    messages.error(request, "Ação em lote inválida.")
     return redirect("imports:review-page")

@@ -151,7 +151,7 @@ class AccountViewTests(TestCase):
         self.assertTemplateUsed(response, "accounts/form.html")
         self.assertContains(
             response,
-            "Ja existe uma conta com este nome nesta instituicao.",
+            "Já existe uma conta com este nome nesta instituição.",
         )
         self.assertEqual(FinancialAccount.objects.count(), 1)
 

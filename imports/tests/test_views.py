@@ -96,7 +96,7 @@ class ImportViewTests(TestCase):
         response = self.client.post(reverse("imports:upload"))
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["error"], "Campo file e obrigatorio.")
+        self.assertEqual(response.json()["error"], "Campo file é obrigatório.")
 
     def test_upload_import_rejects_unsupported_source_type(self):
         """Deve rejeitar tipos nao suportados."""

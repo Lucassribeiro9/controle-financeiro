@@ -44,9 +44,9 @@ class CategoryForm(forms.ModelForm):
                 duplicate_categories = duplicate_categories.exclude(pk=self.instance.pk)
 
             if duplicate_categories.exists():
-                self.add_error("name", "Ja existe uma categoria com este nome.")
+                self.add_error("name", "Já existe uma categoria com este nome.")
 
         if self.instance.pk and parent and parent.pk == self.instance.pk:
-            self.add_error("parent", "Categoria pai nao pode ser a propria categoria.")
+            self.add_error("parent", "Categoria pai não pode ser a própria categoria.")
 
         return cleaned_data

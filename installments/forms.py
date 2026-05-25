@@ -9,7 +9,7 @@ from categories.models import Category
 class InstallmentPlanForm(forms.Form):
     """Formulario para criar parcelamentos."""
 
-    description = forms.CharField(label="Descricao", max_length=255)
+    description = forms.CharField(label="Descrição", max_length=255)
     total_amount = forms.DecimalField(
         label="Valor total",
         max_digits=14,
@@ -21,7 +21,7 @@ class InstallmentPlanForm(forms.Form):
         widget=forms.DateInput(attrs={"type": "date"}),
     )
     card = forms.ModelChoiceField(
-        label="Cartao",
+        label="Cartão",
         queryset=Card.objects.none(),
     )
     category = forms.ModelChoiceField(

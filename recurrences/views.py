@@ -119,7 +119,7 @@ def confirm_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
             "id": forecast.id,
             "status": forecast.status,
             "transaction_type": forecast.transaction_type,
-            "message": "Previsao confirmada com sucesso.",
+            "message": "Previsão confirmada com sucesso.",
         }
     )
 
@@ -136,7 +136,7 @@ def ignore_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
         {
             "id": forecast.id,
             "status": forecast.status,
-            "message": "Previsao ignorada com sucesso.",
+            "message": "Previsão ignorada com sucesso.",
         }
     )
 
@@ -149,12 +149,12 @@ def adjust_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
     amount_raw = request.POST.get("amount")
 
     if not amount_raw:
-        return JsonResponse({"error": "Campo amount e obrigatorio."}, status=400)
+        return JsonResponse({"error": "Campo amount é obrigatório."}, status=400)
 
     try:
         new_amount = Decimal(amount_raw)
     except InvalidOperation:
-        return JsonResponse({"error": "Campo amount invalido."}, status=400)
+        return JsonResponse({"error": "Campo amount inválido."}, status=400)
 
     if new_amount <= 0:
         return JsonResponse({"error": "Campo amount deve ser positivo."}, status=400)
@@ -169,6 +169,6 @@ def adjust_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
         {
             "id": forecast.id,
             "amount": str(forecast.amount),
-            "message": "Previsao ajustada com sucesso.",
+            "message": "Previsão ajustada com sucesso.",
         }
     )
