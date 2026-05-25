@@ -5,6 +5,8 @@ from django import forms
 from accounts.models import FinancialAccount
 from cards.models import Card
 from categories.models import Category
+from core.forms import BRDateField
+from core.forms import BRDecimalField
 
 from .models import Transaction
 
@@ -21,7 +23,7 @@ class TransactionForm(forms.Form):
     """Form para criar lancamentos financeiros usando services."""
 
     description = forms.CharField(label="Descrição", max_length=255)
-    amount = forms.DecimalField(label="Valor", max_digits=14, decimal_places=2)
+    amount = BRDecimalField(label="Valor", max_digits=14, decimal_places=2)
     transaction_type = forms.ChoiceField(
         label="Tipo",
         choices=[
@@ -54,10 +56,7 @@ class TransactionForm(forms.Form):
         queryset=Card.objects.none(),
         required=False,
     )
-    date = forms.DateField(
-        label="Data",
-        widget=forms.DateInput(attrs={"type": "date"}),
-    )
+    date = BRDateField(label="Data")
     notes = forms.CharField(
         label="Observações",
         required=False,
@@ -108,7 +107,7 @@ class TransferForm(forms.Form):
     """Form para criar transferencias entre contas usando services."""
 
     description = forms.CharField(label="Descrição", max_length=255)
-    amount = forms.DecimalField(label="Valor", max_digits=14, decimal_places=2)
+    amount = BRDecimalField(label="Valor", max_digits=14, decimal_places=2)
     from_account = forms.ModelChoiceField(
         label="Conta origem",
         queryset=FinancialAccount.objects.none(),
@@ -117,10 +116,7 @@ class TransferForm(forms.Form):
         label="Conta destino",
         queryset=FinancialAccount.objects.none(),
     )
-    date = forms.DateField(
-        label="Data",
-        widget=forms.DateInput(attrs={"type": "date"}),
-    )
+    date = BRDateField(label="Data")
     notes = forms.CharField(
         label="Observações",
         required=False,

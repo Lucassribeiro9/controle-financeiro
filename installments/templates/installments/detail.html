@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}{{ plan.description }} - Controle Financeiro{% endblock %}
 
@@ -21,11 +22,11 @@
         <dl class="detail-list">
             <div>
                 <dt>Total</dt>
-                <dd>R$ {{ plan.total_amount }}</dd>
+                <dd>{{ plan.total_amount|brl }}</dd>
             </div>
             <div>
                 <dt>Parcela base</dt>
-                <dd>R$ {{ plan.installment_amount }}</dd>
+                <dd>{{ plan.installment_amount|brl }}</dd>
             </div>
             <div>
                 <dt>Parcelas</dt>
@@ -37,7 +38,7 @@
             </div>
             <div>
                 <dt>Primeira parcela</dt>
-                <dd>{{ plan.first_installment_date }}</dd>
+                <dd>{{ plan.first_installment_date|date_br }}</dd>
             </div>
             <div>
                 <dt>Categoria</dt>
@@ -73,10 +74,10 @@
                     {% for transaction in transactions %}
                         <tr>
                             <td>{{ transaction.installment_number }}/{{ plan.total_installments }}</td>
-                            <td>{{ transaction.date }}</td>
+                            <td>{{ transaction.date|date_br }}</td>
                             <td>{{ transaction.statement|default:"Não vinculada" }}</td>
                             <td><span class="status">{{ transaction.get_status_display }}</span></td>
-                            <td>R$ {{ transaction.amount }}</td>
+                            <td>{{ transaction.amount|brl }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

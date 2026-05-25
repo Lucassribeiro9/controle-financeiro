@@ -14,11 +14,11 @@
             <input name="range" type="hidden" value="{{ range_months }}">
             <label>
                 <span>Mês</span>
-                <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+                <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
             </label>
             <label>
                 <span>Ano</span>
-                <input name="year" type="number" min="2000" value="{{ year }}" required>
+                <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
             </label>
             <button class="button" type="submit">Filtrar</button>
         </form>
@@ -80,9 +80,9 @@
                             <span
                                 class="donut-meter"
                                 style="--share: {{ item.percentage }}%; --share-color: {{ item.color }};"
-                                aria-label="{{ item.category_name }} representa {{ item.percentage }}% das despesas"
+                                aria-label="{{ item.category_name }} representa {{ item.percentage|percentage }} das despesas"
                             >
-                                <span>{{ item.percentage }}%</span>
+                                <span>{{ item.percentage|percentage }}</span>
                             </span>
                             <span class="composition-copy">
                                 <span>{{ item.category_name }}</span>
@@ -121,7 +121,7 @@
                         {% for item in net_worth %}
                             <tr>
                                 <td>{{ item.currency }}</td>
-                                <td>{% if item.currency == "BRL" %}{{ item.total|brl }}{% else %}{{ item.currency }} {{ item.total }}{% endif %}</td>
+                                <td>{{ item.total|currency:item.currency }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

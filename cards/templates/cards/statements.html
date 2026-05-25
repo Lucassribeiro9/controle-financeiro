@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Faturas - Controle Financeiro{% endblock %}
 
@@ -37,11 +38,11 @@
                                 <p class="muted">{{ statement.card.institution }}</p>
                             </td>
                             <td>{{ statement.month }}/{{ statement.year }}</td>
-                            <td>R$ {{ statement.expected_amount }}</td>
-                            <td>R$ {{ statement.closed_amount }}</td>
-                            <td>R$ {{ statement.paid_amount }}</td>
+                            <td>{{ statement.expected_amount|brl }}</td>
+                            <td>{{ statement.closed_amount|brl }}</td>
+                            <td>{{ statement.paid_amount|brl }}</td>
                             <td><span class="status">{{ statement.get_status_display }}</span></td>
-                            <td>{{ statement.due_date }}</td>
+                            <td>{{ statement.due_date|date_br }}</td>
                             <td>{{ statement.payment_account|default:"Não vinculada" }}</td>
                         </tr>
                     {% endfor %}

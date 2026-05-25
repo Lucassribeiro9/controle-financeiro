@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Insights - Controle Financeiro{% endblock %}
 
@@ -18,7 +19,7 @@
                     <p>{{ insight.message }}</p>
 
                     {% if insight.suggested_amount %}
-                        <p class="muted">Valor sugerido: R$ {{ insight.suggested_amount }}</p>
+                        <p class="muted">Valor sugerido: {{ insight.suggested_amount|brl }}</p>
                     {% endif %}
                 </div>
 

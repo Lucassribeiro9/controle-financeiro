@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}{{ transaction.description }} - Lançamento{% endblock %}
 
@@ -6,7 +7,7 @@
     <header class="page-header">
         <div>
             <h1>{{ transaction.description }}</h1>
-            <p class="muted">{{ transaction.date }}</p>
+            <p class="muted">{{ transaction.date|date_br }}</p>
         </div>
 
         <a class="button button-secondary" href="{% url 'transactions:list' %}">Voltar</a>
@@ -15,7 +16,7 @@
     <div class="summary-grid">
         <div class="metric-card">
             <span>Valor</span>
-            <strong>R$ {{ transaction.amount }}</strong>
+            <strong>{{ transaction.amount|brl }}</strong>
         </div>
         <div class="metric-card">
             <span>Tipo</span>
@@ -48,11 +49,11 @@
             </div>
             <div>
                 <dt>Criado em</dt>
-                <dd>{{ transaction.created_at }}</dd>
+                <dd>{{ transaction.created_at|date_br }}</dd>
             </div>
             <div>
                 <dt>Atualizado em</dt>
-                <dd>{{ transaction.updated_at }}</dd>
+                <dd>{{ transaction.updated_at|date_br }}</dd>
             </div>
         </dl>
 

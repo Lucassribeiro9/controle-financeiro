@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Rendimentos - Controle Financeiro{% endblock %}
 
@@ -19,11 +20,11 @@
     <div class="summary-grid">
         <div class="metric-card">
             <span>CDI anual</span>
-            <strong>{% if latest_cdi %}{{ latest_cdi.value }}{% else %}Não cadastrado{% endif %}</strong>
+            <strong>{% if latest_cdi %}{{ latest_cdi.value|annual_rate }}{% else %}Não cadastrado{% endif %}</strong>
         </div>
         <div class="metric-card">
             <span>Data da taxa</span>
-            <strong>{% if latest_cdi %}{{ latest_cdi.date }}{% else %}-{% endif %}</strong>
+            <strong>{% if latest_cdi %}{{ latest_cdi.date|date_br }}{% else %}-{% endif %}</strong>
         </div>
         <div class="metric-card">
             <span>Período estimado</span>
@@ -55,9 +56,9 @@
                                         <p class="muted">{{ item.error }}</p>
                                     {% endif %}
                                 </td>
-                                <td>{{ item.config.cdi_percentage|default:"-" }}</td>
-                                <td>{% if item.estimate %}R$ {{ item.estimate.final_amount }}{% else %}-{% endif %}</td>
-                                <td>{% if item.estimate %}R$ {{ item.estimate.estimated_yield }}{% else %}-{% endif %}</td>
+                                <td>{% if item.config.cdi_percentage %}{{ item.config.cdi_percentage|percentage }}{% else %}-{% endif %}</td>
+                                <td>{% if item.estimate %}{{ item.estimate.final_amount|brl }}{% else %}-{% endif %}</td>
+                                <td>{% if item.estimate %}{{ item.estimate.estimated_yield|brl }}{% else %}-{% endif %}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -80,8 +81,8 @@
                     <tbody>
                         {% for rate in rate_history %}
                             <tr>
-                                <td>{{ rate.date }}</td>
-                                <td>{{ rate.value }}</td>
+                                <td>{{ rate.date|date_br }}</td>
+                                <td>{{ rate.value|annual_rate }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>

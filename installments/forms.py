@@ -4,22 +4,22 @@ from django import forms
 
 from cards.models import Card
 from categories.models import Category
+from core.forms import BRDateField
+from core.forms import BRDecimalField
+from core.forms import BRIntegerField
 
 
 class InstallmentPlanForm(forms.Form):
     """Formulario para criar parcelamentos."""
 
     description = forms.CharField(label="Descrição", max_length=255)
-    total_amount = forms.DecimalField(
+    total_amount = BRDecimalField(
         label="Valor total",
         max_digits=14,
         decimal_places=2,
     )
-    total_installments = forms.IntegerField(label="Total de parcelas", min_value=1)
-    first_installment_date = forms.DateField(
-        label="Data da primeira parcela",
-        widget=forms.DateInput(attrs={"type": "date"}),
-    )
+    total_installments = BRIntegerField(label="Total de parcelas", min_value=1)
+    first_installment_date = BRDateField(label="Data da primeira parcela")
     card = forms.ModelChoiceField(
         label="Cartão",
         queryset=Card.objects.none(),

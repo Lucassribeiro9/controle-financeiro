@@ -218,8 +218,8 @@ class ImportViewTests(TestCase):
             {
                 "next": "review-page",
                 "description": "Mercado ajustado",
-                "date": "2026-05-11",
-                "amount": "90.50",
+                "date": "11/05/2026",
+                "amount": "90,50",
                 "account_id": self.account.id,
                 "category_id": self.category.id,
                 "transaction_type": Transaction.TransactionType.EXPENSE,

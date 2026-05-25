@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}{{ account.name }} - Controle Financeiro{% endblock %}
 
@@ -28,7 +29,7 @@
             </div>
             <div>
                 <dt>Saldo atual</dt>
-                <dd>{{ account.currency }} {{ account.balance }}</dd>
+                <dd>{{ account.balance|currency:account.currency }}</dd>
             </div>
             <div>
                 <dt>Status</dt>
@@ -36,7 +37,7 @@
             </div>
             <div>
                 <dt>Atualizada em</dt>
-                <dd>{{ account.updated_at }}</dd>
+                <dd>{{ account.updated_at|date_br }}</dd>
             </div>
         </dl>
     </section>

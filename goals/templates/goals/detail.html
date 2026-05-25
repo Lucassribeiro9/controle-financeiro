@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}{{ goal_summary.goal.name }} - Objetivo{% endblock %}
 
@@ -13,11 +14,11 @@
             <form class="period-form" method="get" action="{% url 'goals:detail' goal.id %}">
                 <label>
                     <span>Mês</span>
-                    <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
+                    <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
                 </label>
                 <label>
                     <span>Ano</span>
-                    <input name="year" type="number" min="2000" value="{{ year }}" required>
+                    <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
                 </label>
                 <button class="button" type="submit">Filtrar</button>
             </form>
@@ -30,15 +31,15 @@
         <div class="summary-grid page-section" aria-label="Resumo do objetivo">
             <div class="metric-card">
                 <span>Valor atual</span>
-                <strong>R$ {{ progress.current_amount }}</strong>
+                <strong>{{ progress.current_amount|brl }}</strong>
             </div>
             <div class="metric-card">
                 <span>Valor alvo</span>
-                <strong>R$ {{ progress.target_amount }}</strong>
+                <strong>{{ progress.target_amount|brl }}</strong>
             </div>
             <div class="metric-card">
                 <span>Progresso</span>
-                <strong>{{ progress.progress_percent }}%</strong>
+                <strong>{{ progress.progress_percent|percentage }}</strong>
             </div>
         </div>
 
@@ -56,15 +57,15 @@
                     </div>
                     <div>
                         <dt>Restante</dt>
-                        <dd>R$ {{ progress.remaining_amount }}</dd>
+                        <dd>{{ progress.remaining_amount|brl }}</dd>
                     </div>
                     <div>
                         <dt>Início</dt>
-                        <dd>{{ goal.start_date }}</dd>
+                        <dd>{{ goal.start_date|date_br }}</dd>
                     </div>
                     <div>
                         <dt>Data alvo</dt>
-                        <dd>{{ goal.target_date|default:"Não definida" }}</dd>
+                        <dd>{% if goal.target_date %}{{ goal.target_date|date_br }}{% else %}Não definida{% endif %}</dd>
                     </div>
                     <div>
                         <dt>Categoria</dt>
@@ -87,7 +88,7 @@
                             {% for account in goal.accounts.all %}
                                 <tr>
                                     <td>{{ account }}</td>
-                                    <td>{{ account.currency }} {{ account.balance }}</td>
+                                    <td>{{ account.balance|currency:account.currency }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -112,8 +113,8 @@
                             {% for monthly_goal in goal_summary.monthly_goals %}
                                 <tr>
                                     <td><span class="status">{{ monthly_goal.get_status_display }}</span></td>
-                                    <td>R$ {{ monthly_goal.current_amount }}</td>
-                                    <td>R$ {{ monthly_goal.target_amount }}</td>
+                                    <td>{{ monthly_goal.current_amount|brl }}</td>
+                                    <td>{{ monthly_goal.target_amount|brl }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
