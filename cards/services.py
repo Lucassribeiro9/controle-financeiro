@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
 from django.db.models import Sum
 
+from accounts.models import FinancialAccount
 from transactions.models import Transaction
 
 from .models import Card, CardStatement
@@ -131,10 +132,13 @@ def pay_statement(*, statement, amount=None):
         if payment_amount > remaining_amount:
             raise ValidationError("Valor de pagamento nao pode superar o saldo da fatura.")
 
-        payment_account = statement.payment_account or statement.card.payment_account
-        if payment_account is None:
+        payment_account_id = statement.payment_account_id or statement.card.payment_account_id
+        if payment_account_id is None:
             raise ValidationError("Fatura exige conta de pagamento.")
 
+        payment_account = FinancialAccount.objects.select_for_update().get(
+            pk=payment_account_id
+        )
         payment_account.balance -= payment_amount
         payment_account.save(update_fields=["balance", "updated_at"])
 

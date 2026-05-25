@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 
@@ -137,6 +138,19 @@ class CardStatementServiceTests(TestCase):
 
         self.assertEqual(paid_statement.status, CardStatement.StatementStatus.PAID)
         self.assertEqual(self.payment_account.balance, Decimal("650.00"))
+
+    def test_pay_statement_locks_payment_account_before_debit(self):
+        """Pagar fatura deve bloquear a conta antes de debitar o saldo."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+
+        with patch(
+            "cards.services.FinancialAccount.objects.select_for_update",
+            wraps=FinancialAccount.objects.select_for_update,
+        ) as select_for_update:
+            pay_statement(statement=statement)
+
+        select_for_update.assert_called_once()
 
     def test_pay_statement_creates_statement_payment_transaction(self):
         """Pagar fatura deve criar transacao do tipo pagamento de fatura."""
