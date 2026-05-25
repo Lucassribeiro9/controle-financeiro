@@ -34,7 +34,7 @@ def get_or_create_card_statement(*, card, transaction_date):
 
     card = Card.objects.get(pk=card.pk)
     if card.card_type != Card.CardType.CREDIT:
-        raise ValidationError("Apenas cartoes de credito possuem faturas.")
+        raise ValidationError("Apenas cartões de crédito possuem faturas.")
 
     statement_year = transaction_date.year
     statement_month = transaction_date.month

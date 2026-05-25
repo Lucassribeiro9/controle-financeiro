@@ -13,8 +13,8 @@ class InstitutionForm(forms.ModelForm):
         fields = ["name", "official_name", "code", "is_active"]
         labels = {
             "name": "Nome",
-            "official_name": "Razao social",
-            "code": "Codigo",
+            "official_name": "Razão social",
+            "code": "Código",
             "is_active": "Ativa",
         }
 
@@ -42,7 +42,7 @@ class InstitutionForm(forms.ModelForm):
                 duplicate_names = duplicate_names.exclude(pk=self.instance.pk)
 
             if duplicate_names.exists():
-                self.add_error("name", "Ja existe uma instituicao com este nome.")
+                self.add_error("name", "Já existe uma instituição com este nome.")
 
         if code:
             duplicate_codes = Institution.objects.filter(code__iexact=code)
@@ -50,6 +50,6 @@ class InstitutionForm(forms.ModelForm):
                 duplicate_codes = duplicate_codes.exclude(pk=self.instance.pk)
 
             if duplicate_codes.exists():
-                self.add_error("code", "Ja existe uma instituicao com este codigo.")
+                self.add_error("code", "Já existe uma instituição com este código.")
 
         return cleaned_data

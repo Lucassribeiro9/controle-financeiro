@@ -72,6 +72,6 @@ def category_update_page(request: HttpRequest, category_id: int) -> HttpResponse
             "form": form,
             "category": category,
             "form_title": "Editar categoria",
-            "submit_label": "Salvar alteracoes",
+            "submit_label": "Salvar alterações",
         },
     )

@@ -34,7 +34,7 @@ def institution_create_page(request: HttpRequest) -> HttpResponse:
         form = InstitutionForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "Instituicao criada com sucesso.")
+            messages.success(request, "Instituição criada com sucesso.")
             return redirect("institutions:list")
     else:
         form = InstitutionForm()
@@ -44,7 +44,7 @@ def institution_create_page(request: HttpRequest) -> HttpResponse:
         "institutions/form.html",
         {
             "form": form,
-            "form_title": "Nova instituicao",
+            "form_title": "Nova instituição",
             "submit_label": "Salvar",
         },
     )
@@ -62,7 +62,7 @@ def institution_update_page(
         form = InstitutionForm(request.POST, instance=institution)
         if form.is_valid():
             form.save()
-            messages.success(request, "Instituicao atualizada com sucesso.")
+            messages.success(request, "Instituição atualizada com sucesso.")
             return redirect("institutions:list")
     else:
         form = InstitutionForm(instance=institution)
@@ -73,7 +73,7 @@ def institution_update_page(
         {
             "form": form,
             "institution": institution,
-            "form_title": "Editar instituicao",
-            "submit_label": "Salvar alteracoes",
+            "form_title": "Editar instituição",
+            "submit_label": "Salvar alterações",
         },
     )

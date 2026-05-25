@@ -6,12 +6,12 @@
     <header class="page-header">
         <div>
             <h1>Objetivos</h1>
-            <p class="muted">Acompanhe objetivos ativos e progresso do periodo.</p>
+            <p class="muted">Acompanhe objetivos ativos e progresso do período.</p>
         </div>
 
         <form class="period-form" method="get" action="{% url 'goals:list' %}">
             <label>
-                <span>Mes</span>
+                <span>Mês</span>
                 <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
             </label>
             <label>
@@ -52,12 +52,12 @@
                                 <dd>{{ progress.progress_percent }}%</dd>
                             </div>
                             <div>
-                                <dt>Inicio</dt>
+                                <dt>Início</dt>
                                 <dd>{{ goal.start_date }}</dd>
                             </div>
                             <div>
                                 <dt>Data alvo</dt>
-                                <dd>{{ goal.target_date|default:"Nao definida" }}</dd>
+                                <dd>{{ goal.target_date|default:"Não definida" }}</dd>
                             </div>
                             <div>
                                 <dt>Status</dt>
@@ -65,7 +65,7 @@
                             </div>
                             <div>
                                 <dt>Categoria</dt>
-                                <dd>{{ goal.category|default:"Nao vinculada" }}</dd>
+                                <dd>{{ goal.category|default:"Não vinculada" }}</dd>
                             </div>
                             <div>
                                 <dt>Contas</dt>
@@ -73,7 +73,7 @@
                                     {% for account in goal.accounts.all %}
                                         {{ account }}{% if not forloop.last %}, {% endif %}
                                     {% empty %}
-                                        Nao vinculadas
+                                        Não vinculadas
                                     {% endfor %}
                                 </dd>
                             </div>

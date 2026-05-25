@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Importar transacoes - Controle Financeiro{% endblock %}
+{% block title %}Importar transações - Controle Financeiro{% endblock %}
 
 {% block content %}
     <header class="page-header">
         <div>
-            <h1>Importacoes</h1>
-            <p class="muted">Envie um arquivo CSV, XLSX ou OFX para criar transacoes importadas para revisao.</p>
+            <h1>Importações</h1>
+            <p class="muted">Envie um arquivo CSV, XLSX ou OFX para criar transações importadas para revisão.</p>
         </div>
     </header>
 
@@ -40,7 +40,7 @@
 
             <div class="action-row">
                 <button class="button" type="submit">Enviar arquivo</button>
-                <a class="button button-secondary" href="{% url 'imports:review-page' %}">Revisar importacoes</a>
+                <a class="button button-secondary" href="{% url 'imports:review-page' %}">Revisar importações</a>
             </div>
         </form>
     </section>

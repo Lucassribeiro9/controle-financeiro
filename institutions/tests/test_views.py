@@ -55,7 +55,7 @@ class InstitutionViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "institutions/form.html")
-        self.assertContains(response, "Nova instituicao")
+        self.assertContains(response, "Nova instituição")
 
     def test_post_create_institution(self):
         """Deve criar instituicao financeira."""
@@ -136,7 +136,7 @@ class InstitutionViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "institutions/form.html")
-        self.assertContains(response, "Ja existe uma instituicao com este nome.")
+        self.assertContains(response, "Já existe uma instituição com este nome.")
         self.assertEqual(Institution.objects.count(), 1)
 
     def test_post_duplicate_code_when_informed_shows_form_error(self):
@@ -156,5 +156,5 @@ class InstitutionViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "institutions/form.html")
-        self.assertContains(response, "Ja existe uma instituicao com este codigo.")
+        self.assertContains(response, "Já existe uma instituição com este código.")
         self.assertEqual(Institution.objects.count(), 1)

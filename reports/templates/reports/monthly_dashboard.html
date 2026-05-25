@@ -13,7 +13,7 @@
         <form class="period-form" method="get" action="{% url 'reports:monthly-dashboard-page' %}">
             <input name="range" type="hidden" value="{{ range_months }}">
             <label>
-                <span>Mes</span>
+                <span>Mês</span>
                 <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
             </label>
             <label>
@@ -24,7 +24,7 @@
         </form>
     </header>
 
-    <div class="summary-grid dashboard-summary" aria-label="Resumo financeiro do mes">
+    <div class="summary-grid dashboard-summary" aria-label="Resumo financeiro do mês">
         <div class="metric-card">
             <span>Receitas</span>
             <strong class="income">{{ income_total|brl }}</strong>
@@ -34,7 +34,7 @@
             <strong class="expense">{{ expense_total|brl }}</strong>
         </div>
         <div class="metric-card">
-            <span>Saldo do mes</span>
+            <span>Saldo do mês</span>
             <strong>{{ monthly_balance|brl }}</strong>
         </div>
     </div>
@@ -42,18 +42,18 @@
     <section class="panel chart-panel">
         <div class="panel-title-row">
             <div>
-                <h2>Evolucao financeira</h2>
-                <p class="muted">Saldo mensal dos ultimos {{ range_months }} meses</p>
+                <h2>Evolução financeira</h2>
+                <p class="muted">Saldo mensal dos últimos {{ range_months }} meses</p>
             </div>
 
-            <div class="segment-control" aria-label="Intervalo do grafico">
+            <div class="segment-control" aria-label="Intervalo do gráfico">
                 <a class="{% if range_months == 6 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=6">6 meses</a>
                 <a class="{% if range_months == 12 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=12">12 meses</a>
                 <a class="{% if range_months == 24 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=24">24 meses</a>
             </div>
         </div>
 
-        <div class="cashflow-chart" aria-label="Grafico de evolucao financeira mensal">
+        <div class="cashflow-chart" aria-label="Gráfico de evolução financeira mensal">
             {% for point in cashflow_series %}
                 <div class="chart-column">
                     <span class="chart-value{% if point.is_negative %} is-negative{% endif %}">{{ point.value_label }}</span>
@@ -103,12 +103,12 @@
                     </tbody>
                 </table>
             {% else %}
-                <p class="empty">Nenhuma despesa no periodo.</p>
+                <p class="empty">Nenhuma despesa no período.</p>
             {% endif %}
         </section>
 
         <section class="panel">
-            <h2>Patrimonio por moeda</h2>
+            <h2>Patrimônio por moeda</h2>
             {% if net_worth %}
                 <table class="data-table">
                     <thead>
@@ -132,7 +132,7 @@
         </section>
 
         <section class="panel">
-            <h2>Faturas do mes</h2>
+            <h2>Faturas do mês</h2>
             {% if card_statements %}
                 <table class="data-table">
                     <thead>
@@ -153,7 +153,7 @@
                     </tbody>
                 </table>
             {% else %}
-                <p class="empty">Nenhuma fatura no periodo.</p>
+                <p class="empty">Nenhuma fatura no período.</p>
             {% endif %}
         </section>
 
@@ -179,7 +179,7 @@
                     </tbody>
                 </table>
             {% else %}
-                <p class="empty">Nenhuma meta mensal no periodo.</p>
+                <p class="empty">Nenhuma meta mensal no período.</p>
             {% endif %}
         </section>
     </div>

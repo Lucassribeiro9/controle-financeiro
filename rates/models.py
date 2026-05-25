@@ -29,15 +29,15 @@ class ReferenceRate(models.Model):
         default=Periodicity.ANNUAL,
     )
     source = models.CharField("Fonte", max_length=80, default="manual")
-    notes = models.TextField("Observacoes", blank=True)
+    notes = models.TextField("Observações", blank=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
         """Define ordenacao e unicidade para taxas historicas."""
 
-        verbose_name = "Taxa de referencia"
-        verbose_name_plural = "Taxas de referencia"
+        verbose_name = "Taxa de referência"
+        verbose_name_plural = "Taxas de referência"
         ordering = ["-date", "rate_type"]
         constraints = [
             models.UniqueConstraint(
@@ -52,11 +52,11 @@ class ReferenceRate(models.Model):
         super().clean()
 
         if self.rate_type != self.RateType.CDI:
-            raise ValidationError({"rate_type": "Apenas CDI e suportado."})
+            raise ValidationError({"rate_type": "Apenas CDI é suportado."})
 
         if self.periodicity != self.Periodicity.ANNUAL:
             raise ValidationError(
-                {"periodicity": "Apenas periodicidade anual e suportada."}
+                {"periodicity": "Apenas periodicidade anual é suportada."}
             )
 
         if self.value is not None and self.value <= Decimal("0"):
@@ -98,8 +98,8 @@ class AccountYieldConfig(models.Model):
     class Meta:
         """Define ordenacao e nomes legiveis."""
 
-        verbose_name = "Configuracao de rendimento"
-        verbose_name_plural = "Configuracoes de rendimento"
+        verbose_name = "Configuração de rendimento"
+        verbose_name_plural = "Configurações de rendimento"
         ordering = ["account__name"]
 
     def clean(self):
@@ -110,7 +110,7 @@ class AccountYieldConfig(models.Model):
         if self.yield_type == self.YieldType.CDI_PERCENTAGE:
             if self.cdi_percentage is None:
                 raise ValidationError(
-                    {"cdi_percentage": "Percentual do CDI e obrigatorio."}
+                    {"cdi_percentage": "Percentual do CDI é obrigatório."}
                 )
             if self.cdi_percentage <= Decimal("0"):
                 raise ValidationError(
@@ -119,7 +119,7 @@ class AccountYieldConfig(models.Model):
 
         if self.yield_type == self.YieldType.NONE and self.cdi_percentage is not None:
             raise ValidationError(
-                {"cdi_percentage": "Contas sem rendimento nao devem ter percentual do CDI."}
+                {"cdi_percentage": "Contas sem rendimento não devem ter percentual do CDI."}
             )
 
     def __str__(self) -> str:

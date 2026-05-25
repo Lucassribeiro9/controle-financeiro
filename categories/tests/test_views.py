@@ -120,5 +120,5 @@ class CategoryViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "categories/form.html")
-        self.assertContains(response, "Ja existe uma categoria com este nome.")
+        self.assertContains(response, "Já existe uma categoria com este nome.")
         self.assertEqual(Category.objects.count(), 1)

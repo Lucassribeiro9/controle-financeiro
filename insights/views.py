@@ -54,7 +54,7 @@ def recent_insights(request: HttpRequest) -> JsonResponse:
     try:
         limit = int(limit_raw)
     except ValueError:
-        return JsonResponse({"error": "Campo limit invalido."}, status=400)
+        return JsonResponse({"error": "Campo limit inválido."}, status=400)
 
     if limit <= 0:
         return JsonResponse({"error": "Campo limit deve ser positivo."}, status=400)

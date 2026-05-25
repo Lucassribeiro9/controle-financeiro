@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ transaction.description }} - Lancamento{% endblock %}
+{% block title %}{{ transaction.description }} - Lançamento{% endblock %}
 
 {% block content %}
     <header class="page-header">
@@ -32,19 +32,19 @@
         <dl class="detail-list">
             <div>
                 <dt>Conta</dt>
-                <dd>{{ transaction.account|default:"Nao informada" }}</dd>
+                <dd>{{ transaction.account|default:"Não informada" }}</dd>
             </div>
             <div>
-                <dt>Cartao</dt>
-                <dd>{{ transaction.card|default:"Nao informado" }}</dd>
+                <dt>Cartão</dt>
+                <dd>{{ transaction.card|default:"Não informado" }}</dd>
             </div>
             <div>
                 <dt>Categoria</dt>
-                <dd>{{ transaction.category|default:"Nao informada" }}</dd>
+                <dd>{{ transaction.category|default:"Não informada" }}</dd>
             </div>
             <div>
                 <dt>Fatura</dt>
-                <dd>{{ transaction.statement|default:"Nao vinculada" }}</dd>
+                <dd>{{ transaction.statement|default:"Não vinculada" }}</dd>
             </div>
             <div>
                 <dt>Criado em</dt>
@@ -58,7 +58,7 @@
 
         {% if transaction.notes %}
             <div class="notes-block">
-                <h2>Observacoes</h2>
+                <h2>Observações</h2>
                 <p>{{ transaction.notes }}</p>
             </div>
         {% endif %}

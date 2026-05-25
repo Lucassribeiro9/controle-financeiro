@@ -20,7 +20,7 @@ class ReferenceRateForm(forms.Form):
         decimal_places=8,
     )
     notes = forms.CharField(
-        label="Observacoes",
+        label="Observações",
         required=False,
         widget=forms.Textarea(attrs={"rows": 4}),
     )
@@ -71,7 +71,7 @@ class AccountYieldConfigForm(forms.ModelForm):
 
         if duplicate_configs.exists():
             raise forms.ValidationError(
-                "Esta conta ja possui configuracao de rendimento."
+                "Esta conta já possui configuração de rendimento."
             )
 
         return account

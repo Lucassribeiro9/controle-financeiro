@@ -77,7 +77,7 @@ class InsightViewTests(TestCase):
         response = self.client.get(reverse("insights:recent"), data={"limit": "abc"})
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["error"], "Campo limit invalido.")
+        self.assertEqual(response.json()["error"], "Campo limit inválido.")
 
     def test_approve_insight_creates_monthly_goal(self):
         response = self.client.post(

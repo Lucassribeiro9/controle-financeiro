@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Previsoes recorrentes - {{ month }}/{{ year }}{% endblock %}
+{% block title %}Previsões recorrentes - {{ month }}/{{ year }}{% endblock %}
 
 {% block content %}
     <header class="page-header">
         <div>
-            <h1>Previsoes recorrentes</h1>
+            <h1>Previsões recorrentes</h1>
             <p class="muted">{{ month }}/{{ year }}</p>
         </div>
 
         <form class="period-form" method="get" action="{% url 'recurrences:forecasts-filter-page' %}">
             <label>
-                <span>Mes</span>
+                <span>Mês</span>
                 <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
             </label>
             <label>
@@ -42,11 +42,11 @@
                         </div>
                         <div>
                             <dt>Conta</dt>
-                            <dd>{{ forecast.account|default:"Nao informada" }}</dd>
+                            <dd>{{ forecast.account|default:"Não informada" }}</dd>
                         </div>
                         <div>
-                            <dt>Cartao</dt>
-                            <dd>{{ forecast.card|default:"Nao informado" }}</dd>
+                            <dt>Cartão</dt>
+                            <dd>{{ forecast.card|default:"Não informado" }}</dd>
                         </div>
                     </dl>
                 </div>
@@ -72,7 +72,7 @@
             </article>
         {% empty %}
             <section class="panel">
-                <p class="empty">Nenhuma previsao recorrente no periodo.</p>
+                <p class="empty">Nenhuma previsão recorrente no período.</p>
             </section>
         {% endfor %}
     </div>

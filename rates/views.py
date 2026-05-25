@@ -62,7 +62,7 @@ def yield_config_create_page(request: HttpRequest) -> HttpResponse:
         form = AccountYieldConfigForm(request.POST)
         if form.is_valid():
             config = form.save()
-            messages.success(request, "Configuracao de rendimento criada com sucesso.")
+            messages.success(request, "Configuração de rendimento criada com sucesso.")
             return redirect("rates:yield-config-edit", config_id=config.id)
     else:
         form = AccountYieldConfigForm()
@@ -72,7 +72,7 @@ def yield_config_create_page(request: HttpRequest) -> HttpResponse:
         "rates/yield_config_form.html",
         {
             "form": form,
-            "form_title": "Nova configuracao de rendimento",
+            "form_title": "Nova configuração de rendimento",
             "submit_label": "Salvar",
         },
     )
@@ -90,7 +90,7 @@ def yield_config_update_page(request: HttpRequest, config_id: int) -> HttpRespon
         form = AccountYieldConfigForm(request.POST, instance=config)
         if form.is_valid():
             config = form.save()
-            messages.success(request, "Configuracao de rendimento atualizada com sucesso.")
+            messages.success(request, "Configuração de rendimento atualizada com sucesso.")
             return redirect("rates:yield-config-edit", config_id=config.id)
     else:
         form = AccountYieldConfigForm(instance=config)
@@ -101,8 +101,8 @@ def yield_config_update_page(request: HttpRequest, config_id: int) -> HttpRespon
         {
             "form": form,
             "config": config,
-            "form_title": "Editar configuracao de rendimento",
-            "submit_label": "Salvar alteracoes",
+            "form_title": "Editar configuração de rendimento",
+            "submit_label": "Salvar alterações",
         },
     )
 

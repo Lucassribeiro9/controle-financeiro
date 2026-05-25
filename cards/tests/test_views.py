@@ -46,7 +46,7 @@ class CardViewTests(TestCase):
         self.assertTemplateUsed(response, "cards/list.html")
         self.assertContains(response, "Inter Gold")
         self.assertContains(response, "Inter")
-        self.assertContains(response, "Credito")
+        self.assertContains(response, "Crédito")
         self.assertContains(response, "Conta corrente")
 
     def test_card_create_page_returns_form(self):
@@ -56,7 +56,7 @@ class CardViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "cards/form.html")
-        self.assertContains(response, "Novo cartao")
+        self.assertContains(response, "Novo cartão")
 
     def test_post_create_valid_credit_card(self):
         """Deve criar cartao de credito valido."""

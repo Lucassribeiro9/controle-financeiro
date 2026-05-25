@@ -25,7 +25,7 @@ class FinancialAccountForm(forms.ModelForm):
         }
         labels = {
             "name": "Nome",
-            "institution": "Instituicao",
+            "institution": "Instituição",
             "account_type": "Tipo",
             "currency": "Moeda",
             "balance": "Saldo atual",
@@ -63,7 +63,7 @@ class FinancialAccountForm(forms.ModelForm):
         if duplicate_accounts.exists():
             self.add_error(
                 "name",
-                "Ja existe uma conta com este nome nesta instituicao.",
+                "Já existe uma conta com este nome nesta instituição.",
             )
 
         return cleaned_data

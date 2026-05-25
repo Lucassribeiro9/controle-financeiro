@@ -139,7 +139,7 @@ class YieldSimulationServiceTests(TestCase):
 
         with self.assertRaisesMessage(
             ValidationError,
-            "Conta nao possui configuracao de rendimento.",
+            "Conta não possui configuração de rendimento.",
         ):
             estimate_account_yield(account=self.account, months=12)
 

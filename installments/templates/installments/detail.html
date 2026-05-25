@@ -41,14 +41,14 @@
             </div>
             <div>
                 <dt>Categoria</dt>
-                <dd>{{ plan.category|default:"Nao vinculada" }}</dd>
+                <dd>{{ plan.category|default:"Não vinculada" }}</dd>
             </div>
         </dl>
     </section>
 
     {% if plan.status != "canceled" %}
         <section class="panel page-section">
-            <h2>Acoes</h2>
+            <h2>Ações</h2>
             <form method="post" action="{% url 'installments:cancel' plan.id %}">
                 {% csrf_token %}
                 <button class="button button-danger" type="submit">Cancelar parcelamento</button>
@@ -74,7 +74,7 @@
                         <tr>
                             <td>{{ transaction.installment_number }}/{{ plan.total_installments }}</td>
                             <td>{{ transaction.date }}</td>
-                            <td>{{ transaction.statement|default:"Nao vinculada" }}</td>
+                            <td>{{ transaction.statement|default:"Não vinculada" }}</td>
                             <td><span class="status">{{ transaction.get_status_display }}</span></td>
                             <td>R$ {{ transaction.amount }}</td>
                         </tr>

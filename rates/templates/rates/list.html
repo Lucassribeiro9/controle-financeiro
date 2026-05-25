@@ -19,14 +19,14 @@
     <div class="summary-grid">
         <div class="metric-card">
             <span>CDI anual</span>
-            <strong>{% if latest_cdi %}{{ latest_cdi.value }}{% else %}Nao cadastrado{% endif %}</strong>
+            <strong>{% if latest_cdi %}{{ latest_cdi.value }}{% else %}Não cadastrado{% endif %}</strong>
         </div>
         <div class="metric-card">
             <span>Data da taxa</span>
             <strong>{% if latest_cdi %}{{ latest_cdi.date }}{% else %}-{% endif %}</strong>
         </div>
         <div class="metric-card">
-            <span>Periodo estimado</span>
+            <span>Período estimado</span>
             <strong>{{ months }} meses</strong>
         </div>
     </div>
@@ -68,7 +68,7 @@
         </section>
 
         <section class="panel">
-            <h2>Historico do CDI</h2>
+            <h2>Histórico do CDI</h2>
             {% if rate_history %}
                 <table class="data-table">
                     <thead>

@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Transferencias - Controle Financeiro{% endblock %}
+{% block title %}Transferências - Controle Financeiro{% endblock %}
 
 {% block content %}
     <header class="page-header">
         <div>
-            <h1>Transferencias</h1>
+            <h1>Transferências</h1>
             <p class="muted">{{ month }}/{{ year }}</p>
         </div>
 
         <div class="action-row">
-            <a class="button button-secondary" href="{% url 'transactions:list' %}">Ver lancamentos</a>
-            <a class="button" href="{% url 'transactions:transfer-create' %}">Nova transferencia</a>
+            <a class="button button-secondary" href="{% url 'transactions:list' %}">Ver lançamentos</a>
+            <a class="button" href="{% url 'transactions:transfer-create' %}">Nova transferência</a>
         </div>
     </header>
 
     <form class="period-form" method="get" action="{% url 'transactions:transfers' %}">
         <label>
-            <span>Mes</span>
+            <span>Mês</span>
             <input name="month" type="number" min="1" max="12" value="{{ month }}" required>
         </label>
         <label>
@@ -32,7 +32,7 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Descricao</th>
+                        <th>Descrição</th>
                         <th>Data</th>
                         <th>Origem</th>
                         <th>Destino</th>
@@ -57,7 +57,7 @@
                 </tbody>
             </table>
         {% else %}
-            <p class="empty">Nenhuma transferencia encontrada.</p>
+            <p class="empty">Nenhuma transferência encontrada.</p>
         {% endif %}
     </section>
 {% endblock %}

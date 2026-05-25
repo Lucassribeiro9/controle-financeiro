@@ -8,9 +8,9 @@ class FinancialAccount(models.Model):
         """Lista os tipos de conta suportados no cadastro inicial."""
 
         CHECKING = "checking", "Conta corrente"
-        SAVINGS = "savings", "Poupanca"
+        SAVINGS = "savings", "Poupança"
         PIGGY_BANK = "piggy_bank", "Porquinho"
-        BENEFIT = "benefit", "Beneficio"
+        BENEFIT = "benefit", "Benefício"
         GLOBAL = "global", "Conta global"
         CASH = "cash", "Dinheiro"
         INVESTMENT = "investment", "Investimento"
@@ -19,12 +19,12 @@ class FinancialAccount(models.Model):
         """Lista as moedas iniciais."""
 
         BRL = "BRL", "Real brasileiro"
-        USD = "USD", "Dolar americano"
+        USD = "USD", "Dólar americano"
 
     name = models.CharField("Nome", max_length=120)
     institution = models.ForeignKey(
         "institutions.Institution",
-        verbose_name="Instituicao",
+        verbose_name="Instituição",
         on_delete=models.PROTECT,
         related_name="accounts",
     )
