@@ -41,6 +41,9 @@ class MonthlyDashboardViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "reports/monthly_dashboard.html")
         self.assertContains(response, "Dashboard financeiro")
+        self.assertContains(response, "dashboard-chart-data")
+        self.assertContains(response, "vendor/chartjs/chart.umd.min.js")
+        self.assertContains(response, "js/dashboard.js")
 
     def test_monthly_dashboard_page_uses_query_period(self):
         """Deve renderizar o dashboard usando mes e ano da query string."""

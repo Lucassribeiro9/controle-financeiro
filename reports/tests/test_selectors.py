@@ -15,11 +15,13 @@ from reports.selectors import (
     get_card_statements,
     get_category_expense_share,
     get_category_expense_breakdown,
+    get_dashboard_chart_payload,
     get_goal_summary,
     get_monthly_cashflow_series,
     get_monthly_dashboard,
     get_monthly_expense_total,
     get_monthly_income_total,
+    get_uncategorized_expense_alert,
 )
 from transactions.models import Transaction, Transfer
 
@@ -249,6 +251,63 @@ class ReportSelectorTests(TestCase):
         self.assertEqual(series[-1]["bar_height"], 100)
         self.assertTrue(series[-2]["is_negative"])
 
+    def test_dashboard_chart_payload_returns_serializable_values(self):
+        """Deve montar dados numericos para o Chart.js."""
+
+        Transaction.objects.create(
+            description="Salario",
+            amount=Decimal("5000.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 5),
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.food_category,
+            date=date(2026, 5, 10),
+        )
+
+        payload = get_dashboard_chart_payload(year=2026, month=5, range_months=6)
+
+        self.assertEqual(payload["labels"][-1], "mai/2026")
+        self.assertEqual(payload["income"][-1], 5000.0)
+        self.assertEqual(payload["expenses"][-1], 300.0)
+        self.assertEqual(payload["balance"][-1], 4700.0)
+        self.assertEqual(payload["categories"]["labels"], ["Alimentacao"])
+        self.assertEqual(payload["categories"]["values"], [300.0])
+        self.assertEqual(payload["currency"], "BRL")
+
+    def test_uncategorized_expense_alert_highlights_large_uncategorized_share(self):
+        """Deve destacar concentracao alta de gastos sem categoria."""
+
+        Transaction.objects.create(
+            description="Compra sem categoria",
+            amount=Decimal("980.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 10),
+        )
+        Transaction.objects.create(
+            description="Onibus",
+            amount=Decimal("20.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.transport_category,
+            date=date(2026, 5, 12),
+        )
+
+        alert = get_uncategorized_expense_alert(year=2026, month=5)
+
+        self.assertEqual(alert["percentage"], 98)
+        self.assertEqual(alert["amount"], Decimal("980.00"))
+
     def test_account_net_worth_groups_active_accounts_by_currency(self):
         """Deve somar patrimonio por moeda considerando apenas contas ativas."""
 
@@ -365,5 +424,7 @@ class ReportSelectorTests(TestCase):
         self.assertEqual(dashboard["monthly_balance"], Decimal("4700.00"))
         self.assertEqual(dashboard["range_months"], 12)
         self.assertEqual(dashboard["cashflow_series"][-1]["balance"], Decimal("4700.00"))
+        self.assertEqual(dashboard["chartjs_payload"]["balance"][-1], 4700.0)
+        self.assertIsNone(dashboard["uncategorized_expense_alert"])
         self.assertEqual(dashboard["category_expenses"][0]["total_amount"], Decimal("300.00"))
         self.assertEqual(dashboard["category_expense_share"][0]["percentage"], 100)

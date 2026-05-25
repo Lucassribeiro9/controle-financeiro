@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}Dashboard financeiro - {{ month }}/{{ year }}{% endblock %}
 
@@ -53,26 +53,20 @@
             </div>
         </div>
 
-        <div class="cashflow-chart" aria-label="Gráfico de evolução financeira mensal">
-            {% for point in cashflow_series %}
-                <div class="chart-column">
-                    <span class="chart-value{% if point.is_negative %} is-negative{% endif %}">{{ point.value_label }}</span>
-                    <span class="chart-bar-wrap">
-                        <span
-                            class="chart-bar{% if point.is_negative %} is-negative{% endif %}"
-                            style="--bar-height: {{ point.bar_height }}%;"
-                            title="{{ point.label }}: {{ point.balance|brl }}"
-                        ></span>
-                    </span>
-                    <span class="chart-label">{{ point.label }}</span>
-                </div>
-            {% endfor %}
+        <div class="chart-canvas-wrap" aria-label="Gráfico de evolução financeira mensal">
+            <canvas id="cashflow-chart" height="280"></canvas>
         </div>
     </section>
 
     <div class="dashboard-grid">
         <section class="panel composition-panel">
             <h2>Gastos por categoria</h2>
+            {% if uncategorized_expense_alert %}
+                <div class="insight-alert">
+                    <strong>{{ uncategorized_expense_alert.percentage|percentage }} dos gastos estão sem categoria.</strong>
+                    <span>{{ uncategorized_expense_alert.amount|brl }} precisam de classificação para melhorar a leitura do mês.</span>
+                </div>
+            {% endif %}
             {% if category_expense_share %}
                 <div class="composition-list">
                     {% for item in category_expense_share %}
@@ -193,4 +187,11 @@
             {% endif %}
         </section>
     </div>
+
+    {{ chartjs_payload|json_script:"dashboard-chart-data" }}
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
 {% endblock %}
