@@ -123,6 +123,7 @@ class TransactionSelectorTests(TestCase):
             description="Mercado",
             amount=Decimal("250.00"),
             transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
             account=self.account,
             date=date(2026, 5, 8),
         )
@@ -130,6 +131,7 @@ class TransactionSelectorTests(TestCase):
             description="Pagamento fatura",
             amount=Decimal("800.00"),
             transaction_type=Transaction.TransactionType.STATEMENT_PAYMENT,
+            status=Transaction.PaymentStatus.PAID,
             account=self.account,
             date=date(2026, 5, 12),
         )
