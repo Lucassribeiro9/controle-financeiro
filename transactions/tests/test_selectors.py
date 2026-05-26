@@ -10,6 +10,7 @@ from cards.models import Card
 from institutions.models import Institution
 from transactions.models import Transaction, Transfer
 from transactions.selectors import (
+    get_account_balance,
     get_recent_transactions,
     get_monthly_expense_total,
     get_monthly_income_total,
@@ -49,6 +50,62 @@ class TransactionSelectorTests(TestCase):
             statement_due_day=27,
             payment_account=self.account,
         )
+
+    def test_get_account_balance_returns_balance_by_account(self):
+        """Deve retornar o saldo persistido da conta informada."""
+
+        balance = get_account_balance(account=self.account)
+
+        self.assertEqual(balance, Decimal("1000.00"))
+
+    def test_get_account_balance_returns_fresh_balance_by_account(self):
+        """Deve buscar saldo atualizado no banco mesmo com instancia antiga."""
+
+        FinancialAccount.objects.filter(pk=self.account.pk).update(
+            balance=Decimal("1250.00")
+        )
+
+        balance = get_account_balance(account=self.account)
+
+        self.assertEqual(balance, Decimal("1250.00"))
+
+    def test_get_account_balance_returns_balance_by_account_id(self):
+        """Deve retornar o saldo usando o id da conta."""
+
+        balance = get_account_balance(account_id=self.destination_account.id)
+
+        self.assertEqual(balance, Decimal("200.00"))
+
+    def test_get_account_balance_requires_account_or_account_id(self):
+        """Deve exigir uma forma clara de identificar a conta."""
+
+        with self.assertRaisesMessage(ValueError, "Informe account ou account_id."):
+            get_account_balance()
+
+    def test_get_account_balance_rejects_ambiguous_input(self):
+        """Nao deve aceitar account e account_id ao mesmo tempo."""
+
+        with self.assertRaisesMessage(ValueError, "Informe account ou account_id."):
+            get_account_balance(account=self.account, account_id=self.account.id)
+
+    def test_get_account_balance_rejects_unsaved_account(self):
+        """Nao deve consultar saldo de conta sem registro persistido."""
+
+        unsaved_account = FinancialAccount(
+            name="Conta temporaria",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("10.00"),
+        )
+
+        with self.assertRaisesMessage(ValueError, "Conta precisa estar persistida."):
+            get_account_balance(account=unsaved_account)
+
+    def test_get_account_balance_raises_for_unknown_account_id(self):
+        """Deve propagar erro quando a conta nao existir."""
+
+        with self.assertRaises(FinancialAccount.DoesNotExist):
+            get_account_balance(account_id=999999)
 
     def test_get_monthly_income_total_sums_income_from_given_month(self):
         """Deve somar receitas do mes informado."""

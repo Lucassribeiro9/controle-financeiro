@@ -121,6 +121,30 @@ Regra de impacto em saldo por tipo e status:
 | `forecast` | Nenhum | Nao altera saldo |
 | `adjustment` | Nenhum | Nao altera saldo automaticamente |
 
+### 5. Seletores
+
+Arquivo:
+
+- `transactions/selectors.py`
+
+Seletores implementados:
+
+- `get_account_balance`
+- `get_monthly_income_total`
+- `get_monthly_expense_total`
+- `get_monthly_transfers_total`
+- `get_transactions_for_period`
+- `get_recent_transactions`
+- `get_transactions_by_status`
+- `get_transactions_by_type`
+- `get_transfers_for_period`
+
+Comportamento de `get_account_balance`:
+
+- Aceita `account` ou `account_id`, mas nao ambos.
+- Retorna o saldo persistido atual da conta financeira.
+- Rejeita entradas ambiguas ou conta sem registro persistido.
+
 ## Admin Django
 
 Models registrados:
@@ -179,6 +203,16 @@ Cobertura:
 - Previsao nao altera saldo.
 - Compra no cartao nao altera saldo da conta de pagamento.
 - Transferencia move saldo da conta de origem para a conta de destino.
+
+### Seletores (`transactions/selectors.py`)
+
+Cobertura:
+
+- Leitura de saldo por instancia de conta.
+- Leitura de saldo por `account_id`.
+- Busca do saldo persistido mais recente.
+- Validacao de entradas ausentes, ambiguas ou conta nao persistida.
+- Erro para `account_id` inexistente.
 
 Execucao local:
 

@@ -1,7 +1,11 @@
-"""Seletores para leitura/consulda de dados relacionados a transações financeiras."""
+"""Seletores para leitura/consulta de dados relacionados a transações financeiras."""
+
+from decimal import Decimal
 
 from django.db.models import Sum
-from decimal import Decimal
+
+from accounts.models import FinancialAccount
+
 from .models import Transaction, Transfer
 
 # Status excluídos para não serem considerados nos cálculos
@@ -10,6 +14,23 @@ EXCLUDED_STATUSES = [
     Transaction.PaymentStatus.CANCELED,
     Transaction.PaymentStatus.FORECASTED,
 ]
+
+
+def get_account_balance(*, account=None, account_id=None):
+    """Retorna o saldo persistido de uma conta financeira."""
+
+    if (account is None and account_id is None) or (
+        account is not None and account_id is not None
+    ):
+        raise ValueError("Informe account ou account_id.")
+
+    selected_account_id = account_id
+    if account is not None:
+        if account.pk is None:
+            raise ValueError("Conta precisa estar persistida.")
+        selected_account_id = account.pk
+
+    return FinancialAccount.objects.only("balance").get(pk=selected_account_id).balance
 
 
 def get_monthly_income_total(*, year, month):
