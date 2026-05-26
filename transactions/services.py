@@ -1,10 +1,42 @@
 """Regras de negocio para transacoes e transferencias."""
 
+from decimal import Decimal
+
 from django.db import transaction as db_transaction
 
 from accounts.models import FinancialAccount
 
 from .models import Transaction, Transfer
+
+
+BALANCE_IMPACT_STATUS = Transaction.PaymentStatus.PAID
+BALANCE_IMPACT_BY_TYPE = {
+    Transaction.TransactionType.INCOME: Decimal("1"),
+    Transaction.TransactionType.EXPENSE: Decimal("-1"),
+    Transaction.TransactionType.STATEMENT_PAYMENT: Decimal("-1"),
+}
+
+
+def _get_balance_delta(transaction):
+    """Retorna o impacto em saldo conforme tipo e status da transacao."""
+
+    if transaction.status != BALANCE_IMPACT_STATUS:
+        return Decimal("0.00")
+
+    multiplier = BALANCE_IMPACT_BY_TYPE.get(transaction.transaction_type, Decimal("0"))
+    return transaction.amount * multiplier
+
+
+def _apply_balance_delta(*, transaction):
+    balance_delta = _get_balance_delta(transaction)
+    if not transaction.account_id or balance_delta == Decimal("0.00"):
+        return
+
+    transaction.account = FinancialAccount.objects.select_for_update().get(
+        pk=transaction.account_id
+    )
+    transaction.account.balance += balance_delta
+    transaction.account.save(update_fields=["balance", "updated_at"])
 
 
 def create_transaction(
@@ -19,7 +51,7 @@ def create_transaction(
     status=Transaction.PaymentStatus.PENDING,
     notes="",
 ):
-    """Cria uma transacao validada e aplica efeito simples no saldo."""
+    """Cria uma transacao validada e aplica saldo apenas se estiver paga."""
 
     transaction = Transaction(
         description=description,
@@ -35,23 +67,8 @@ def create_transaction(
     transaction.full_clean()
 
     with db_transaction.atomic():
-        if transaction.account_id:
-            transaction.account = FinancialAccount.objects.select_for_update().get(
-                pk=transaction.account_id
-            )
-
         transaction.save()
-
-        if transaction.account_id and transaction.transaction_type == Transaction.TransactionType.INCOME:
-            transaction.account.balance += transaction.amount
-            transaction.account.save(update_fields=["balance", "updated_at"])
-
-        if transaction.account_id and transaction.transaction_type in (
-            Transaction.TransactionType.EXPENSE,
-            Transaction.TransactionType.STATEMENT_PAYMENT,
-        ):
-            transaction.account.balance -= transaction.amount
-            transaction.account.save(update_fields=["balance", "updated_at"])
+        _apply_balance_delta(transaction=transaction)
 
     return transaction
 
@@ -93,15 +110,19 @@ def create_transfer(
 
     return transfer
 
+
 def mark_transaction_as_paid(transaction_id):
-    """Marca uma transação como paga sem reaplicar impacto no saldo."""
+    """Marca uma transacao como paga e aplica impacto em saldo uma unica vez."""
+
     with db_transaction.atomic():
         transaction = Transaction.objects.select_for_update().get(pk=transaction_id)
 
         if transaction.status == Transaction.PaymentStatus.PAID:
-            return transaction  # Já está pago, não faz nada
+            return transaction
 
         transaction.status = Transaction.PaymentStatus.PAID
+        transaction.full_clean()
+        _apply_balance_delta(transaction=transaction)
         transaction.save(update_fields=["status", "updated_at"])
 
     return transaction

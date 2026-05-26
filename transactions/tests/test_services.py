@@ -37,8 +37,8 @@ class TransactionServiceTests(TestCase):
             payment_account=self.account,
         )
 
-    def test_create_income_increases_account_balance(self):
-        """Deve aumentar o saldo da conta ao criar uma receita."""
+    def test_create_pending_income_does_not_change_account_balance(self):
+        """Receita pendente nao deve alterar saldo da conta."""
 
         transaction = create_transaction(
             description="Salario",
@@ -52,10 +52,29 @@ class TransactionServiceTests(TestCase):
         self.account.refresh_from_db()
 
         self.assertIsNotNone(transaction.id)
+        self.assertEqual(transaction.status, Transaction.PaymentStatus.PENDING)
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+
+    def test_create_paid_income_increases_account_balance(self):
+        """Receita paga deve aumentar saldo da conta."""
+
+        transaction = create_transaction(
+            description="Salario",
+            amount=Decimal("5000.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        self.account.refresh_from_db()
+
+        self.assertIsNotNone(transaction.id)
         self.assertEqual(self.account.balance, Decimal("6000.00"))
 
-    def test_create_expense_decreases_account_balance(self):
-        """Deve reduzir o saldo da conta ao criar uma despesa."""
+    def test_create_pending_expense_does_not_change_account_balance(self):
+        """Despesa pendente nao deve alterar saldo da conta."""
 
         transaction = create_transaction(
             description="Mercado",
@@ -69,15 +88,35 @@ class TransactionServiceTests(TestCase):
         self.account.refresh_from_db()
 
         self.assertIsNotNone(transaction.id)
+        self.assertEqual(transaction.status, Transaction.PaymentStatus.PENDING)
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+
+    def test_create_paid_expense_decreases_account_balance(self):
+        """Despesa paga deve reduzir o saldo da conta."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        self.account.refresh_from_db()
+
+        self.assertIsNotNone(transaction.id)
         self.assertEqual(self.account.balance, Decimal("750.00"))
 
-    def test_create_statement_payment_decreases_account_balance(self):
-        """Deve reduzir saldo da conta ao registrar pagamento de fatura."""
+    def test_create_paid_statement_payment_decreases_account_balance(self):
+        """Pagamento de fatura pago deve reduzir saldo da conta."""
 
         create_transaction(
             description="Pagamento fatura",
             amount=Decimal("400.00"),
             transaction_type=Transaction.TransactionType.STATEMENT_PAYMENT,
+            status=Transaction.PaymentStatus.PAID,
             account=self.account,
             date=date(2026, 5, 8),
         )
@@ -134,13 +173,35 @@ class TransactionServiceTests(TestCase):
 
         self.assertEqual(paid_transaction.status, Transaction.PaymentStatus.PAID)
 
-    def test_mark_transaction_as_paid_does_not_apply_balance_twice(self):
-        """Nao deve alterar saldo novamente ao marcar transacao como paga."""
+    def test_mark_pending_expense_as_paid_decreases_account_balance(self):
+        """Marcar despesa pendente como paga deve reduzir saldo."""
 
         transaction = create_transaction(
             description="Mercado",
             amount=Decimal("250.00"),
             transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+        self.account.refresh_from_db()
+        balance_after_creation = self.account.balance
+
+        mark_transaction_as_paid(transaction.id)
+
+        self.account.refresh_from_db()
+
+        self.assertEqual(balance_after_creation, Decimal("1000.00"))
+        self.assertEqual(self.account.balance, Decimal("750.00"))
+
+    def test_mark_paid_transaction_as_paid_does_not_apply_balance_twice(self):
+        """Nao deve alterar saldo novamente ao marcar transacao ja paga."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
             account=self.account,
             category=self.category,
             date=date(2026, 5, 8),
@@ -173,6 +234,24 @@ class TransactionServiceTests(TestCase):
         self.account.refresh_from_db()
 
         self.assertEqual(self.account.balance, Decimal("750.00"))
+
+    def test_mark_pending_income_as_paid_increases_account_balance(self):
+        """Marcar receita pendente como paga deve aumentar saldo."""
+
+        transaction = create_transaction(
+            description="Salario",
+            amount=Decimal("5000.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        mark_transaction_as_paid(transaction.id)
+
+        self.account.refresh_from_db()
+
+        self.assertEqual(self.account.balance, Decimal("6000.00"))
 
 
 class TransferServiceTests(TestCase):

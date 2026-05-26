@@ -103,10 +103,23 @@ Servicos implementados:
 Comportamento atual:
 
 - `create_transaction` valida e persiste a transacao com `full_clean` e transacao atomica.
-- Receita (`income`) aumenta saldo da conta vinculada.
-- Despesa (`expense`) e pagamento de fatura (`statement_payment`) reduzem saldo da conta vinculada.
+- Receita (`income`) aumenta saldo da conta vinculada apenas quando o status e `paid`.
+- Despesa (`expense`) e pagamento de fatura (`statement_payment`) reduzem saldo da conta vinculada apenas quando o status e `paid`.
 - Previsao (`forecast`) e compra no cartao (`card_purchase`) nao alteram saldo da conta no momento do lancamento.
+- Transacoes `pending`, `forecasted`, `partially_paid`, `late`, `canceled` e `ignored` nao alteram saldo diretamente.
+- `mark_transaction_as_paid` muda o status para `paid` e aplica o impacto de saldo uma unica vez.
 - `create_transfer` valida e move saldo da origem para o destino com bloqueio transacional (`select_for_update`).
+
+Regra de impacto em saldo por tipo e status:
+
+| Tipo | Status com impacto | Impacto |
+| --- | --- | --- |
+| `income` | `paid` | Credita a conta vinculada |
+| `expense` | `paid` | Debita a conta vinculada |
+| `statement_payment` | `paid` | Debita a conta vinculada |
+| `card_purchase` | Nenhum | Nao altera saldo; a saida de caixa ocorre no pagamento da fatura |
+| `forecast` | Nenhum | Nao altera saldo |
+| `adjustment` | Nenhum | Nao altera saldo automaticamente |
 
 ## Admin Django
 
