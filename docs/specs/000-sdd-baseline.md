@@ -30,6 +30,11 @@ python manage.py makemigrations --check --dry-run
 python manage.py test
 ```
 
+Pre-requisito local:
+
+- ativar o ambiente virtual do projeto antes de rodar os comandos, garantindo que `python` aponte para o interpretador do `venv`;
+- quando o ambiente virtual nao estiver ativado, usar `venv/bin/python` de forma explicita.
+
 Comandos auxiliares:
 
 ```bash
@@ -191,3 +196,37 @@ Antes de quebrar em issue de implementacao:
 - Documentar politica minima de testes por tipo de mudanca.
 - Documentar politica de migrations quando houver a primeira issue com schema.
 - Criar checklist operacional para abrir issues pequenas a partir das specs.
+
+## Validacao dos Comandos Obrigatorios
+
+Validacao executada em 2026-05-27.
+
+Resultado com os comandos literais:
+
+```text
+python manage.py check
+Resultado: falhou porque o binario `python` nao existe no shell atual.
+
+python manage.py makemigrations --check --dry-run
+Resultado: falhou pelo mesmo motivo.
+
+python manage.py test
+Resultado: falhou pelo mesmo motivo.
+```
+
+Resultado usando o ambiente virtual local:
+
+```text
+venv/bin/python manage.py check
+Resultado: passou. System check identified no issues.
+
+venv/bin/python manage.py makemigrations --check --dry-run
+Resultado: passou. No changes detected.
+
+venv/bin/python manage.py test
+Resultado: passou. 319 tests executados com OK.
+```
+
+Bloqueio acionavel:
+
+- antes de executar os comandos obrigatorios como `python manage.py ...`, ativar o `venv` do projeto ou criar um alias local em que `python` aponte para Python 3.12 com as dependencias instaladas.

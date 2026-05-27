@@ -125,6 +125,11 @@ Para cada spec implementada:
 - validar responsividade basica em desktop e mobile;
 - confirmar que nao ha JSON cru em fluxo HTML, salvo endpoint intencional.
 
+Observacao local:
+
+- no ambiente atual, os comandos `python manage.py ...` dependem do `venv` ativado;
+- sem o `venv` ativado, usar `venv/bin/python manage.py ...` para executar a validacao equivalente.
+
 ## Assumptions
 
 - O projeto continua usando Django templates, Chart.js e interatividade leve.
