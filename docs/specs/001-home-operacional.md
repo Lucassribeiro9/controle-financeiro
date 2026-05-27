@@ -66,6 +66,16 @@ Criar ou evoluir:
 - selectors auxiliares para resumo mensal, faturas proximas, importacoes pendentes, insights pendentes e metas em risco;
 - contexto pronto para o template, evitando regra de negocio complexa na view.
 
+Contrato minimo do contexto:
+
+```text
+summary       -> resumo financeiro do mes atual
+alerts        -> alertas priorizados da home
+pending_items -> pendencias acionaveis
+quick_actions -> atalhos rapidos fixos
+empty_states  -> estados vazios com CTA
+```
+
 ## Estados de Erro
 
 - Banco vazio deve renderizar sem excecao.
@@ -116,6 +126,14 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 - A home usa o mes atual como periodo padrao.
 - Seletor de periodo fica fora do MVP da home operacional.
+- Esta spec nao muda schema.
+- O selector principal deve retornar, no minimo, as chaves `summary`, `alerts`, `pending_items`, `quick_actions` e `empty_states`.
+- O resumo financeiro do mes separa valores realizados de valores previstos ou pendentes.
+- Transferencias nao entram como receita ou despesa no resumo mensal.
+- Faturas proximas sao faturas vencidas ou com vencimento em ate 15 dias.
+- Metas em risco no MVP sao metas ou categorias ja ultrapassadas ou acima de 80% do limite, quando os dados existirem.
+- Pendencias de importacao, insights, recorrencias, faturas e metas devem usar os modelos/status ja existentes; se algum dado ainda nao existir, o bloco deve retornar vazio ou estado vazio, nao criar regra nova.
+- Isolamento avancado de erro por bloco fica fora da primeira issue; o MVP deve garantir banco vazio sem excecao.
 - Prioridade inicial dos alertas:
   1. faturas vencidas ou proximas do vencimento;
   2. importacoes pendentes;
@@ -129,7 +147,7 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 ## Task Breakdown Inicial
 
 - [ ] Task: Criar selector da home operacional.
-  - Acceptance: contexto da home retorna resumo mensal, pendencias e estados vazios.
+  - Acceptance: contexto da home retorna `summary`, `alerts`, `pending_items`, `quick_actions` e `empty_states` para o mes atual, sem alterar schema.
   - Verify: `python manage.py test core`.
   - Files: `core/selectors.py`, `core/tests/`.
 - [ ] Task: Redesenhar template da home.
