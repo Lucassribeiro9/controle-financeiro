@@ -52,6 +52,33 @@ coverage report
 pre-commit run --all-files
 ```
 
+## Migration Policy
+
+Mudancas de schema e migrations so sao permitidas quando a issue declarar explicitamente esse escopo.
+
+Issue com schema deve registrar:
+
+- quais models/campos/constraints entram na mudanca;
+- quais migrations sao esperadas;
+- qual impacto existe em dados financeiros ja gravados;
+- quais testes provam a alteracao;
+- qual comando valida que nao ha migrations inesperadas.
+
+Criterios de aceite para issue com migration devem citar os arquivos de migration esperados, por exemplo:
+
+```text
+Acceptance: migration `transactions/migrations/0008_add_paid_at.py` existe e aplica o campo `paid_at` sem alterar saldos existentes.
+Verify: `python manage.py makemigrations --check --dry-run` nao gera migrations adicionais depois da migration versionada.
+```
+
+PR sem mudanca de schema deve passar em:
+
+```bash
+python manage.py makemigrations --check --dry-run
+```
+
+Se esse comando indicar migration pendente em uma issue que nao declarou schema, a mudanca deve voltar para a fase de spec/issue antes de continuar.
+
 ## Project Structure
 
 Estrutura relevante da fase atual:
@@ -225,6 +252,7 @@ Antes de quebrar em issue de implementacao:
 - [ ] A spec referencia esta baseline.
 - [ ] A spec tem criterios de aceite testaveis.
 - [ ] A spec tem open questions ou declara que nao ha questoes abertas.
+- [ ] A spec declara explicitamente se muda schema ou se nao muda schema.
 - [ ] A spec foi quebrada em issues pequenas.
 - [ ] A ordem das tasks respeita dependencias.
 
