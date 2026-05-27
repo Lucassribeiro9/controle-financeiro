@@ -256,6 +256,47 @@ Antes de quebrar em issue de implementacao:
 - [ ] A spec foi quebrada em issues pequenas.
 - [ ] A ordem das tasks respeita dependencias.
 
+## Issue SDD Checklist
+
+Toda issue de implementacao deve ser pequena, revisavel e ligada a uma spec. Antes de abrir a issue, conferir:
+
+- [ ] Titulo segue Conventional Commits em portugues.
+- [ ] Contexto explica o problema e referencia a spec relacionada.
+- [ ] Objetivo descreve o resultado esperado da issue.
+- [ ] Escopo lista somente o que entra nesta entrega.
+- [ ] Fora de escopo lista o que nao deve ser implementado agora.
+- [ ] Criterios de aceite sao objetivos e testaveis.
+- [ ] Testes esperados indicam comandos, testes automatizados ou validacao manual.
+- [ ] Arquivos provaveis indicam onde a mudanca deve acontecer.
+- [ ] A issue declara se muda schema ou se nao muda schema.
+- [ ] A issue e pequena o bastante para um PR claro.
+
+Campos obrigatorios da issue:
+
+```markdown
+## Contexto
+
+## Objetivo
+
+## Escopo
+
+## Fora de Escopo
+
+## Criterios de Aceite
+
+## Testes Esperados
+
+## Arquivos Provaveis
+```
+
+Regras operacionais:
+
+- uma issue deve nascer de uma spec aprovada ou atualizar a spec antes da implementacao;
+- cada criterio de aceite deve ter uma forma de verificacao;
+- arquivos provaveis ajudam a limitar o escopo, mas nao autorizam mudancas fora da issue;
+- se a issue envolver schema, a politica de migrations desta baseline deve ser seguida;
+- mudancas de produto nao devem entrar em issue puramente documental.
+
 ## Decisoes da Spec Review
 
 - Esta baseline passa a ser contrato obrigatorio para as proximas issues.
