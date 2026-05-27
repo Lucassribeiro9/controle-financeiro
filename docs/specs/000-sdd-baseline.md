@@ -171,6 +171,24 @@ Padrao minimo por issue:
 - a estrutura de testes atual do projeto deve ser preservada;
 - criterios de aceite testaveis sao obrigatorios antes de abrir issue para implementacao.
 
+Politica minima por tipo de mudanca:
+
+- model: testar invariantes simples, validacoes, defaults, constraints esperadas e metodos que alterem estado financeiro;
+- service: testar regra de negocio, efeitos colaterais, transacoes atomicas, validacoes de erro e impacto em saldo, fatura, limite ou status;
+- selector: testar filtros, ordenacao, agregacoes, inclusao/exclusao por status e cenarios com banco vazio;
+- view GET: testar status code, template usado, contexto essencial e links/acoes esperados quando forem parte do aceite;
+- view POST: testar sucesso, erro de validacao, chamada do service quando aplicavel, `messages` e redirect;
+- template/helper: testar logica condicional relevante, formatacao de valores, status, badges ou estados vazios quando isso puder quebrar regra de exibicao;
+- mudanca visual relevante: validar manualmente desktop e mobile, incluindo estados vazio, com dados, erro e filtros sem resultado quando aplicavel.
+
+Regras operacionais:
+
+- regra financeira nova ou alterada exige teste de service ou model;
+- consulta nova ou alterada exige teste de selector;
+- fluxo HTML com POST exige teste de view cobrindo `messages` e redirect;
+- funcao ou classe nova exige teste no menor nivel que prove seu comportamento;
+- mudanca puramente documental nao exige teste automatizado, mas deve passar por revisao manual e pelos comandos obrigatorios antes do PR.
+
 ## Boundaries
 
 ### Always
