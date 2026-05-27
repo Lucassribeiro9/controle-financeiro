@@ -54,11 +54,12 @@ pre-commit run --all-files
 
 ## Project Structure
 
-Estrutura relevante:
+Estrutura relevante da fase atual:
 
 ```text
 project/        -> settings, urls, ASGI/WSGI
 core/           -> home, navegacao e utilitarios globais
+institutions/   -> instituicoes financeiras, bancos e emissores
 accounts/       -> contas, caixinhas e saldos
 cards/          -> cartoes, faturas e pagamentos
 categories/     -> categorias de transacoes
@@ -75,6 +76,36 @@ static/         -> CSS e assets estaticos
 docs/plans/     -> planos e roadmap
 docs/specs/     -> specs SDD
 ```
+
+Apps Django instalados nesta fase:
+
+```text
+core
+institutions
+accounts
+categories
+cards
+installments
+transactions
+recurrences
+goals
+reports
+imports
+insights
+rates
+```
+
+Diretorios compartilhados relevantes:
+
+```text
+project/
+templates/
+static/
+docs/plans/
+docs/specs/
+```
+
+Nao ha apps planejados listados como se ja existissem nesta baseline. Quando um app novo entrar no roadmap, ele deve ser identificado como planejado ate ser criado e registrado em `INSTALLED_APPS`.
 
 Esta lista de apps e diretorios e a referencia canonica da fase atual do projeto.
 
