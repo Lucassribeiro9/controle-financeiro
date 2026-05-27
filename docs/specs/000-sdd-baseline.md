@@ -6,6 +6,8 @@ Definir o contrato comum para todas as specs do projeto Controle Financeiro.
 
 Cada spec numerada deve focar no problema de produto ou tecnico que resolve, mas herda desta baseline os comandos, estrutura, estilo, estrategia de testes e limites de atuacao.
 
+Esta baseline e obrigatoria para as proximas issues do projeto.
+
 ## Tech Stack
 
 - Python 3.12.
@@ -14,13 +16,13 @@ Cada spec numerada deve focar no problema de produto ou tecnico que resolve, mas
 - Django templates.
 - CSS em `static/css/app.css`.
 - Chart.js em telas de dashboard/relatorio quando o grafico ajudar a decisao.
-- Testes com Django TestCase e/ou pytest-django, conforme padrao ja existente no app.
+- Testes seguindo a estrutura atual do projeto.
 - Docker/Docker Compose para execucao local padronizada.
 - GitHub Actions para CI.
 
 ## Commands
 
-Comandos padrao para validar uma issue antes do PR:
+Comandos obrigatorios para validar uma issue antes do PR:
 
 ```bash
 python manage.py check
@@ -68,6 +70,8 @@ static/         -> CSS e assets estaticos
 docs/plans/     -> planos e roadmap
 docs/specs/     -> specs SDD
 ```
+
+Esta lista de apps e diretorios e a referencia canonica da fase atual do projeto.
 
 Padrao por app:
 
@@ -128,6 +132,8 @@ Padrao minimo por issue:
 - uma mudanca de consulta pede teste de selector;
 - uma mudanca de fluxo web pede teste de view;
 - uma mudanca visual relevante pede validacao manual desktop/mobile, alem de smoke test quando possivel.
+- a estrutura de testes atual do projeto deve ser preservada;
+- criterios de aceite testaveis sao obrigatorios antes de abrir issue para implementacao.
 
 ## Boundaries
 
@@ -141,7 +147,7 @@ Padrao minimo por issue:
 
 ### Ask First
 
-- Alterar schema de banco fora do escopo da issue.
+- Alterar schema de banco fora do escopo explicito da issue.
 - Adicionar dependencia nova.
 - Mudar CI/CD.
 - Alterar fluxo de saldo ou fatura de forma retroativa.
@@ -158,7 +164,7 @@ Padrao minimo por issue:
 
 ## Spec Readiness Checklist
 
-Antes de implementar:
+Antes de quebrar em issue de implementacao:
 
 - [ ] A spec tem objetivo claro.
 - [ ] A spec declara fora de escopo.
@@ -167,3 +173,21 @@ Antes de implementar:
 - [ ] A spec tem open questions ou declara que nao ha questoes abertas.
 - [ ] A spec foi quebrada em issues pequenas.
 - [ ] A ordem das tasks respeita dependencias.
+
+## Decisoes da Spec Review
+
+- Esta baseline passa a ser contrato obrigatorio para as proximas issues.
+- O trio de validacao (`check`, `makemigrations --check --dry-run` e `test`) e obrigatorio antes de PR.
+- A estrutura de testes atual do projeto deve ser mantida.
+- A lista de apps e diretorios desta baseline e a referencia canonica da fase atual.
+- Mudancas de schema e migrations so entram quando a issue permitir explicitamente.
+- Criterios de aceite testaveis sao obrigatorios antes de abrir issue de implementacao.
+- Toda spec numerada deve declarar fora de escopo, criterios de aceite, open questions e task breakdown.
+
+## Issues Sugeridas
+
+- Validar comandos obrigatorios no ambiente atual.
+- Alinhar a lista de apps desta baseline quando a estrutura real do projeto mudar.
+- Documentar politica minima de testes por tipo de mudanca.
+- Documentar politica de migrations quando houver a primeira issue com schema.
+- Criar checklist operacional para abrir issues pequenas a partir das specs.
