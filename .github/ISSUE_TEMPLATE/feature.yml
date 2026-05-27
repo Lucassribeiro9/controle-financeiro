@@ -1,0 +1,56 @@
+name: Feature
+description: Planejar uma melhoria funcional pequena e rastreavel.
+title: "feat: "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: Qual problema ou oportunidade motivou esta issue?
+      placeholder: "Hoje..."
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo
+      description: Qual resultado deve existir ao final?
+      placeholder: "Ao final, o usuario deve conseguir..."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo
+      description: O que sera feito nesta issue?
+      placeholder: "- Criar...\n- Ajustar...\n- Testar..."
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Fora de Escopo
+      description: O que nao sera feito aqui?
+      placeholder: "- Nao implementar..."
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de Aceite
+      description: Como saberemos que esta issue ficou pronta?
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Testes Esperados
+      description: Quais testes devem ser criados ou rodados?
+      placeholder: "- [ ] python manage.py test"
+    validations:
+      required: true
+  - type: input
+    id: spec
+    attributes:
+      label: Spec relacionada
+      placeholder: "docs/specs/001-home-operacional.md"

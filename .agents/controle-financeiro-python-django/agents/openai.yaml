@@ -1,0 +1,4 @@
+interface:
+  display_name: "Controle Financeiro Python Django"
+  short_description: "Implementacao Python/Django financeira."
+  default_prompt: "Use esta skill para implementar features no Controle Financeiro seguindo services/selectors, Decimal, testes e fluxos Django com messages/redirect."
