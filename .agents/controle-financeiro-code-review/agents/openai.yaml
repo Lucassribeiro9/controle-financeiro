@@ -1,0 +1,4 @@
+interface:
+  display_name: "Controle Financeiro Code Review"
+  short_description: "Review financeiro e Django do projeto."
+  default_prompt: "Use esta skill para revisar mudancas no Controle Financeiro, procurando riscos em saldo, faturas, recorrencias, testes, Django e aderencia a spec."

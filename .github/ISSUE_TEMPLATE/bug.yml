@@ -1,0 +1,53 @@
+name: Bug
+description: Registrar um erro reproduzivel.
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: O que esta acontecendo?
+      placeholder: "Ao tentar..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Passos Para Reproduzir
+      placeholder: "1. Acessar...\n2. Clicar...\n3. Observar..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento Esperado
+      placeholder: "Deveria..."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportamento Atual
+      placeholder: "Atualmente..."
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impacto
+      description: Qual risco ou incomodo este bug causa?
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de Aceite
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Testes Esperados
+      placeholder: "- [ ] Teste de regressao para..."
+    validations:
+      required: true

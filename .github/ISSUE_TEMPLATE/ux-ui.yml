@@ -1,0 +1,50 @@
+name: UX/UI
+description: Planejar melhoria visual, fluxo de tela ou componente.
+title: "feat: "
+labels: ["ux-ui"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: Qual problema visual ou de fluxo existe?
+    validations:
+      required: true
+  - type: textarea
+    id: user_goal
+    attributes:
+      label: Objetivo do Usuario
+      placeholder: "O usuario precisa..."
+    validations:
+      required: true
+  - type: textarea
+    id: screens
+    attributes:
+      label: Telas Afetadas
+      placeholder: "- Home\n- Transacoes"
+    validations:
+      required: true
+  - type: textarea
+    id: design_direction
+    attributes:
+      label: Direcao Visual
+      placeholder: "Base estrutural: Monarch\nSobriedade: Maybe\nAlertas: Rocket Money"
+  - type: textarea
+    id: states
+    attributes:
+      label: Estados Necessarios
+      placeholder: "- Vazio\n- Carregando\n- Erro\n- Com dados"
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de Aceite
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Testes e Validacao
+      placeholder: "- [ ] View test\n- [ ] Validacao manual desktop/mobile"
+    validations:
+      required: true

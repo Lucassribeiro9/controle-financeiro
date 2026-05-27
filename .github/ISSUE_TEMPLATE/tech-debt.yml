@@ -1,0 +1,50 @@
+name: Tech Debt
+description: Planejar uma melhoria tecnica sem mudanca funcional direta.
+title: "refactor: "
+labels: ["tech-debt"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: Qual parte do codigo esta criando custo ou risco?
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo Tecnico
+      placeholder: "Reduzir duplicacao em..."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo
+      placeholder: "- Mover...\n- Criar...\n- Manter comportamento atual..."
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Fora de Escopo
+      placeholder: "- Nao alterar..."
+  - type: textarea
+    id: risk
+    attributes:
+      label: Riscos
+      description: O que pode quebrar se a refatoracao for mal feita?
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de Aceite
+      placeholder: "- [ ] Comportamento preservado\n- [ ] Testes passam"
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Testes Esperados
+      placeholder: "- [ ] python manage.py test"
+    validations:
+      required: true
