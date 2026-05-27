@@ -90,6 +90,8 @@ Estabilizacao tecnica entra antes de integracoes maiores.
 
 Uma issue deve ser pequena o bastante para virar um PR claro.
 
+O checklist operacional para abrir issues SDD fica em `docs/specs/000-sdd-baseline.md`.
+
 Boa issue:
 
 - muda um fluxo ou componente especifico;
