@@ -79,6 +79,51 @@
         </div>
     </section>
 
+    <section class="home-alerts" aria-labelledby="home-alerts-title">
+        <div class="home-section-header">
+            <div>
+                <h2 id="home-alerts-title">Alertas prioritários</h2>
+                <p class="muted">Itens que pedem atenção antes de fechar o mês.</p>
+            </div>
+        </div>
+
+        {% if alerts %}
+            <div class="home-alert-list">
+                {% for alert in alerts %}
+                    <a class="home-alert-card home-alert-card-{{ alert.priority }}" href="{{ alert.url }}">
+                        <div>
+                            <span class="badge {% if alert.priority == 'high' %}badge-danger{% else %}badge-warning{% endif %}">
+                                {% if alert.priority == "high" %}Prioridade alta{% else %}Atenção{% endif %}
+                            </span>
+                            <strong>{{ alert.title }}</strong>
+                            <span>{{ alert.description }}</span>
+                        </div>
+
+                        {% if alert.amount %}
+                            <span class="home-alert-value">{{ alert.amount|brl }}</span>
+                        {% elif alert.count %}
+                            <span class="home-alert-value">{{ alert.count }}</span>
+                        {% elif alert.current_amount %}
+                            <span class="home-alert-value">
+                                {{ alert.current_amount|brl }} de {{ alert.target_amount|brl }}
+                            </span>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="home-empty-action">
+                <div>
+                    <strong>{{ empty_states.alerts.title }}</strong>
+                    <span>Nada exige atenção imediata agora.</span>
+                </div>
+                <a class="button button-secondary" href="{{ empty_states.alerts.cta_url }}">
+                    {{ empty_states.alerts.cta_label }}
+                </a>
+            </div>
+        {% endif %}
+    </section>
+
     <div class="shortcut-grid">
         <a class="shortcut-card" href="/reports/month/">
             <strong>Dashboard mensal</strong>
