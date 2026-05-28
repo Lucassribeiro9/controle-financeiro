@@ -1,12 +1,19 @@
 """Testes das views do app core."""
 
 from datetime import date
+from datetime import timedelta
 from decimal import Decimal
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import FinancialAccount
+from cards.models import Card
+from cards.models import CardStatement
+from goals.models import Goal
+from goals.models import MonthlyGoal
+from imports.models import ImportedTransaction
 from institutions.models import Institution
 from transactions.models import Transaction
 
@@ -111,3 +118,84 @@ class HomeViewTests(TestCase):
         self.assertContains(response, "R$ 4.550,00")
         self.assertContains(response, "-R$ 120,00")
         self.assertContains(response, "-R$ 50,00")
+
+    def test_home_displays_empty_alert_state(self):
+        """Sem alertas, a home deve mostrar um estado vazio acionavel."""
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "Alertas prioritários")
+        self.assertContains(response, "Nenhum alerta prioritario")
+        self.assertContains(response, "Ver dashboard mensal")
+        self.assertContains(response, 'href="/reports/month/"', html=False)
+
+    def test_home_displays_priority_alerts_with_links(self):
+        """Alertas existentes devem aparecer com links para os fluxos responsaveis."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        card = Card.objects.create(
+            name="Inter Gold",
+            institution=institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=10,
+            payment_account=account,
+        )
+        statement = CardStatement.objects.create(
+            card=card,
+            year=2026,
+            month=5,
+            closed_amount=Decimal("700.00"),
+            expected_amount=Decimal("700.00"),
+            due_date=timezone.localdate() + timedelta(days=5),
+            closing_date=timezone.localdate(),
+            status=CardStatement.StatementStatus.OPEN,
+            payment_account=account,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado",
+            normalized_description="mercado",
+            amount=Decimal("100.00"),
+            date=timezone.localdate(),
+            status=ImportedTransaction.Status.PENDING,
+        )
+        period = self.client.get(reverse("core:home")).context["summary"]["period"]
+        goal = Goal.objects.create(
+            name="Mercado",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("1000.00"),
+            start_date=date(period["year"], period["month"], 1),
+        )
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=period["year"],
+            month=period["month"],
+            target_amount=Decimal("1000.00"),
+            current_amount=Decimal("850.00"),
+        )
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "Fatura Inter Gold")
+        self.assertContains(response, "Prioridade alta")
+        self.assertContains(response, "R$ 700,00")
+        self.assertContains(
+            response,
+            reverse("cards:statement-detail", args=[statement.id]),
+        )
+        self.assertContains(response, "Importacoes pendentes")
+        self.assertContains(response, "1 lancamento(s) aguardando revisao")
+        self.assertContains(response, reverse("imports:review-page"))
+        self.assertContains(response, "Mercado")
+        self.assertContains(response, "Meta mensal em risco")
+        self.assertContains(response, "R$ 850,00 de R$ 1.000,00")
+        self.assertContains(response, reverse("goals:monthly-goals"))

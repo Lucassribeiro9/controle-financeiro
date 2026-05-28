@@ -403,6 +403,88 @@ h2 {
     text-align: right;
 }
 
+.home-alerts {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.home-section-header {
+    align-items: start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.home-alert-list {
+    display: grid;
+    gap: 12px;
+}
+
+.home-alert-card {
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--warning);
+    border-radius: var(--radius);
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+.home-alert-card:hover {
+    border-color: rgba(15, 118, 110, 0.45);
+    box-shadow: var(--shadow-subtle);
+}
+
+.home-alert-card-high {
+    border-left-color: var(--danger);
+}
+
+.home-alert-card strong,
+.home-alert-card span {
+    display: block;
+}
+
+.home-alert-card strong {
+    margin-top: 10px;
+}
+
+.home-alert-card > div > span:last-child {
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.home-alert-value {
+    color: var(--text);
+    flex: 0 0 auto;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: right;
+}
+
+.home-empty-action {
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+.home-empty-action strong,
+.home-empty-action span {
+    display: block;
+}
+
+.home-empty-action span {
+    color: var(--muted);
+    margin-top: 4px;
+}
+
 .dashboard-grid {
     display: grid;
     gap: 16px;
@@ -1155,6 +1237,16 @@ h2 {
 
     .home-overview-header {
         display: grid;
+    }
+
+    .home-section-header,
+    .home-alert-card,
+    .home-empty-action {
+        display: grid;
+    }
+
+    .home-alert-value {
+        text-align: left;
     }
 
     .segment-control {
