@@ -14,6 +14,7 @@ from cards.models import CardStatement
 from goals.models import Goal
 from goals.models import MonthlyGoal
 from imports.models import ImportedTransaction
+from insights.models import Insight
 from institutions.models import Institution
 from transactions.models import Transaction
 
@@ -199,3 +200,86 @@ class HomeViewTests(TestCase):
         self.assertContains(response, "Meta mensal em risco")
         self.assertContains(response, "R$ 850,00 de R$ 1.000,00")
         self.assertContains(response, reverse("goals:monthly-goals"))
+
+    def test_home_displays_empty_pending_items_state(self):
+        """Sem pendencias, a home deve mostrar estado vazio acionavel."""
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "Pendências acionáveis")
+        self.assertContains(response, "Nenhuma pendencia operacional")
+        self.assertContains(response, "Ver recorrencias")
+        self.assertContains(
+            response,
+            reverse("recurrences:forecasts-filter-page"),
+        )
+
+    def test_home_displays_actionable_pending_items_with_links(self):
+        """Pendencias existentes devem apontar para os fluxos completos."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado",
+            normalized_description="mercado",
+            amount=Decimal("100.00"),
+            date=timezone.localdate(),
+            status=ImportedTransaction.Status.PENDING,
+        )
+        Insight.objects.create(
+            title="Assinatura recorrente",
+            message="Possivel assinatura recorrente",
+            insight_type=Insight.InsightType.RECURRING_EXPENSE,
+            status=Insight.Status.PENDING,
+        )
+        period = self.client.get(reverse("core:home")).context["summary"]["period"]
+        Transaction.objects.create(
+            description="Aluguel previsto",
+            amount=Decimal("1500.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=account,
+            date=date(period["year"], period["month"], 20),
+        )
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "Revisar importacoes")
+        self.assertContains(response, reverse("imports:review-page"))
+        self.assertContains(response, "Revisar insights")
+        self.assertContains(response, reverse("insights:page"))
+        self.assertContains(response, "Revisar recorrencias previstas")
+        self.assertContains(
+            response,
+            reverse(
+                "recurrences:forecasts-page",
+                args=[period["year"], period["month"]],
+            ),
+        )
+        self.assertContains(response, "Importações")
+        self.assertContains(response, "Insights")
+        self.assertContains(response, "Recorrências")
+
+        self.assertEqual(
+            ImportedTransaction.objects.filter(
+                status=ImportedTransaction.Status.PENDING,
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            Insight.objects.filter(status=Insight.Status.PENDING).count(),
+            1,
+        )
+        self.assertEqual(
+            Transaction.objects.filter(
+                status=Transaction.PaymentStatus.FORECASTED,
+            ).count(),
+            1,
+        )

@@ -124,6 +124,49 @@
         {% endif %}
     </section>
 
+    <section class="home-pending" aria-labelledby="home-pending-title">
+        <div class="home-section-header">
+            <div>
+                <h2 id="home-pending-title">Pendências acionáveis</h2>
+                <p class="muted">Decisões que ainda precisam passar pelo fluxo responsável.</p>
+            </div>
+        </div>
+
+        {% if pending_items %}
+            <div class="home-pending-grid">
+                {% for item in pending_items %}
+                    <a class="home-pending-card" href="{{ item.url }}">
+                        <div>
+                            <span class="badge badge-info">
+                                {% if item.type == "imports" %}
+                                    Importações
+                                {% elif item.type == "insights" %}
+                                    Insights
+                                {% elif item.type == "recurrences" %}
+                                    Recorrências
+                                {% else %}
+                                    Pendência
+                                {% endif %}
+                            </span>
+                            <strong>{{ item.title }}</strong>
+                        </div>
+                        <span class="home-pending-count">{{ item.count }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="home-empty-action">
+                <div>
+                    <strong>{{ empty_states.pending_items.title }}</strong>
+                    <span>Não há decisões pendentes para revisar agora.</span>
+                </div>
+                <a class="button button-secondary" href="{{ empty_states.pending_items.cta_url }}">
+                    {{ empty_states.pending_items.cta_label }}
+                </a>
+            </div>
+        {% endif %}
+    </section>
+
     <div class="shortcut-grid">
         <a class="shortcut-card" href="/reports/month/">
             <strong>Dashboard mensal</strong>
