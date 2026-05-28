@@ -274,13 +274,17 @@ class HomeViewTests(TestCase):
             status=Insight.Status.PENDING,
         )
         period = self.client.get(reverse("core:home")).context["summary"]["period"]
-        Transaction.objects.create(
-            description="Aluguel previsto",
-            amount=Decimal("1500.00"),
-            transaction_type=Transaction.TransactionType.EXPENSE,
-            status=Transaction.PaymentStatus.FORECASTED,
+        Recurrence.objects.create(
+            name="Aluguel previsto",
+            expected_day=20,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.FIXED_BILL,
+            expected_amount=Decimal("1500.00"),
             account=account,
-            date=date(period["year"], period["month"], 20),
+        )
+        generate_monthly_recurrences_forecasts(
+            year=period["year"],
+            month=period["month"],
         )
 
         response = self.client.get(reverse("core:home"))

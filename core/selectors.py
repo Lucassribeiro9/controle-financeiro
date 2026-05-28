@@ -51,6 +51,8 @@ def get_operational_home_context(*, today=None) -> dict:
 
 
 def _build_month_summary(*, year: int, month: int) -> dict:
+    """Monta o resumo financeiro do mes por status operacional."""
+
     return {
         "period": {"year": year, "month": month},
         "realized": _build_transaction_totals(
@@ -69,6 +71,8 @@ def _build_month_summary(*, year: int, month: int) -> dict:
 
 
 def _build_transaction_totals(*, year: int, month: int, statuses: list[str]) -> dict:
+    """Soma receitas e despesas de um periodo para os status informados."""
+
     income = _sum_transactions(
         year=year,
         month=month,
@@ -96,6 +100,8 @@ def _sum_transactions(
     transaction_type: str,
     statuses: list[str],
 ) -> Decimal:
+    """Soma transacoes filtradas por periodo, tipo e status."""
+
     return (
         Transaction.objects.filter(
             date__year=year,
@@ -108,6 +114,8 @@ def _sum_transactions(
 
 
 def _sum_transfers(*, year: int, month: int) -> Decimal:
+    """Soma transferencias internas do periodo sem trata-las como receita."""
+
     return (
         Transfer.objects.filter(date__year=year, date__month=month).aggregate(
             total=Sum("amount")
@@ -117,6 +125,8 @@ def _sum_transfers(*, year: int, month: int) -> Decimal:
 
 
 def _build_forecasted_totals(*, year: int, month: int) -> dict:
+    """Monta totais previstos incluindo previsoes comuns e recorrentes."""
+
     totals = _build_transaction_totals(
         year=year,
         month=month,
@@ -134,14 +144,9 @@ def _build_forecasted_totals(*, year: int, month: int) -> dict:
 
 
 def _sum_recurring_forecasts(*, year: int, month: int) -> dict:
-    forecasts = list(
-        Transaction.objects.filter(
-            date__year=year,
-            date__month=month,
-            transaction_type=Transaction.TransactionType.FORECAST,
-            status=Transaction.PaymentStatus.FORECASTED,
-        )
-    )
+    """Soma previsoes recorrentes geradas e classificadas pela recorrencia."""
+
+    forecasts = _get_generated_recurring_forecasts(year=year, month=month)
     recurrence_names = [
         recurrence_name
         for forecast in forecasts
@@ -172,7 +177,38 @@ def _sum_recurring_forecasts(*, year: int, month: int) -> dict:
     }
 
 
+def _get_generated_recurring_forecasts(*, year: int, month: int) -> list[Transaction]:
+    """Lista previsoes recorrentes geradas pelo fluxo de recorrencias."""
+
+    forecasts = list(
+        Transaction.objects.filter(
+            date__year=year,
+            date__month=month,
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+        )
+    )
+    recurrence_names = [
+        recurrence_name
+        for forecast in forecasts
+        if (recurrence_name := _extract_generated_recurrence_name(forecast.description))
+    ]
+    existing_names = set(
+        Recurrence.objects.filter(name__in=recurrence_names).values_list(
+            "name",
+            flat=True,
+        )
+    )
+    return [
+        forecast
+        for forecast in forecasts
+        if _extract_generated_recurrence_name(forecast.description) in existing_names
+    ]
+
+
 def _extract_generated_recurrence_name(description: str) -> str | None:
+    """Extrai o nome da recorrencia do padrao gerado pelo service."""
+
     prefix = "[REC] "
     if description.startswith(prefix):
         return description[len(prefix) :]
@@ -180,6 +216,8 @@ def _extract_generated_recurrence_name(description: str) -> str | None:
 
 
 def _build_alerts(*, today, year: int, month: int) -> list[dict]:
+    """Monta alertas prioritarios da home em ordem de importancia."""
+
     return [
         *_get_due_statement_alerts(today=today),
         *_get_pending_import_alerts(),
@@ -188,6 +226,8 @@ def _build_alerts(*, today, year: int, month: int) -> list[dict]:
 
 
 def _get_due_statement_alerts(*, today) -> list[dict]:
+    """Lista faturas vencidas ou proximas do vencimento como alertas."""
+
     due_until = today + timedelta(days=15)
     statements = (
         CardStatement.objects.filter(due_date__lte=due_until)
@@ -216,6 +256,8 @@ def _get_due_statement_alerts(*, today) -> list[dict]:
 
 
 def _get_pending_import_alerts() -> list[dict]:
+    """Retorna alerta agregado para importacoes pendentes de revisao."""
+
     pending_count = ImportedTransaction.objects.filter(
         status=ImportedTransaction.Status.PENDING
     ).count()
@@ -236,6 +278,8 @@ def _get_pending_import_alerts() -> list[dict]:
 
 
 def _get_goal_risk_alerts(*, year: int, month: int) -> list[dict]:
+    """Lista metas mensais em risco no periodo informado."""
+
     monthly_goals = (
         MonthlyGoal.objects.filter(year=year, month=month)
         .select_related("goal", "goal__category")
@@ -263,6 +307,8 @@ def _get_goal_risk_alerts(*, year: int, month: int) -> list[dict]:
 
 
 def _is_goal_at_risk(monthly_goal: MonthlyGoal) -> bool:
+    """Indica se uma meta mensal deve aparecer como risco operacional."""
+
     if monthly_goal.status in [
         MonthlyGoal.Status.AT_RISK,
         MonthlyGoal.Status.MISSED,
@@ -276,6 +322,8 @@ def _is_goal_at_risk(monthly_goal: MonthlyGoal) -> bool:
 
 
 def _build_pending_items(*, year: int, month: int) -> list[dict]:
+    """Monta pendencias acionaveis que apontam para seus fluxos completos."""
+
     items = []
 
     pending_imports = ImportedTransaction.objects.filter(
@@ -302,11 +350,9 @@ def _build_pending_items(*, year: int, month: int) -> list[dict]:
             }
         )
 
-    forecasted_transactions = Transaction.objects.filter(
-        date__year=year,
-        date__month=month,
-        status=Transaction.PaymentStatus.FORECASTED,
-    ).count()
+    forecasted_transactions = len(
+        _get_generated_recurring_forecasts(year=year, month=month)
+    )
     if forecasted_transactions:
         items.append(
             {
@@ -321,6 +367,8 @@ def _build_pending_items(*, year: int, month: int) -> list[dict]:
 
 
 def _build_quick_actions() -> list[dict]:
+    """Retorna atalhos fixos para os fluxos principais do app."""
+
     return [
         {
             "title": "Novo lancamento",
@@ -347,6 +395,8 @@ def _build_empty_states(
     alerts: list[dict],
     pending_items: list[dict],
 ) -> dict:
+    """Monta estados vazios com CTAs para os blocos da home."""
+
     return {
         "summary": {
             "is_empty": _is_summary_empty(summary),
@@ -370,6 +420,8 @@ def _build_empty_states(
 
 
 def _is_summary_empty(summary: dict) -> bool:
+    """Indica se o resumo mensal nao possui valores financeiros."""
+
     total = Decimal("0.00")
     for group_name in ["realized", "pending", "forecasted"]:
         group = summary[group_name]
