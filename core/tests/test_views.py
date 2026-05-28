@@ -16,6 +16,8 @@ from goals.models import MonthlyGoal
 from imports.models import ImportedTransaction
 from insights.models import Insight
 from institutions.models import Institution
+from recurrences.models import Recurrence
+from recurrences.services import generate_monthly_recurrences_forecasts
 from transactions.models import Transaction
 
 
@@ -121,6 +123,36 @@ class HomeViewTests(TestCase):
         self.assertContains(response, "R$ 4.550,00")
         self.assertContains(response, "-R$ 120,00")
         self.assertContains(response, "-R$ 50,00")
+
+    def test_home_displays_recurring_forecasts_in_month_summary(self):
+        """A home deve mostrar previsoes recorrentes no resumo previsto."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        period = self.client.get(reverse("core:home")).context["summary"]["period"]
+        Recurrence.objects.create(
+            name="Internet residencial",
+            expected_day=10,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.FIXED_BILL,
+            expected_amount=Decimal("120.00"),
+            account=account,
+        )
+        generate_monthly_recurrences_forecasts(
+            year=period["year"],
+            month=period["month"],
+        )
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "Previsto")
+        self.assertContains(response, "-R$ 120,00")
+        self.assertContains(response, "R$ 120,00")
 
     def test_home_displays_empty_alert_state(self):
         """Sem alertas, a home deve mostrar um estado vazio acionavel."""

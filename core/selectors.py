@@ -11,6 +11,7 @@ from cards.models import CardStatement
 from goals.models import MonthlyGoal
 from imports.models import ImportedTransaction
 from insights.models import Insight
+from recurrences.models import Recurrence
 from transactions.models import Transaction, Transfer
 
 
@@ -62,11 +63,7 @@ def _build_month_summary(*, year: int, month: int) -> dict:
             month=month,
             statuses=PENDING_STATUSES,
         ),
-        "forecasted": _build_transaction_totals(
-            year=year,
-            month=month,
-            statuses=FORECAST_STATUSES,
-        ),
+        "forecasted": _build_forecasted_totals(year=year, month=month),
         "transfers": _sum_transfers(year=year, month=month),
     }
 
@@ -117,6 +114,69 @@ def _sum_transfers(*, year: int, month: int) -> Decimal:
         )["total"]
         or Decimal("0.00")
     )
+
+
+def _build_forecasted_totals(*, year: int, month: int) -> dict:
+    totals = _build_transaction_totals(
+        year=year,
+        month=month,
+        statuses=FORECAST_STATUSES,
+    )
+    recurring_totals = _sum_recurring_forecasts(year=year, month=month)
+
+    income = totals["income"] + recurring_totals["income"]
+    expenses = totals["expenses"] + recurring_totals["expenses"]
+    return {
+        "income": income,
+        "expenses": expenses,
+        "net": income - expenses,
+    }
+
+
+def _sum_recurring_forecasts(*, year: int, month: int) -> dict:
+    forecasts = list(
+        Transaction.objects.filter(
+            date__year=year,
+            date__month=month,
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+        )
+    )
+    recurrence_names = [
+        recurrence_name
+        for forecast in forecasts
+        if (recurrence_name := _extract_generated_recurrence_name(forecast.description))
+    ]
+    recurrences_by_name = {
+        recurrence.name: recurrence
+        for recurrence in Recurrence.objects.filter(name__in=recurrence_names)
+    }
+
+    income = Decimal("0.00")
+    expenses = Decimal("0.00")
+    for forecast in forecasts:
+        recurrence = recurrences_by_name.get(
+            _extract_generated_recurrence_name(forecast.description)
+        )
+        if recurrence is None:
+            continue
+
+        if recurrence.recurrence_type == Recurrence.RecurrenceType.INCOME:
+            income += forecast.amount
+        else:
+            expenses += forecast.amount
+
+    return {
+        "income": income,
+        "expenses": expenses,
+    }
+
+
+def _extract_generated_recurrence_name(description: str) -> str | None:
+    prefix = "[REC] "
+    if description.startswith(prefix):
+        return description[len(prefix) :]
+    return None
 
 
 def _build_alerts(*, today, year: int, month: int) -> list[dict]:
