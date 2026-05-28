@@ -223,17 +223,26 @@ class OperationalHomeSelectorTests(TestCase):
         self.assertFalse(context["empty_states"]["alerts"]["is_empty"])
         self.assertFalse(context["empty_states"]["pending_items"]["is_empty"])
 
-    def test_pending_items_include_forecasted_transactions(self):
+    def test_pending_items_include_recurring_forecast_transactions(self):
         """Deve listar recorrencias previstas como pendencia acionavel."""
 
-        Transaction.objects.create(
-            description="Assinatura prevista",
-            amount=Decimal("50.00"),
-            transaction_type=Transaction.TransactionType.EXPENSE,
-            status=Transaction.PaymentStatus.FORECASTED,
-            account=self.account,
-            date=date(2026, 5, 15),
+        Recurrence.objects.create(
+            name="Assinatura prevista",
+            expected_day=15,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.SUBSCRIPTION,
+            expected_amount=Decimal("50.00"),
+            card=Card.objects.create(
+                name="Inter Gold",
+                institution=self.institution,
+                card_type=Card.CardType.CREDIT,
+                credit_limit=Decimal("5000.00"),
+                statement_closing_day=20,
+                statement_due_day=10,
+                payment_account=self.account,
+            ),
         )
+        generate_monthly_recurrences_forecasts(year=2026, month=5)
 
         pending_items = get_operational_home_context(today=self.today)["pending_items"]
 
@@ -248,6 +257,22 @@ class OperationalHomeSelectorTests(TestCase):
                 }
             ],
         )
+
+    def test_pending_items_ignore_non_recurring_forecasted_transactions(self):
+        """Transacao prevista comum nao deve aparecer como recorrencia."""
+
+        Transaction.objects.create(
+            description="Despesa prevista avulsa",
+            amount=Decimal("80.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 5, 15),
+        )
+
+        pending_items = get_operational_home_context(today=self.today)["pending_items"]
+
+        self.assertEqual(pending_items, [])
 
     def test_quick_actions_point_to_existing_flows(self):
         """Atalhos fixos devem apontar para rotas existentes."""
