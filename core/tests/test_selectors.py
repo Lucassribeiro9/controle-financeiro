@@ -194,6 +194,32 @@ class OperationalHomeSelectorTests(TestCase):
         self.assertFalse(context["empty_states"]["alerts"]["is_empty"])
         self.assertFalse(context["empty_states"]["pending_items"]["is_empty"])
 
+    def test_pending_items_include_forecasted_transactions(self):
+        """Deve listar recorrencias previstas como pendencia acionavel."""
+
+        Transaction.objects.create(
+            description="Assinatura prevista",
+            amount=Decimal("50.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 5, 15),
+        )
+
+        pending_items = get_operational_home_context(today=self.today)["pending_items"]
+
+        self.assertEqual(
+            pending_items,
+            [
+                {
+                    "type": "recurrences",
+                    "title": "Revisar recorrencias previstas",
+                    "count": 1,
+                    "url": reverse("recurrences:forecasts-page", args=[2026, 5]),
+                }
+            ],
+        )
+
     def test_quick_actions_point_to_existing_flows(self):
         """Atalhos fixos devem apontar para rotas existentes."""
 

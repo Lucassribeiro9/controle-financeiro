@@ -1,10 +1,11 @@
 """Tests das views do app cards."""
 
-from datetime import date
+from datetime import timedelta
 from decimal import Decimal
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
@@ -258,13 +259,15 @@ class StatementViewTests(TestCase):
     def _create_statement(self, *, amount=Decimal("250.00")):
         """Cria uma fatura fechada com compra vinculada."""
 
+        due_date = timezone.localdate() + timedelta(days=5)
+        closing_date = due_date - timedelta(days=7)
         statement = CardStatement.objects.create(
             card=self.card,
-            year=2026,
-            month=5,
+            year=due_date.year,
+            month=due_date.month,
             expected_amount=amount,
-            closing_date=date(2026, 5, 20),
-            due_date=date(2026, 5, 27),
+            closing_date=closing_date,
+            due_date=due_date,
             payment_account=self.payment_account,
         )
         Transaction.objects.create(
@@ -274,7 +277,7 @@ class StatementViewTests(TestCase):
             status=Transaction.PaymentStatus.PENDING,
             card=self.card,
             statement=statement,
-            date=date(2026, 5, 8),
+            date=closing_date,
         )
 
         return close_statement(statement=statement)
