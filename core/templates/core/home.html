@@ -28,15 +28,7 @@
         </div>
 
         {% if empty_states.summary.is_empty %}
-            <div class="home-empty-action">
-                <div>
-                    <strong>{{ empty_states.summary.title }}</strong>
-                    <span>Comece registrando uma receita, despesa ou transferência.</span>
-                </div>
-                <a class="button button-secondary" href="{{ empty_states.summary.cta_url }}">
-                    {{ empty_states.summary.cta_label }}
-                </a>
-            </div>
+            <p class="home-empty-note">{{ empty_states.summary.title }}.</p>
         {% endif %}
 
         <div class="home-summary-grid">
@@ -175,21 +167,30 @@
         {% endif %}
     </section>
 
-    <section class="home-quick-actions" aria-labelledby="home-quick-actions-title">
-        <div class="home-section-header">
-            <div>
-                <h2 id="home-quick-actions-title">Atalhos rápidos</h2>
-                <p class="muted">Ações usadas com frequência no dia a dia.</p>
-            </div>
-        </div>
+    <div class="shortcut-grid">
+        <a class="shortcut-card" href="/reports/month/">
+            <strong>Dashboard mensal</strong>
+            <span>Resumo de receitas, despesas, patrimônio, faturas e metas.</span>
+        </a>
 
-        <div class="shortcut-grid">
-            {% for action in quick_actions %}
-                <a class="shortcut-card" href="{{ action.url }}">
-                    <strong>{{ action.title }}</strong>
-                    <span>Abrir fluxo</span>
-                </a>
-            {% endfor %}
-        </div>
-    </section>
+        <a class="shortcut-card" href="/insights/page/">
+            <strong>Insights</strong>
+            <span>Revise sugestões geradas a partir dos seus dados financeiros.</span>
+        </a>
+
+        <a class="shortcut-card" href="/imports/review/page/">
+            <strong>Importações</strong>
+            <span>Confira lançamentos importados antes de confirmar transações.</span>
+        </a>
+
+        <a class="shortcut-card" href="/recurrences/month/page/">
+            <strong>Recorrências</strong>
+            <span>Revise previsões mensais e confirme lançamentos recorrentes.</span>
+        </a>
+
+        <a class="shortcut-card" href="/admin/">
+            <strong>Admin</strong>
+            <span>Acesse cadastros e dados internos enquanto as telas evoluem.</span>
+        </a>
+    </div>
 {% endblock %}

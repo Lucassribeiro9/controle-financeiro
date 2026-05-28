@@ -409,8 +409,7 @@ h2 {
     margin-bottom: 24px;
 }
 
-.home-pending,
-.home-quick-actions {
+.home-pending {
     display: grid;
     gap: 14px;
     margin-bottom: 24px;
