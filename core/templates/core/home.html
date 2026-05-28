@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}Início - Controle Financeiro{% endblock %}
 
@@ -6,9 +7,77 @@
     <header class="page-header">
         <div>
             <h1>Início</h1>
-            <p class="muted">Acesse as principais áreas do seu controle financeiro.</p>
+            <p class="muted">Acompanhe o estado do mês e acesse os fluxos principais.</p>
         </div>
     </header>
+
+    <section class="home-overview" aria-labelledby="home-summary-title">
+        <div class="home-overview-header">
+            <div>
+                <h2 id="home-summary-title">Resumo financeiro do mês</h2>
+                <p class="muted">
+                    {{ summary.period.month|month_name }}/{{ summary.period.year }}
+                </p>
+            </div>
+
+            {% if empty_states.summary.is_empty %}
+                <span class="badge badge-neutral">Sem lançamentos</span>
+            {% else %}
+                <span class="badge badge-info">Atualizado</span>
+            {% endif %}
+        </div>
+
+        {% if empty_states.summary.is_empty %}
+            <p class="home-empty-note">{{ empty_states.summary.title }}.</p>
+        {% endif %}
+
+        <div class="home-summary-grid">
+            <article class="metric-card home-summary-card">
+                <span>Realizado</span>
+                <strong>{{ summary.realized.net|brl }}</strong>
+                <dl>
+                    <div>
+                        <dt>Receitas</dt>
+                        <dd class="income">{{ summary.realized.income|brl }}</dd>
+                    </div>
+                    <div>
+                        <dt>Despesas</dt>
+                        <dd class="expense">{{ summary.realized.expenses|brl }}</dd>
+                    </div>
+                </dl>
+            </article>
+
+            <article class="metric-card home-summary-card">
+                <span>Pendente</span>
+                <strong>{{ summary.pending.net|brl }}</strong>
+                <dl>
+                    <div>
+                        <dt>Receitas</dt>
+                        <dd class="income">{{ summary.pending.income|brl }}</dd>
+                    </div>
+                    <div>
+                        <dt>Despesas</dt>
+                        <dd class="expense">{{ summary.pending.expenses|brl }}</dd>
+                    </div>
+                </dl>
+            </article>
+
+            <article class="metric-card home-summary-card">
+                <span>Previsto</span>
+                <strong>{{ summary.forecasted.net|brl }}</strong>
+                <dl>
+                    <div>
+                        <dt>Receitas</dt>
+                        <dd class="income">{{ summary.forecasted.income|brl }}</dd>
+                    </div>
+                    <div>
+                        <dt>Despesas</dt>
+                        <dd class="expense">{{ summary.forecasted.expenses|brl }}</dd>
+                    </div>
+                </dl>
+            </article>
+        </div>
+    </section>
 
     <div class="shortcut-grid">
         <a class="shortcut-card" href="/reports/month/">

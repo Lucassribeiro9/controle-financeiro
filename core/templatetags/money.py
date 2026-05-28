@@ -101,6 +101,33 @@ def date_br(value):
 
 
 @register.filter
+def month_name(value):
+    """Retorna o nome do mes em pt-BR."""
+
+    month_names = {
+        1: "Janeiro",
+        2: "Fevereiro",
+        3: "Março",
+        4: "Abril",
+        5: "Maio",
+        6: "Junho",
+        7: "Julho",
+        8: "Agosto",
+        9: "Setembro",
+        10: "Outubro",
+        11: "Novembro",
+        12: "Dezembro",
+    }
+
+    try:
+        month = int(value)
+    except (TypeError, ValueError):
+        return value
+
+    return month_names.get(month, value)
+
+
+@register.filter
 def percentage(value, decimal_places=2):
     """Formata percentuais já armazenados em escala 100."""
 

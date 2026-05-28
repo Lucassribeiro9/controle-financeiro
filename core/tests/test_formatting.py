@@ -12,6 +12,7 @@ from core.forms import BRDecimalField
 from core.templatetags.money import annual_rate
 from core.templatetags.money import currency
 from core.templatetags.money import date_br
+from core.templatetags.money import month_name
 from core.templatetags.money import percentage
 from core.templatetags.money import status_badge_class
 from core.templatetags.money import active_badge_class
@@ -31,6 +32,11 @@ class FormattingFilterTests(SimpleTestCase):
             date_br(datetime(2026, 5, 10, 15, 30)),
             "10/05/2026 15:30",
         )
+
+    def test_month_name_formats_month_number(self):
+        self.assertEqual(month_name(5), "Maio")
+        self.assertEqual(month_name("12"), "Dezembro")
+        self.assertEqual(month_name("sem mes"), "sem mes")
 
     def test_percentage_and_annual_rate_use_pt_br_decimal_separator(self):
         self.assertEqual(percentage(Decimal("100")), "100,00%")

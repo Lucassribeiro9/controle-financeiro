@@ -342,6 +342,67 @@ h2 {
     color: var(--expense);
 }
 
+.home-overview {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.home-overview-header {
+    align-items: start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.home-empty-note {
+    background: var(--neutral-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--neutral);
+    margin: 0;
+    padding: 12px 14px;
+}
+
+.home-summary-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-summary-card {
+    display: grid;
+    gap: 12px;
+}
+
+.home-summary-card dl {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.home-summary-card dl div {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.home-summary-card dt,
+.home-summary-card dd {
+    margin: 0;
+}
+
+.home-summary-card dt {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.home-summary-card dd {
+    font-weight: 700;
+    text-align: right;
+}
+
 .dashboard-grid {
     display: grid;
     gap: 16px;
@@ -1079,6 +1140,7 @@ h2 {
     }
 
     .summary-grid,
+    .home-summary-grid,
     .dashboard-grid,
     .shortcut-grid,
     .detail-list,
@@ -1088,6 +1150,10 @@ h2 {
     }
 
     .panel-title-row {
+        display: grid;
+    }
+
+    .home-overview-header {
         display: grid;
     }
 
