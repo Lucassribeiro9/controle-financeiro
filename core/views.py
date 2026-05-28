@@ -3,6 +3,8 @@
 from django.http import HttpResponse
 from django.shortcuts import render
 
+from core.selectors import get_operational_home_context
+
 
 def health_check(request):
     return HttpResponse("OK")
@@ -11,4 +13,5 @@ def health_check(request):
 def home(request):
     """Exibe a pagina inicial da aplicacao."""
 
-    return render(request, "core/home.html")
+    context = get_operational_home_context()
+    return render(request, "core/home.html", context)
