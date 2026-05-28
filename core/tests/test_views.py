@@ -60,6 +60,8 @@ class HomeViewTests(TestCase):
         self.assertContains(response, "Resumo financeiro do mês")
         self.assertContains(response, "Sem lançamentos")
         self.assertContains(response, "Nenhum lancamento neste mes")
+        self.assertContains(response, "Criar lancamento")
+        self.assertContains(response, reverse("transactions:create"))
         self.assertContains(response, "R$ 0,00")
 
     def test_home_displays_month_summary_with_real_transactions(self):
@@ -283,3 +285,18 @@ class HomeViewTests(TestCase):
             ).count(),
             1,
         )
+
+    def test_home_displays_quick_actions_from_context(self):
+        """Atalhos rapidos devem vir do contexto operacional."""
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "Atalhos rápidos")
+        self.assertContains(response, "Novo lancamento")
+        self.assertContains(response, reverse("transactions:create"))
+        self.assertContains(response, "Nova transferencia")
+        self.assertContains(response, reverse("transactions:transfer-create"))
+        self.assertContains(response, "Revisar importacoes")
+        self.assertContains(response, reverse("imports:review-page"))
+        self.assertContains(response, "Ver faturas")
+        self.assertContains(response, reverse("cards:statements"))
