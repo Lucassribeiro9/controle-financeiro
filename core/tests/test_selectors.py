@@ -13,6 +13,8 @@ from goals.models import Goal, MonthlyGoal
 from imports.models import ImportedTransaction
 from insights.models import Insight
 from institutions.models import Institution
+from recurrences.models import Recurrence
+from recurrences.services import generate_monthly_recurrences_forecasts
 from transactions.models import Transaction, Transfer
 
 
@@ -107,6 +109,33 @@ class OperationalHomeSelectorTests(TestCase):
         self.assertEqual(summary["realized"]["net"], Decimal("4550.00"))
         self.assertEqual(summary["pending"]["expenses"], Decimal("120.00"))
         self.assertEqual(summary["forecasted"]["expenses"], Decimal("50.00"))
+
+    def test_month_summary_includes_recurring_forecasts(self):
+        """Previsoes recorrentes devem entrar no resumo previsto."""
+
+        Recurrence.objects.create(
+            name="Internet residencial",
+            expected_day=10,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.FIXED_BILL,
+            expected_amount=Decimal("120.00"),
+            account=self.account,
+        )
+        Recurrence.objects.create(
+            name="Aluguel recebido",
+            expected_day=12,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.INCOME,
+            expected_amount=Decimal("1500.00"),
+            account=self.account,
+        )
+        generate_monthly_recurrences_forecasts(year=2026, month=5)
+
+        summary = get_operational_home_context(today=self.today)["summary"]
+
+        self.assertEqual(summary["forecasted"]["income"], Decimal("1500.00"))
+        self.assertEqual(summary["forecasted"]["expenses"], Decimal("120.00"))
+        self.assertEqual(summary["forecasted"]["net"], Decimal("1380.00"))
 
     def test_month_summary_keeps_transfers_out_of_income_and_expenses(self):
         """Transferencias nao devem virar receita ou despesa no resumo."""
