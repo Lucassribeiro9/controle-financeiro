@@ -21,9 +21,9 @@
             </div>
 
             {% if empty_states.summary.is_empty %}
-                <span class="badge badge-neutral">Sem lançamentos</span>
+                {% include "partials/status_badge.html" with status="inactive" label="Sem lançamentos" %}
             {% else %}
-                <span class="badge badge-info">Atualizado</span>
+                {% include "partials/status_badge.html" with status="forecasted" label="Atualizado" %}
             {% endif %}
         </div>
 
@@ -100,9 +100,11 @@
                 {% for alert in alerts %}
                     <a class="home-alert-card home-alert-card-{{ alert.priority }}" href="{{ alert.url }}">
                         <div>
-                            <span class="badge {% if alert.priority == 'high' %}badge-danger{% else %}badge-warning{% endif %}">
-                                {% if alert.priority == "high" %}Prioridade alta{% else %}Atenção{% endif %}
-                            </span>
+                            {% if alert.priority == "high" %}
+                                {% include "partials/status_badge.html" with status="late" label="Prioridade alta" %}
+                            {% else %}
+                                {% include "partials/status_badge.html" with status="pending" label="Atenção" %}
+                            {% endif %}
                             <strong>{{ alert.title }}</strong>
                             <span>{{ alert.description }}</span>
                         </div>
@@ -145,17 +147,15 @@
                 {% for item in pending_items %}
                     <a class="home-pending-card" href="{{ item.url }}">
                         <div>
-                            <span class="badge badge-info">
-                                {% if item.type == "imports" %}
-                                    Importações
-                                {% elif item.type == "insights" %}
-                                    Insights
-                                {% elif item.type == "recurrences" %}
-                                    Recorrências
-                                {% else %}
-                                    Pendência
-                                {% endif %}
-                            </span>
+                            {% if item.type == "imports" %}
+                                {% include "partials/status_badge.html" with status="forecasted" label="Importações" %}
+                            {% elif item.type == "insights" %}
+                                {% include "partials/status_badge.html" with status="forecasted" label="Insights" %}
+                            {% elif item.type == "recurrences" %}
+                                {% include "partials/status_badge.html" with status="forecasted" label="Recorrências" %}
+                            {% else %}
+                                {% include "partials/status_badge.html" with status="forecasted" label="Pendência" %}
+                            {% endif %}
                             <strong>{{ item.title }}</strong>
                         </div>
                         <span class="home-pending-count">{{ item.count }}</span>
