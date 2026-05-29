@@ -1187,7 +1187,7 @@ h2 {
     margin: 8px 0 0;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 768px) {
     body {
         padding-top: 0;
     }
