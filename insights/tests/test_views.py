@@ -82,39 +82,56 @@ class InsightViewTests(TestCase):
 
     def test_approve_insight_creates_monthly_goal(self):
         response = self.client.post(
-            reverse("insights:approve", kwargs={"insight_id": self.insight.id})
+            reverse("insights:approve", kwargs={"insight_id": self.insight.id}),
+            follow=True
         )
 
         self.insight.refresh_from_db()
 
         self.assertEqual(response.status_code, 200)
+        self.assertRedirects(response, reverse("insights:page"))
         self.assertEqual(self.insight.status, Insight.Status.APPROVED)
         self.assertEqual(Goal.objects.count(), 1)
         self.assertEqual(MonthlyGoal.objects.count(), 1)
-        self.assertEqual(response.json()["monthly_goal_id"], self.insight.monthly_goal_id)
+        
+        messages = list(response.context["messages"])
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(str(messages[0]), "Insight aprovado com sucesso.")
 
     def test_ignore_insight_marks_item_as_ignored(self):
         response = self.client.post(
-            reverse("insights:ignore", kwargs={"insight_id": self.insight.id})
+            reverse("insights:ignore", kwargs={"insight_id": self.insight.id}),
+            follow=True
         )
 
         self.insight.refresh_from_db()
 
         self.assertEqual(response.status_code, 200)
+        self.assertRedirects(response, reverse("insights:page"))
         self.assertEqual(self.insight.status, Insight.Status.IGNORED)
         self.assertEqual(Goal.objects.count(), 0)
 
+        messages = list(response.context["messages"])
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(str(messages[0]), "Insight ignorado.")
+
     def test_silence_insight_marks_item_and_creates_ignored_pattern(self):
         response = self.client.post(
-            reverse("insights:silence", kwargs={"insight_id": self.insight.id})
+            reverse("insights:silence", kwargs={"insight_id": self.insight.id}),
+            follow=True
         )
 
         self.insight.refresh_from_db()
 
         self.assertEqual(response.status_code, 200)
+        self.assertRedirects(response, reverse("insights:page"))
         self.assertEqual(self.insight.status, Insight.Status.SILENCED)
         self.assertTrue(
             IgnoredPattern.objects.filter(
                 pattern_key=f"category-limit:{self.category.id}"
             ).exists()
         )
+
+        messages = list(response.context["messages"])
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(str(messages[0]), "Insight silenciado.")

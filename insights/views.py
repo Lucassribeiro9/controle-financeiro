@@ -1,10 +1,12 @@
 """Views do app insights."""
 
+from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
+from core.utils import map_service_errors_to_view
 from .models import Insight
 from .selectors import get_insights_by_status, get_pending_insights, get_recent_insights
 from .services import approve_insight, ignore_insight, silence_insight
@@ -64,37 +66,41 @@ def recent_insights(request: HttpRequest) -> JsonResponse:
 
 
 @require_POST
-def approve_insight_view(request: HttpRequest, insight_id: int) -> JsonResponse:
+def approve_insight_view(request: HttpRequest, insight_id: int) -> HttpResponse:
     """Aprova um insight e aplica a acao correspondente."""
 
     insight = get_object_or_404(Insight, pk=insight_id)
 
     try:
-        approved = approve_insight(insight=insight)
+        approve_insight(insight=insight)
     except ValidationError as exc:
-        return JsonResponse({"error": exc.message_dict}, status=400)
+        map_service_errors_to_view(request, exc)
+    else:
+        messages.success(request, "Insight aprovado com sucesso.")
 
-    return JsonResponse(_serialize_insight(approved))
+    return redirect("insights:page")
 
 
 @require_POST
-def ignore_insight_view(request: HttpRequest, insight_id: int) -> JsonResponse:
+def ignore_insight_view(request: HttpRequest, insight_id: int) -> HttpResponse:
     """Ignora um insight sem aplicar mudancas."""
 
     insight = get_object_or_404(Insight, pk=insight_id)
-    ignored = ignore_insight(insight=insight)
+    ignore_insight(insight=insight)
+    messages.info(request, "Insight ignorado.")
 
-    return JsonResponse(_serialize_insight(ignored))
+    return redirect("insights:page")
 
 
 @require_POST
-def silence_insight_view(request: HttpRequest, insight_id: int) -> JsonResponse:
+def silence_insight_view(request: HttpRequest, insight_id: int) -> HttpResponse:
     """Silencia um insight para evitar repeticao futura."""
 
     insight = get_object_or_404(Insight, pk=insight_id)
-    silenced = silence_insight(insight=insight)
+    silence_insight(insight=insight)
+    messages.info(request, "Insight silenciado.")
 
-    return JsonResponse(_serialize_insight(silenced))
+    return redirect("insights:page")
 
 
 @require_GET
