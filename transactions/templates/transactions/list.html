@@ -74,7 +74,7 @@
                                 <td class="cell-date">{{ transaction.date|date_br }}</td>
                                 <td class="cell-type">{{ transaction.get_transaction_type_display }}</td>
                                 <td class="cell-status">
-                                    <span class="{{ transaction.status|status_badge_class }}">{{ transaction.get_status_display }}</span>
+                                    {% include "partials/status_badge.html" with status=transaction.status label=transaction.get_status_display %}
                                 </td>
                                 <td class="cell-secondary">
                                     {% if transaction.card %}

@@ -1,0 +1,7 @@
+{% load money %}
+{# Componente de badge de status reutilizável #}
+{# Parâmetros: status (valor ou objeto), label (opcional) #}
+
+<span class="{{ status|status_badge_class }}">
+    {{ label|default:status }}
+</span>
