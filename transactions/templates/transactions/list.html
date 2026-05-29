@@ -16,35 +16,38 @@
         </div>
     </header>
 
-    <form class="period-form" method="get" action="{% url 'transactions:list' %}">
-        <label>
-            <span>Mês</span>
-            <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
-        </label>
-        <label>
-            <span>Ano</span>
-            <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
-        </label>
-        <label>
-            <span>Status</span>
-            <select name="status">
-                <option value="">Todos</option>
-                {% for value, label in status_choices %}
-                    <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>
-            <span>Tipo</span>
-            <select name="transaction_type">
-                <option value="">Todos</option>
-                {% for value, label in transaction_type_choices %}
-                    <option value="{{ value }}" {% if transaction_type == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <button class="button" type="submit">Filtrar</button>
-    </form>
+    <section class="page-section">
+        <form class="period-form" method="get" action="{% url 'transactions:list' %}">
+            <label>
+                <span>Mês</span>
+                <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
+            </label>
+            <label>
+                <span>Ano</span>
+                <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
+            </label>
+            <label>
+                <span>Status</span>
+                <select name="status">
+                    <option value="">Todos</option>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>Tipo</span>
+                <select name="transaction_type">
+                    <option value="">Todos</option>
+                    {% for value, label in transaction_type_choices %}
+                        <option value="{{ value }}" {% if transaction_type == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            
+            {% include "partials/filter_bar.html" with clear_url="/transactions/" %}
+        </form>
+    </section>
 
     <section class="panel page-section">
         {% if transactions %}
@@ -90,7 +93,7 @@
                 </table>
             </div>
         {% else %}
-            <p class="empty">Nenhum lançamento encontrado.</p>
+            {% include "partials/empty_state.html" with title="Nenhum lançamento encontrado" description="Tente ajustar os filtros ou criar um novo lançamento." cta_label="Novo lançamento" cta_url="/transactions/create/" %}
         {% endif %}
     </section>
 {% endblock %}

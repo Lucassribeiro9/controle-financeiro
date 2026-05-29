@@ -1,0 +1,12 @@
+{# Componente de barra de filtros reutilizável #}
+{# Parâmetros: action_url, clear_url #}
+{# Os campos de input devem ser inseridos dentro da tag form no template pai. #}
+
+<div class="filter-bar-wrapper">
+    <div class="action-row" style="margin-top: 10px;">
+        <button class="button" type="submit">Filtrar</button>
+        {% if clear_url %}
+            <a class="button button-secondary" href="{{ clear_url }}">Limpar filtros</a>
+        {% endif %}
+    </div>
+</div>
