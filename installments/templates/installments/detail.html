@@ -50,10 +50,9 @@
     {% if plan.status != "canceled" %}
         <section class="panel page-section">
             <h2>Ações</h2>
-            <form method="post" action="{% url 'installments:cancel' plan.id %}">
-                {% csrf_token %}
-                <button class="button button-danger" type="submit">Cancelar parcelamento</button>
-            </form>
+            <div class="action-row">
+                <a class="button button-danger" href="{% url 'installments:cancel' plan.id %}">Cancelar parcelamento</a>
+            </div>
         </section>
     {% endif %}
 

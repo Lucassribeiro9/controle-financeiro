@@ -128,18 +128,28 @@ class InstallmentPlanServiceTests(TestCase):
 
         self.assertEqual(Recurrence.objects.count(), 0)
 
-    def test_cancel_installment_plan_keeps_generated_transactions(self):
-        """Cancelamento nao deve apagar parcelas geradas."""
+    def test_cancel_installment_plan_cancels_pending_transactions(self):
+        """Cancelamento deve marcar parcelas pendentes como canceladas."""
 
         plan = self._create_plan(total_amount=Decimal("1000.00"), installments=10)
-        generated_transaction_ids = set(plan.transactions.values_list("id", flat=True))
+        
+        # Simula uma parcela ja paga
+        first_transaction = plan.transactions.first()
+        first_transaction.status = Transaction.PaymentStatus.PAID
+        first_transaction.save()
 
         canceled_plan = cancel_installment_plan(plan=plan)
 
         self.assertEqual(canceled_plan.status, InstallmentPlan.Status.CANCELED)
+        
+        # A primeira continua paga
+        first_transaction.refresh_from_db()
+        self.assertEqual(first_transaction.status, Transaction.PaymentStatus.PAID)
+        
+        # As outras 9 devem estar canceladas
         self.assertEqual(
-            set(plan.transactions.values_list("id", flat=True)),
-            generated_transaction_ids,
+            plan.transactions.filter(status=Transaction.PaymentStatus.CANCELED).count(),
+            9,
         )
 
     def test_cancel_completed_plan_raises_validation_error(self):
