@@ -6,6 +6,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from core.utils import map_service_errors_to_view
 from .forms import TransactionForm, TransferForm
 from .models import Transaction
 from .selectors import (
@@ -64,7 +65,7 @@ def transaction_create_page(request: HttpRequest) -> HttpResponse:
             try:
                 transaction = create_transaction(**form.cleaned_data)
             except ValidationError as exc:
-                _add_validation_errors_to_form(form, exc)
+                map_service_errors_to_view(request, exc, form=form)
             else:
                 messages.success(request, "Lançamento criado com sucesso.")
                 return redirect("transactions:detail", transaction_id=transaction.id)
@@ -126,7 +127,7 @@ def transfer_create_page(request: HttpRequest) -> HttpResponse:
             try:
                 create_transfer(**form.cleaned_data)
             except ValidationError as exc:
-                _add_validation_errors_to_form(form, exc)
+                map_service_errors_to_view(request, exc, form=form)
             else:
                 messages.success(request, "Transferência criada com sucesso.")
                 return redirect("transactions:transfers")
@@ -139,17 +140,3 @@ def transfer_create_page(request: HttpRequest) -> HttpResponse:
         {"form": form},
     )
 
-
-def _add_validation_errors_to_form(
-    form: TransactionForm | TransferForm,
-    exc: ValidationError,
-) -> None:
-    """Transfere erros de validacao de model/service para o form."""
-
-    if hasattr(exc, "message_dict"):
-        for field, errors in exc.message_dict.items():
-            for error in errors:
-                form.add_error(field if field in form.fields else None, error)
-        return
-
-    form.add_error(None, exc.message)
