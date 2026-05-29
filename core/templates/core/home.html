@@ -28,15 +28,7 @@
         </div>
 
         {% if empty_states.summary.is_empty %}
-            <div class="home-empty-action">
-                <div>
-                    <strong>{{ empty_states.summary.title }}</strong>
-                    <span>Comece registrando uma receita, despesa ou transferência.</span>
-                </div>
-                <a class="button button-secondary" href="{{ empty_states.summary.cta_url }}">
-                    {{ empty_states.summary.cta_label }}
-                </a>
-            </div>
+            {% include "partials/empty_state.html" with title=empty_states.summary.title description="Comece registrando uma receita, despesa ou transferência." cta_label=empty_states.summary.cta_label cta_url=empty_states.summary.cta_url %}
         {% endif %}
 
         <div class="home-summary-grid">
@@ -122,15 +114,7 @@
                 {% endfor %}
             </div>
         {% else %}
-            <div class="home-empty-action">
-                <div>
-                    <strong>{{ empty_states.alerts.title }}</strong>
-                    <span>Nada exige atenção imediata agora.</span>
-                </div>
-                <a class="button button-secondary" href="{{ empty_states.alerts.cta_url }}">
-                    {{ empty_states.alerts.cta_label }}
-                </a>
-            </div>
+            {% include "partials/empty_state.html" with title=empty_states.alerts.title description="Nada exige atenção imediata agora." cta_label=empty_states.alerts.cta_label cta_url=empty_states.alerts.cta_url %}
         {% endif %}
     </section>
 
@@ -163,15 +147,7 @@
                 {% endfor %}
             </div>
         {% else %}
-            <div class="home-empty-action">
-                <div>
-                    <strong>{{ empty_states.pending_items.title }}</strong>
-                    <span>Não há decisões pendentes para revisar agora.</span>
-                </div>
-                <a class="button button-secondary" href="{{ empty_states.pending_items.cta_url }}">
-                    {{ empty_states.pending_items.cta_label }}
-                </a>
-            </div>
+            {% include "partials/empty_state.html" with title=empty_states.pending_items.title description="Não há decisões pendentes para revisar agora." cta_label=empty_states.pending_items.cta_label cta_url=empty_states.pending_items.cta_url %}
         {% endif %}
     </section>
 
