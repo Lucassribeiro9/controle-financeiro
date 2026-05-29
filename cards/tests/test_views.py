@@ -256,6 +256,54 @@ class StatementViewTests(TestCase):
             ).exists()
         )
 
+    def test_get_pay_statement_shows_confirmation(self):
+        """Deve mostrar tela de confirmacao no GET."""
+
+        statement = self._create_statement(amount=Decimal("350.00"))
+
+        response = self.client.get(
+            reverse("cards:pay-statement", kwargs={"statement_id": statement.id}),
+            data={"amount": "350,00"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "cards/confirm_payment.html")
+        self.assertContains(response, "Confirmar Pagamento")
+        self.assertContains(response, "Saldo atual da conta")
+        self.assertContains(response, "R$ 1.000,00")
+        self.assertContains(response, "R$ 350,00")
+        self.assertContains(response, "Saldo projetado após pagamento")
+        self.assertContains(response, "R$ 650,00")
+
+    def test_get_pay_statement_without_amount_uses_remaining_balance(self):
+        """Deve usar o saldo restante se o valor nao for informado no GET."""
+
+        statement = self._create_statement(amount=Decimal("350.00"))
+
+        response = self.client.get(
+            reverse("cards:pay-statement", kwargs={"statement_id": statement.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "R$ 350,00")
+
+    def test_post_pay_statement_success_redirects_with_message(self):
+        """Pagamento bem sucedido deve redirecionar com mensagem."""
+
+        statement = self._create_statement(amount=Decimal("350.00"))
+
+        response = self.client.post(
+            reverse("cards:pay-statement", kwargs={"statement_id": statement.id}),
+            data={"amount": "350,00"},
+            follow=True
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
+        )
+        self.assertContains(response, "Fatura paga com sucesso.")
+
     def _create_statement(self, *, amount=Decimal("250.00")):
         """Cria uma fatura fechada com compra vinculada."""
 

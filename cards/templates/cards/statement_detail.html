@@ -63,8 +63,7 @@
                 <button class="button button-secondary" type="submit">Fechar fatura</button>
             </form>
 
-            <form class="inline-form" method="post" action="{% url 'cards:pay-statement' statement.id %}">
-                {% csrf_token %}
+            <form class="inline-form" method="get" action="{% url 'cards:pay-statement' statement.id %}">
                 <label class="sr-only" for="{{ payment_form.amount.id_for_label }}">{{ payment_form.amount.label }}</label>
                 {{ payment_form.amount }}
                 <button class="button" type="submit">Pagar</button>

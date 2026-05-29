@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}Confirmar Pagamento - {{ statement }} - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Confirmar Pagamento</h1>
+            <p class="muted">{{ statement.card }} - Fatura {{ statement.month }}/{{ statement.year }}</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'cards:statement-detail' statement.id %}">Cancelar</a>
+    </header>
+
+    <section class="panel">
+        <h2>Resumo do Pagamento</h2>
+        <p>Você está prestes a realizar o pagamento desta fatura. Confira os detalhes abaixo:</p>
+
+        <dl class="detail-list">
+            <div>
+                <dt>Conta de débito</dt>
+                <dd>{{ payment_account }}</dd>
+            </div>
+            <div>
+                <dt>Saldo atual da conta</dt>
+                <dd>{{ current_balance|brl }}</dd>
+            </div>
+            <div>
+                <dt>Valor a pagar</dt>
+                <dd><strong>{{ payment_amount|brl }}</strong></dd>
+            </div>
+            <div class="page-section" style="border-top: 1px solid var(--line); padding-top: 16px;">
+                <dt style="color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase;">Saldo projetado após pagamento</dt>
+                <dd style="margin: 4px 0 0;">
+                    <strong style="font-size: 20px; color: {% if projected_balance < 0 %}var(--danger){% else %}var(--success){% endif %};">
+                        {{ projected_balance|brl }}
+                    </strong>
+                </dd>
+            </div>
+        </dl>
+
+        <form method="post" action="{% url 'cards:pay-statement' statement.id %}" class="page-section">
+            {% csrf_token %}
+            {# Usamos um campo oculto para persistir o valor confirmado #}
+            <input type="hidden" name="amount" value="{{ payment_amount|stringformat:'.2f' }}">
+            
+            <div class="action-row">
+                <button class="button" type="submit">Confirmar e Pagar</button>
+                <a class="button button-secondary" href="{% url 'cards:statement-detail' statement.id %}">Voltar</a>
+            </div>
+        </form>
+    </section>
+
+    {% if form.errors %}
+        <section class="panel page-section" style="border-color: var(--danger);">
+            <h2 style="color: var(--danger);">Erros de validação</h2>
+            {{ form.non_field_errors }}
+            {% for field in form %}
+                {% if field.errors %}
+                    <p><strong>{{ field.label }}:</strong> {{ field.errors|striptags }}</p>
+                {% endif %}
+            {% endfor %}
+        </section>
+    {% endif %}
+{% endblock %}
