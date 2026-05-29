@@ -111,8 +111,29 @@ class InstallmentViewTests(TestCase):
         self.assertContains(response, "Notebook")
         self.assertContains(response, "1/10")
 
-    def test_post_cancel_installment_plan_keeps_transactions(self):
-        """Deve cancelar parcelamento sem apagar parcelas."""
+    def test_get_cancel_installment_plan_shows_confirmation(self):
+        """Deve mostrar tela de confirmacao no GET."""
+
+        plan = create_installment_plan(
+            description="Notebook",
+            total_amount=Decimal("1000.00"),
+            total_installments=10,
+            first_installment_date=date(2026, 5, 8),
+            card=self.card,
+            category=self.category,
+        )
+
+        response = self.client.get(
+            reverse("installments:cancel", kwargs={"plan_id": plan.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "installments/confirm_cancellation.html")
+        self.assertContains(response, "Confirmar Cancelamento")
+        self.assertContains(response, "10/10")  # Todas estao pendentes
+
+    def test_post_cancel_installment_plan_updates_status_and_transactions(self):
+        """Deve cancelar parcelamento e suas parcelas pendentes."""
 
         plan = create_installment_plan(
             description="Notebook",
@@ -124,13 +145,23 @@ class InstallmentViewTests(TestCase):
         )
 
         response = self.client.post(
-            reverse("installments:cancel", kwargs={"plan_id": plan.id})
+            reverse("installments:cancel", kwargs={"plan_id": plan.id}),
+            follow=True
         )
         plan.refresh_from_db()
 
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
+        self.assertRedirects(response, reverse("installments:detail", kwargs={"plan_id": plan.id}))
         self.assertEqual(plan.status, InstallmentPlan.Status.CANCELED)
+        
+        # Todas as parcelas eram pendentes, entao todas devem ser canceladas
         self.assertEqual(
-            Transaction.objects.filter(installment_plan=plan).count(),
+            Transaction.objects.filter(
+                installment_plan=plan, 
+                status=Transaction.PaymentStatus.CANCELED
+            ).count(),
             10,
         )
+        
+        messages = list(response.context["messages"])
+        self.assertEqual(str(messages[0]), "Parcelamento cancelado com sucesso.")

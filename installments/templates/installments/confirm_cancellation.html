@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}Confirmar Cancelamento - {{ plan.description }} - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Confirmar Cancelamento</h1>
+            <p class="muted">{{ plan.description }} - {{ plan.card }}</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'installments:detail' plan.id %}">Voltar</a>
+    </header>
+
+    <section class="panel">
+        <div class="message-box message-warning">
+            <strong>Atenção!</strong>
+            <p>O cancelamento do parcelamento é irreversível. Esta ação irá cancelar as parcelas futuras que ainda não foram pagas.</p>
+        </div>
+
+        <h2>Resumo do Cancelamento</h2>
+        <dl class="detail-list">
+            <div>
+                <dt>Total do plano</dt>
+                <dd>{{ plan.total_amount|brl }}</dd>
+            </div>
+            <div>
+                <dt>Parcelas pagas</dt>
+                <dd>{{ progress.paid_count }}</dd>
+            </div>
+            <div>
+                <dt>Parcelas a remover</dt>
+                <dd>{{ pending_transactions|length }}</dd>
+            </div>
+        </dl>
+
+        <div class="page-section">
+            <h3>Parcelas que serão removidas:</h3>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="cell-count">Parcela</th>
+                            <th class="cell-date">Data</th>
+                            <th>Fatura</th>
+                            <th class="cell-amount">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in pending_transactions %}
+                            <tr>
+                                <td class="cell-count">{{ transaction.installment_number }}/{{ plan.total_installments }}</td>
+                                <td class="cell-date">{{ transaction.date|date_br }}</td>
+                                <td>{{ transaction.statement|default:"Não vinculada" }}</td>
+                                <td class="cell-amount">{{ transaction.amount|brl }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'installments:cancel' plan.id %}" class="page-section">
+            {% csrf_token %}
+            <div class="action-row">
+                <button class="button button-danger" type="submit">Confirmar Cancelamento</button>
+                <a class="button button-secondary" href="{% url 'installments:detail' plan.id %}">Desistir</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

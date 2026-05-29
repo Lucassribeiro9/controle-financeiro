@@ -91,16 +91,21 @@ def generate_installment_transactions(*, plan):
 
 
 def cancel_installment_plan(*, plan):
-    """Cancela o plano sem apagar parcelas ja geradas."""
+    """Cancela o plano e suas parcelas pendentes."""
 
     with db_transaction.atomic():
         plan = InstallmentPlan.objects.select_for_update().get(pk=plan.pk)
 
         if plan.status == InstallmentPlan.Status.COMPLETED:
-            raise ValidationError("Parcelamento concluido nao pode ser cancelado.")
+            raise ValidationError("Parcelamento concluído não pode ser cancelado.")
 
         plan.status = InstallmentPlan.Status.CANCELED
         plan.save(update_fields=["status", "updated_at"])
+
+        # Cancela parcelas que ainda nao foram pagas
+        plan.transactions.filter(
+            status=Transaction.PaymentStatus.PENDING,
+        ).update(status=Transaction.PaymentStatus.CANCELED, updated_at=date.today())
 
     return plan
 
