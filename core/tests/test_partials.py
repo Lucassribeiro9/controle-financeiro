@@ -55,3 +55,25 @@ class EmptyStatePartialTests(SimpleTestCase):
         self.assertIn("Sem alertas", html)
         self.assertIn("Tudo certo.", html)
         self.assertNotIn('class="button', html)
+
+
+class FilterBarPartialTests(SimpleTestCase):
+    """Testes de renderização do partial filter_bar."""
+
+    def test_render_with_clear_url(self):
+        context = {
+            "clear_url": "/clear/",
+        }
+        html = render_to_string("partials/filter_bar.html", context)
+        
+        self.assertIn('href="/clear/"', html)
+        self.assertIn("Limpar filtros", html)
+        self.assertIn('type="submit"', html)
+
+    def test_render_without_clear_url(self):
+        context = {}
+        html = render_to_string("partials/filter_bar.html", context)
+        
+        self.assertNotIn("Limpar filtros", html)
+        self.assertNotIn('href="/clear/"', html)
+        self.assertIn('type="submit"', html)
