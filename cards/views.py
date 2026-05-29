@@ -5,9 +5,12 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.utils import map_service_errors_to_view
+from core.forms import normalize_decimal
 from .forms import CardForm, StatementPaymentForm
 from .models import Card, CardStatement
 from .services import close_statement, pay_statement, update_statement_status
+from decimal import Decimal, InvalidOperation
 
 
 def card_list_page(request: HttpRequest) -> HttpResponse:
@@ -130,30 +133,68 @@ def statement_detail_page(request: HttpRequest, statement_id: int) -> HttpRespon
 
 
 def pay_statement_page(request: HttpRequest, statement_id: int) -> HttpResponse:
-    """Processa pagamento de fatura usando o service de dominio."""
-
-    if request.method != "POST":
-        return HttpResponseNotAllowed(["POST"])
+    """Processa ou confirma pagamento de fatura."""
 
     statement = _get_statement(statement_id=statement_id)
-    form = StatementPaymentForm(request.POST, statement=statement)
+    payment_account = statement.payment_account or statement.card.payment_account
 
-    if form.is_valid():
-        try:
-            pay_statement(
-                statement=statement,
-                amount=form.cleaned_data["amount"],
-            )
-        except ValidationError as exc:
-            messages.error(request, _validation_error_message(exc))
-        else:
-            messages.success(request, "Fatura paga com sucesso.")
+    if not payment_account:
+        messages.error(request, "Fatura exige conta de pagamento.")
+        return redirect("cards:statement-detail", statement_id=statement.id)
+
+    if request.method == "POST":
+        form = StatementPaymentForm(request.POST, statement=statement)
+        if form.is_valid():
+            try:
+                pay_statement(
+                    statement=statement,
+                    amount=form.cleaned_data["amount"],
+                )
+            except ValidationError as exc:
+                map_service_errors_to_view(request, exc, form=form)
+            else:
+                messages.success(request, "Fatura paga com sucesso.")
+                return redirect("cards:statement-detail", statement_id=statement.id)
     else:
-        for errors in form.errors.values():
-            for error in errors:
-                messages.error(request, error)
+        # GET: Mostra tela de confirmacao
+        amount_str = request.GET.get("amount")
+        initial_amount = None
+        if amount_str:
+            try:
+                # normalize_decimal ja lida com formatos pt-BR e ISO
+                initial_amount = normalize_decimal(amount_str)
+            except (ValueError, InvalidOperation):
+                pass
+        
+        if initial_amount is None:
+            initial_amount = statement.closed_amount - statement.paid_amount
+            
+        form = StatementPaymentForm(initial={"amount": initial_amount}, statement=statement)
 
-    return redirect("cards:statement-detail", statement_id=statement.id)
+    # Dados para a confirmacao
+    current_balance = payment_account.balance
+    
+    # Se o form for valido (POST) ou tiver valor inicial (GET), calcula projecao
+    payment_amount = Decimal("0.00")
+    if form.is_bound and form.is_valid():
+        payment_amount = form.cleaned_data.get("amount") or (statement.closed_amount - statement.paid_amount)
+    else:
+        payment_amount = form.initial.get("amount") or (statement.closed_amount - statement.paid_amount)
+    
+    projected_balance = current_balance - payment_amount
+
+    return render(
+        request,
+        "cards/confirm_payment.html",
+        {
+            "statement": statement,
+            "form": form,
+            "payment_account": payment_account,
+            "current_balance": current_balance,
+            "payment_amount": payment_amount,
+            "projected_balance": projected_balance,
+        },
+    )
 
 
 def _get_statement(*, statement_id: int) -> CardStatement:
