@@ -49,83 +49,85 @@ Componentes:
 
 ## Regras de Negocio
 
-- Limite disponivel deve ser calculado inicialmente, nao persistido.
-- Limite usado considera compras `card_purchase` nao canceladas/ignoradas em faturas abertas ou pendentes.
-- Compra pendente no credito consome limite.
-- Cancelamento ou ignorar compra remove a compra do limite usado.
-- Beneficio deve consumir saldo/limite conforme sua modalidade.
-- Pagamento de fatura deve indicar conta de saida.
+- Limite disponivel e dinamico (calculado em tempo de execucao, nao persistido).
+- O calculo do limite disponivel segue o **Modelo do Mercado Real** brasileiro: consome do limite cadastrado o valor **total** de todas as compras ativas (`card_purchase`) vinculadas a faturas que **nao** estao no status `paid` (ou seja, faturas abertas, previstas, fechadas pendentes, atrasadas ou parcialmente pagas).
+- Compra pendente no credito consome limite normalmente.
+- Cancelamento ou ignorar compra (status da transacao `canceled` ou `ignored`) remove o valor da compra do calculo do limite usado.
+- Foco exclusivo em cartoes de `CREDIT`. Cartoes do tipo `benefit`, `transport` ou `prepaid` tem gestao fina de saldos separada e ficam para o backlog.
+- Pagamento de fatura exige indicar conta financeira de saida.
 
 ## Dados, Services e Selectors
 
 Criar ou evoluir:
 
-- selector de limite usado/disponivel;
-- selector de resumo de fatura;
+- selector de limite usado/disponivel em `cards/selectors.py` com o calculo acumulativo;
+- selector de resumo de fatura para a tela de detalhes;
 - service de pagamento com contexto de saldo projetado;
 - rotas diretas para faturas.
 
 ## Estados de Erro
 
-- Pagamento sem conta deve ser bloqueado.
-- Pagamento maior que saldo deve avisar ou bloquear conforme regra definida.
-- Compra que excede limite deve exibir alerta claro.
-- Fatura inexistente ou ja paga deve ter feedback contextual.
+- Pagamento de fatura sem conta financeira valida deve ser bloqueado com mensagem clara.
+- Compra no cartao que excede o limite disponivel **nao bloqueia** a criacao da transacao (Alerta Soft), exibindo um alerta visual em destaque na UI para fins de controle pessoal.
+- Tentativa de pagar valor maior do que o restante da fatura deve exibir erro de validacao.
+- Fatura inexistente ou ja paga deve ter feedback contextual apropriado.
 
 ## Testes Esperados
 
-- Compra pendente consome limite.
-- Compra cancelada nao consome limite.
-- Fatura aberta calcula valor previsto.
-- Fatura fechada calcula valor fechado.
-- Pagamento parcial atualiza indicadores.
-- Pagamento de fatura cria impacto na conta correta.
+- Selector calcula limite disponivel subtraindo compras ativas (incluindo parcelas futuras de faturas nao pagas).
+- Compras canceladas ou ignoradas nao consomem limite do selector.
+- Fatura aberta calcula corretamente o valor previsto.
+- Fatura fechada calcula o valor fechado.
+- Pagamentos parciais atualizam corretamente os indicadores de valor pago e restante da fatura.
+- Pagamento de fatura gera transacao de pagamento na conta financeira de saida.
 
 ## Criterios de Aceite
 
-- Compra no credito reduz limite disponivel.
-- Cancelamento/ignorar remove compra do limite.
-- Fatura fica acessivel sem entrar em Cartoes.
-- Usuario entende o que esta aberto, fechado, pago e pendente.
+- Compra no credito reduz limite disponivel conforme modelo real.
+- Excesso de limite exibe alerta visual (soft warning) sem bloquear a transacao.
+- Fatura fica acessivel via menu/rota direta global `/cards/statements/`.
+- Usuario visualiza de forma intuitiva previsto, fechado, pago e pendente.
 
 ## Issues Sugeridas
 
-- Criar selector de limite usado/disponivel.
-- Mostrar limite em lista de cartoes.
-- Criar rota/menu direto para faturas.
-- Melhorar detalhe de fatura.
-- Adicionar confirmacao contextual de pagamento.
-- Integrar parcelamentos na fatura.
-- Testar limite consumido por compra pendente.
+- Criar selector de limite usado/disponivel em `cards/selectors.py`.
+- Mostrar barra visual de limite na lista de cartoes.
+- Criar rota/menu direto para faturas com visual moderno.
+- Melhorar detalhe de fatura com resumos e confirmacao contextual de pagamento.
+
 ## SDD Baseline
 
 Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries de `docs/specs/000-sdd-baseline.md`.
 
 ## Assumptions
 
-- Limite disponivel sera calculado, nao persistido inicialmente.
-- Compra pendente no credito consome limite.
-- Faturas devem ter rota/menu direto.
-- Pagamento de fatura precisa indicar conta de saida.
+- Limite disponivel sera calculado a partir das transacoes ativas, nao persistido.
+- Compra que excede o limite exibe alerta soft, permitindo o registro.
+- Rota centralizada unificada `/cards/statements/` de faturas.
 
-## Open Questions
+## Decisoes da Spec Review (Resolvidas)
 
-- Limite usado considera apenas fatura atual/aberta ou tambem compras futuras parceladas?
-- Compra que excede limite deve bloquear ou apenas alertar no MVP?
-- Como beneficios com saldos separados, como alimentacao e transporte, entram no calculo?
-- Pagamento parcial deve permitir varios pagamentos por fatura ou atualizar um campo acumulado?
+- **Limite de Parcelamento:** Adotado o modelo real brasileiro, onde o valor total de compras ativas (mesmo futuras/parceladas) consome o limite do cartao imediatamente.
+- **Bloqueio de Limite:** Adotado alerta visual soft para nao atrapalhar o fluxo de registros pós-fato.
+- **Rota de Faturas:** Rota centralizada unificada `/cards/statements/` de todos os cartões.
+- **Saldos de Beneficios:** Gestao avançada de cartões de benefícios movida para o backlog.
+- **Edição em Faturas Fechadas:** Bloqueio de alteracao de compras vinculadas a faturas `PENDING` ou `PAID` fica para evolucao de backlog.
 
 ## Task Breakdown Inicial
 
 - [ ] Task: Criar selector de limite usado/disponivel.
-  - Acceptance: compras pendentes e abertas reduzem limite disponivel.
-  - Verify: testes de selector.
-  - Files: `cards/selectors.py`, `cards/tests/`.
-- [ ] Task: Criar acesso direto a faturas.
-  - Acceptance: menu/rota permite acessar faturas sem entrar em cartoes.
-  - Verify: teste de navegacao e view.
-  - Files: `cards/urls.py`, `cards/views.py`, `templates/partials/nav_links.html`.
-- [ ] Task: Melhorar detalhe de fatura.
-  - Acceptance: tela mostra vencimento, status, previsto, fechado, pago e conta de pagamento.
-  - Verify: teste de view e validacao manual.
-  - Files: `cards/templates/cards/statement_detail.html`, `cards/tests/`.
+  - Acceptance: selector em `cards/selectors.py` calcula limites de credito considerando compras ativas e futuras.
+  - Verify: testes de selector em `cards/tests/test_selectors.py`.
+  - Files: `cards/selectors.py`, `cards/tests/test_selectors.py`.
+- [ ] Task: Mostrar limite em lista de cartoes.
+  - Acceptance: barra visual de progresso e limites em formato pt-BR na pagina `/cards/`.
+  - Verify: teste de view e validacao visual manual.
+  - Files: `cards/templates/cards/list.html`, `cards/views.py`.
+- [ ] Task: Criar acesso direto a faturas no menu global.
+  - Acceptance: menu lateral contem link direto para `/cards/statements/` com destaque ativo.
+  - Verify: teste de navegacao e template.
+  - Files: `templates/partials/nav_links.html`.
+- [ ] Task: Melhorar detalhe de fatura com resumos e fluxo de pagamento.
+  - Acceptance: tela de detalhes exibe indicadores de previsto, fechado, pago, restante e atalho contextual de confirmacao.
+  - Verify: teste de view, template e validacao manual.
+  - Files: `cards/templates/cards/statement_detail.html`, `cards/views.py`.
