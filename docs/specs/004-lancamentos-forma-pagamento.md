@@ -110,16 +110,47 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - O dominio atual de `Transaction`, `Transfer`, `Card` e `InstallmentPlan` deve ser preservado.
 - Parcelamento inline cria ou reutiliza entidade de parcelamento.
 - Transferencia iniciada pelo lancamento continua sendo `Transfer`.
+- Cartoes de beneficio (VT/VR) funcionam como pre-pago com saldo proprio, nao como credito.
+
+## Decisões Tomadas
+
+### Forma de Pagamento como Camada Form/Service
+
+- **Decisão**: Forma de pagamento não será persistida em `Transaction`, apenas camada form/service
+- **Justificativa**: Menor impacto em schema, menor risco de regressão, pode ser persistido depois se necessário
+- **Risco**: Se precisar persistir depois, será mais complexo
+
+### Cartões de Benefício com Saldo (Pré-pago)
+
+- **Decisão**: Adicionar campo `balance` (Decimal) em Card, diferenciar por `card_type`, criar service para atualizar saldo
+- **Justificativa**: VT/VR têm saldo real, compras consomem saldo, recebimentos atualizam saldo
+- **Risco**: Migration necessária, compatibilidade com faturas existentes
+
+### Edição de Lançamento Pago Bloqueada
+
+- **Decisão**: Edição de lançamento pago fica bloqueada inicialmente com mensagem clara
+- **Justificativa**: Maior segurança, evita corrupção de saldo, UX mais previsível
+- **Risco**: Usuário pode querer editar pagos (pode ser backlog)
+
+### Parcelamento Inline MVP
+
+- **Decisão**: Parcelamento inline MVP: apenas parcelas iguais
+- **Justificativa**: Simplicidade, reduz complexidade de UI e validação
+- **Risco**: Limita casos de uso reais
 
 ## Open Questions
 
-- A forma de pagamento deve virar campo persistido em `Transaction` ou apenas camada de form/service?
-- Compra no beneficio deve usar `Card`, `FinancialAccount` ou um subtipo especifico?
-- Edicao de lancamento pago recalcula saldo, cria ajuste ou fica bloqueada inicialmente?
-- Parcelamento inline deve permitir entrada/sinal ou apenas parcelas iguais?
+- ~~A forma de pagamento deve virar campo persistido em `Transaction` ou apenas camada de form/service?~~ **DECIDIDO: camada form/service**
+- ~~Compra no beneficio deve usar `Card`, `FinancialAccount` ou um subtipo especifico?~~ **DECIDIDO: Card com campo balance para pré-pago**
+- ~~Edicao de lancamento pago recalcula saldo, cria ajuste ou fica bloqueada inicialmente?~~ **DECIDIDO: bloqueada inicialmente**
+- ~~Parcelamento inline deve permitir entrada/sinal ou apenas parcelas iguais?~~ **DECIDIDO: apenas parcelas iguais (MVP)**
 
 ## Task Breakdown Inicial
 
+- [ ] Task: Adicionar saldo e comportamento pre-pago para cartoes de beneficio.
+  - Acceptance: Card tem campo balance, recebimento atualiza saldo, compra consome saldo.
+  - Verify: testes de model e service para balance.
+  - Files: `cards/models.py`, `cards/migrations/`, `cards/services.py`, `cards/tests/`.
 - [ ] Task: Definir contrato do form dinamico.
   - Acceptance: campos obrigatorios por forma de pagamento ficam especificados.
   - Verify: revisao da spec/issue antes de model changes.
