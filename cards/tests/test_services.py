@@ -146,6 +146,15 @@ class CardStatementServiceTests(TestCase):
         self.assertEqual(paid_statement.status, CardStatement.StatementStatus.PAID)
         self.assertEqual(self.payment_account.balance, Decimal("650.00"))
 
+    def test_pay_statement_rejects_already_paid_statement(self):
+        """Fatura ja paga deve ser bloqueada com mensagem clara."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        pay_statement(statement=statement)
+
+        with self.assertRaisesMessage(ValidationError, "Fatura ja esta paga."):
+            pay_statement(statement=statement)
+
     def test_pay_statement_locks_payment_account_before_debit(self):
         """Pagar fatura deve bloquear a conta antes de debitar o saldo."""
 

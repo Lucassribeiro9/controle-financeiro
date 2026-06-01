@@ -159,6 +159,9 @@ def pay_statement(*, statement, amount=None):
         if statement.status == CardStatement.StatementStatus.CANCELED:
             raise ValidationError("Fatura cancelada nao pode ser paga.")
 
+        if statement.status == CardStatement.StatementStatus.PAID:
+            raise ValidationError("Fatura ja esta paga.")
+
         if statement.status == CardStatement.StatementStatus.OPEN:
             raise ValidationError("Fatura deve estar fechada para ser paga.")
 
