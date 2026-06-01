@@ -18,11 +18,23 @@ ALLOWED_TRANSACTION_TYPES = [
     Transaction.TransactionType.CARD_PURCHASE,
 ]
 
+PAYMENT_METHODS = [
+    ("debit", "Débito"),
+    ("credit", "Crédito"),
+    ("benefit", "Benefício"),
+    ("cash", "Dinheiro/outro"),
+    ("transfer", "Transferência"),
+]
+
 
 class TransactionForm(forms.Form):
     """Form para criar lancamentos financeiros usando services."""
 
     description = forms.CharField(label="Descrição", max_length=255)
+    payment_method = forms.ChoiceField(
+        label="Forma de pagamento",
+        choices=PAYMENT_METHODS,
+    )
     amount = BRDecimalField(label="Valor", max_digits=14, decimal_places=2)
     transaction_type = forms.ChoiceField(
         label="Tipo",
@@ -43,6 +55,16 @@ class TransactionForm(forms.Form):
     )
     account = forms.ModelChoiceField(
         label="Conta",
+        queryset=FinancialAccount.objects.none(),
+        required=False,
+    )
+    from_account = forms.ModelChoiceField(
+        label="Conta origem",
+        queryset=FinancialAccount.objects.none(),
+        required=False,
+    )
+    destination_account = forms.ModelChoiceField(
+        label="Conta destino",
         queryset=FinancialAccount.objects.none(),
         required=False,
     )
@@ -71,6 +93,12 @@ class TransactionForm(forms.Form):
         self.fields["account"].queryset = FinancialAccount.objects.filter(
             is_active=True
         ).order_by("name")
+        self.fields["from_account"].queryset = FinancialAccount.objects.filter(
+            is_active=True
+        ).order_by("name")
+        self.fields["destination_account"].queryset = FinancialAccount.objects.filter(
+            is_active=True
+        ).order_by("name")
         self.fields["category"].queryset = Category.objects.filter(
             is_active=True
         ).order_by("name")
@@ -80,11 +108,20 @@ class TransactionForm(forms.Form):
         self.fields["transaction_type"].widget.attrs.update(
             {"data-conditional-source": "transaction-type"}
         )
+        self.fields["payment_method"].widget.attrs.update(
+            {"data-conditional-source": "payment-method"}
+        )
         self.fields["account"].widget.attrs.update(
-            {"data-conditional-field": "transaction-account"}
+            {"data-conditional-field": "payment-account"}
         )
         self.fields["card"].widget.attrs.update(
-            {"data-conditional-field": "transaction-card"}
+            {"data-conditional-field": "payment-card"}
+        )
+        self.fields["from_account"].widget.attrs.update(
+            {"data-conditional-field": "payment-transfer"}
+        )
+        self.fields["destination_account"].widget.attrs.update(
+            {"data-conditional-field": "payment-transfer"}
         )
 
     def clean_amount(self):
@@ -99,15 +136,53 @@ class TransactionForm(forms.Form):
         """Aplica regras de campos obrigatorios por tipo de lancamento."""
 
         cleaned_data = super().clean()
+        payment_method = cleaned_data.get("payment_method")
         transaction_type = cleaned_data.get("transaction_type")
         account = cleaned_data.get("account")
         card = cleaned_data.get("card")
+        from_account = cleaned_data.get("from_account")
+        destination_account = cleaned_data.get("destination_account")
 
-        if transaction_type == Transaction.TransactionType.CARD_PURCHASE:
+        if payment_method == "transfer":
+            if from_account is None:
+                self.add_error("from_account", "Transferência exige conta origem.")
+            if destination_account is None:
+                self.add_error("destination_account", "Transferência exige conta destino.")
+            if (
+                from_account is not None
+                and destination_account is not None
+                and from_account == destination_account
+            ):
+                self.add_error(
+                    "destination_account",
+                    "Conta de destino deve ser diferente da conta de origem.",
+                )
+            return cleaned_data
+
+        if payment_method == "credit":
             if card is None:
                 self.add_error("card", "Compra no cartão exige cartão vinculado.")
-        elif transaction_type in ALLOWED_TRANSACTION_TYPES and account is None:
-            self.add_error("account", "Lançamento exige conta financeira.")
+            if transaction_type != Transaction.TransactionType.CARD_PURCHASE:
+                self.add_error(
+                    "transaction_type",
+                    "Crédito deve ser lançado como compra no cartão.",
+                )
+        elif payment_method == "benefit":
+            if card is None:
+                self.add_error("card", "Benefício exige cartão vinculado.")
+            elif card.card_type != Card.CardType.BENEFIT:
+                self.add_error("card", "Benefício exige cartão de benefício.")
+            if transaction_type != Transaction.TransactionType.CARD_PURCHASE:
+                self.add_error(
+                    "transaction_type",
+                    "Benefício deve ser lançado como compra no cartão.",
+                )
+        else:
+            if account is None:
+                self.add_error("account", "Lançamento exige conta financeira.")
+
+        if payment_method == "credit" and card is not None and card.card_type != Card.CardType.CREDIT:
+            self.add_error("card", "Crédito exige cartão de crédito.")
 
         return cleaned_data
 

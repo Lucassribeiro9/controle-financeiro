@@ -42,22 +42,30 @@
     }
 
     function setupTransactionForm(form) {
+        const paymentMethod = form.querySelector('[name="payment_method"]');
         const transactionType = form.querySelector('[name="transaction_type"]');
-        if (!transactionType) {
+        if (!paymentMethod || !transactionType) {
             return;
         }
 
         const update = function () {
-            const isCardPurchase = transactionType.value === "card_purchase";
+            const method = paymentMethod.value;
+            const isTransfer = method === "transfer";
+            const isCardPurchase = method === "credit" || method === "benefit";
+            const usesAccount = method === "debit" || method === "cash" || method === "benefit";
 
-            fieldsFor(form, "transaction-card").forEach((field) => {
+            fieldsFor(form, "payment-card").forEach((field) => {
                 setFieldVisible(field, isCardPurchase);
             });
-            fieldsFor(form, "transaction-account").forEach((field) => {
-                setFieldVisible(field, !isCardPurchase);
+            fieldsFor(form, "payment-account").forEach((field) => {
+                setFieldVisible(field, usesAccount);
+            });
+            fieldsFor(form, "payment-transfer").forEach((field) => {
+                setFieldVisible(field, isTransfer);
             });
         };
 
+        paymentMethod.addEventListener("change", update);
         transactionType.addEventListener("change", update);
         update();
     }
