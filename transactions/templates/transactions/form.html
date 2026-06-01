@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Novo lançamento - Controle Financeiro{% endblock %}
+{% block title %}{{ page_title|default:"Novo lançamento" }} - Controle Financeiro{% endblock %}
 
 {% block content %}
     <header class="page-header">
         <div>
-            <h1>Novo lançamento</h1>
-            <p class="muted">Registre receitas, despesas, ajustes e compras no cartão.</p>
+            <h1>{{ page_heading|default:"Novo lançamento" }}</h1>
+            <p class="muted">{{ page_description|default:"Registre receitas, despesas, ajustes e compras no cartão." }}</p>
         </div>
     </header>
 
     <section class="panel">
-        <form class="form-grid" method="post" action="{% url 'transactions:create' %}" data-conditional-form="transaction">
+        <form class="form-grid" method="post" action="{{ request.path }}" data-conditional-form="transaction">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
@@ -31,8 +31,8 @@
             {% endfor %}
 
             <div class="action-row">
-                <button class="button" type="submit">Salvar</button>
-                <a class="button button-secondary" href="{% url 'transactions:list' %}">Cancelar</a>
+                <button class="button" type="submit">{{ submit_label|default:"Salvar" }}</button>
+                <a class="button button-secondary" href="{{ cancel_url|default:'/transactions/' }}">Cancelar</a>
             </div>
         </form>
     </section>

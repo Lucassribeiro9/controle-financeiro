@@ -204,6 +204,57 @@ def create_transaction_by_payment_method(
     raise ValidationError("Forma de pagamento inválida.")
 
 
+def update_transaction(
+    *,
+    transaction_id,
+    description,
+    amount,
+    transaction_type,
+    date,
+    account=None,
+    category=None,
+    card=None,
+    status=Transaction.PaymentStatus.PENDING,
+    notes="",
+):
+    """Atualiza um lancamento nao pago e aplica impacto quando ele passa a pago."""
+
+    with db_transaction.atomic():
+        transaction = Transaction.objects.select_for_update().get(pk=transaction_id)
+
+        if transaction.status == Transaction.PaymentStatus.PAID:
+            raise ValidationError("Lançamento pago não pode ser editado.")
+
+        previous_status = transaction.status
+        previous_account_id = transaction.account_id
+
+        transaction.description = description
+        transaction.amount = amount
+        transaction.transaction_type = transaction_type
+        transaction.date = date
+        transaction.account = account
+        transaction.category = category
+        transaction.card = card
+        transaction.status = status
+        transaction.notes = notes
+        transaction.full_clean()
+        transaction.save()
+
+        if previous_status != Transaction.PaymentStatus.PAID and transaction.status == Transaction.PaymentStatus.PAID:
+            _apply_balance_delta(transaction=transaction)
+
+        if (
+            previous_account_id
+            and transaction.status == Transaction.PaymentStatus.PAID
+            and previous_account_id != transaction.account_id
+        ):
+            # A regra de impacto usa a conta final da edição; se a conta mudou,
+            # o ajuste já foi aplicado na conta atual.
+            pass
+
+    return transaction
+
+
 def mark_transaction_as_paid(transaction_id):
     """Marca uma transacao como paga e aplica impacto em saldo uma unica vez."""
 

@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from core.utils import map_service_errors_to_view
@@ -18,6 +19,7 @@ from .selectors import (
 from .services import (
     create_transaction_by_payment_method,
     create_transfer,
+    update_transaction,
 )
 from installments.models import InstallmentPlan
 
@@ -112,7 +114,14 @@ def transaction_create_page(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "transactions/form.html",
-        {"form": form},
+        {
+            "form": form,
+            "page_title": "Novo lançamento",
+            "page_heading": "Novo lançamento",
+            "page_description": "Registre receitas, despesas, ajustes e compras no cartão.",
+            "submit_label": "Salvar",
+            "cancel_url": reverse("transactions:list"),
+        },
     )
 
 
@@ -130,6 +139,56 @@ def transaction_detail_page(
         request,
         "transactions/detail.html",
         {"transaction": transaction},
+    )
+
+
+def transaction_edit_page(request: HttpRequest, transaction_id: int) -> HttpResponse:
+    """Renderiza e processa a edicao de um lancamento."""
+
+    transaction = get_object_or_404(
+        Transaction.objects.select_related("account", "category", "card", "statement"),
+        pk=transaction_id,
+    )
+
+    if transaction.status == Transaction.PaymentStatus.PAID:
+        messages.error(request, "Lançamento pago não pode ser editado.")
+        return redirect("transactions:detail", transaction_id=transaction.id)
+
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            try:
+                updated_transaction = update_transaction(
+                    transaction_id=transaction.id,
+                    description=form.cleaned_data["description"],
+                    amount=form.cleaned_data["amount"],
+                    transaction_type=form.cleaned_data["transaction_type"],
+                    date=form.cleaned_data["date"],
+                    account=form.cleaned_data["account"],
+                    category=form.cleaned_data["category"],
+                    card=form.cleaned_data["card"],
+                    status=form.cleaned_data["status"],
+                    notes=form.cleaned_data["notes"],
+                )
+            except ValidationError as exc:
+                map_service_errors_to_view(request, exc, form=form)
+            else:
+                messages.success(request, "Lançamento atualizado com sucesso.")
+                return redirect("transactions:detail", transaction_id=updated_transaction.id)
+    else:
+        form = TransactionForm.from_transaction(transaction)
+
+    return render(
+        request,
+        "transactions/form.html",
+        {
+            "form": form,
+            "page_title": "Editar lançamento",
+            "page_heading": "Editar lançamento",
+            "page_description": "Altere os dados do lançamento não pago.",
+            "submit_label": "Atualizar",
+            "cancel_url": reverse("transactions:detail", kwargs={"transaction_id": transaction.id}),
+        },
     )
 
 
