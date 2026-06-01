@@ -84,6 +84,20 @@ def get_transactions_for_period(*, year, month):
     )
 
 
+def get_filtered_transactions(*, year, month, status=None, transaction_type=None):
+    """Lista transacoes de um periodo aplicando filtros opcionais."""
+
+    transactions = get_transactions_for_period(year=year, month=month)
+
+    if status:
+        transactions = transactions.filter(status=status)
+
+    if transaction_type:
+        transactions = transactions.filter(transaction_type=transaction_type)
+
+    return transactions
+
+
 def get_recent_transactions(*, limit=10):
     """Lista transacoes recentes para telas de acompanhamento."""
 

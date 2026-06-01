@@ -67,7 +67,7 @@
                         {% for transaction in transactions %}
                             <tr>
                                 <td class="cell-primary">
-                                    <a href="{% url 'transactions:detail' transaction.id %}">
+                                    <a href="{% url 'transactions:detail' transaction.id %}?year={{ year }}&month={{ month }}&status={{ status|default:'' }}&transaction_type={{ transaction_type|default:'' }}">
                                         {{ transaction.description }}
                                     </a>
                                     {% if transaction.category %}
