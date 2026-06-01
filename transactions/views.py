@@ -63,7 +63,29 @@ def transaction_create_page(request: HttpRequest) -> HttpResponse:
         form = TransactionForm(request.POST)
         if form.is_valid():
             try:
-                transaction = create_transaction(**form.cleaned_data)
+                if form.cleaned_data["payment_method"] == "transfer":
+                    create_transfer(
+                        description=form.cleaned_data["description"],
+                        amount=form.cleaned_data["amount"],
+                        from_account=form.cleaned_data["from_account"],
+                        destination_account=form.cleaned_data["destination_account"],
+                        date=form.cleaned_data["date"],
+                        notes=form.cleaned_data["notes"],
+                    )
+                    messages.success(request, "Transferência criada com sucesso.")
+                    return redirect("transactions:transfers")
+
+                transaction = create_transaction(
+                    description=form.cleaned_data["description"],
+                    amount=form.cleaned_data["amount"],
+                    transaction_type=form.cleaned_data["transaction_type"],
+                    date=form.cleaned_data["date"],
+                    account=form.cleaned_data["account"],
+                    category=form.cleaned_data["category"],
+                    card=form.cleaned_data["card"],
+                    status=form.cleaned_data["status"],
+                    notes=form.cleaned_data["notes"],
+                )
             except ValidationError as exc:
                 map_service_errors_to_view(request, exc, form=form)
             else:
@@ -139,4 +161,3 @@ def transfer_create_page(request: HttpRequest) -> HttpResponse:
         "transactions/transfer_form.html",
         {"form": form},
     )
-

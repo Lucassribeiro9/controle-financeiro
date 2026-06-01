@@ -25,6 +25,12 @@ class TransactionViewTests(TestCase):
             account_type=FinancialAccount.AccountType.CHECKING,
             balance=Decimal("1000.00"),
         )
+        self.destination_account = FinancialAccount.objects.create(
+            name="Conta reserva",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("200.00"),
+        )
         self.category = Category.objects.create(name="Alimentacao")
         self.card = Card.objects.create(
             name="Inter Gold",
@@ -76,10 +82,12 @@ class TransactionViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/form.html")
         self.assertContains(response, "Novo lançamento")
+        self.assertContains(response, "Forma de pagamento")
         self.assertContains(response, 'data-conditional-form="transaction"', html=False)
         self.assertContains(response, 'data-conditional-source="transaction-type"', html=False)
-        self.assertContains(response, 'data-conditional-field="transaction-account"', html=False)
-        self.assertContains(response, 'data-conditional-field="transaction-card"', html=False)
+        self.assertContains(response, 'data-conditional-source="payment-method"', html=False)
+        self.assertContains(response, 'data-conditional-field="payment-account"', html=False)
+        self.assertContains(response, 'data-conditional-field="payment-card"', html=False)
         self.assertContains(response, "js/app.js")
 
     def test_post_create_income_uses_service_and_increases_balance(self):
@@ -89,6 +97,7 @@ class TransactionViewTests(TestCase):
             reverse("transactions:create"),
             data={
                 "description": "Salario",
+                "payment_method": "debit",
                 "amount": "5000.00",
                 "transaction_type": Transaction.TransactionType.INCOME,
                 "status": Transaction.PaymentStatus.PAID,
@@ -113,6 +122,7 @@ class TransactionViewTests(TestCase):
             reverse("transactions:create"),
             data={
                 "description": "Mercado",
+                "payment_method": "debit",
                 "amount": "250.00",
                 "transaction_type": Transaction.TransactionType.EXPENSE,
                 "status": Transaction.PaymentStatus.PAID,
@@ -136,6 +146,7 @@ class TransactionViewTests(TestCase):
             reverse("transactions:create"),
             data={
                 "description": "Compra no cartao",
+                "payment_method": "credit",
                 "amount": "120.00",
                 "transaction_type": Transaction.TransactionType.CARD_PURCHASE,
                 "status": Transaction.PaymentStatus.PENDING,
@@ -161,6 +172,7 @@ class TransactionViewTests(TestCase):
             reverse("transactions:create"),
             data={
                 "description": "Mercado",
+                "payment_method": "debit",
                 "amount": "250.00",
                 "transaction_type": Transaction.TransactionType.EXPENSE,
                 "status": Transaction.PaymentStatus.PAID,
@@ -173,6 +185,29 @@ class TransactionViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/form.html")
         self.assertContains(response, "Lançamento exige conta financeira.")
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_post_create_transfer_uses_transfer_service(self):
+        """Transferencia deve seguir pelo fluxo de lancamento dinamico."""
+
+        response = self.client.post(
+            reverse("transactions:create"),
+            data={
+                "description": "Aporte reserva",
+                "payment_method": "transfer",
+                "amount": "300.00",
+                "transaction_type": Transaction.TransactionType.ADJUSTMENT,
+                "status": Transaction.PaymentStatus.PENDING,
+                "from_account": self.account.id,
+                "destination_account": self.destination_account.id,
+                "date": "2026-05-08",
+                "notes": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("transactions:transfers"))
+        self.assertEqual(Transfer.objects.count(), 1)
         self.assertEqual(Transaction.objects.count(), 0)
 
     def test_transaction_detail_page_returns_success(self):
