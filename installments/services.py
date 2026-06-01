@@ -49,6 +49,30 @@ def create_installment_plan(
     return plan
 
 
+def create_installment_plan_from_purchase(
+    *,
+    description,
+    total_amount,
+    total_installments,
+    purchase_date,
+    card,
+    category=None,
+):
+    """Cria um parcelamento inline a partir de uma compra no credito."""
+
+    if total_installments <= 1:
+        raise ValidationError("Parcelamento exige ao menos 2 parcelas.")
+
+    return create_installment_plan(
+        description=description,
+        total_amount=total_amount,
+        total_installments=total_installments,
+        first_installment_date=purchase_date,
+        card=card,
+        category=category,
+    )
+
+
 def generate_installment_transactions(*, plan):
     """Gera transacoes de compra no cartao para cada parcela."""
 

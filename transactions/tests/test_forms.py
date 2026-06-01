@@ -101,6 +101,47 @@ class TransactionFormTests(TestCase):
         self.assertIn("card", form.errors)
         self.assertIn("transaction_type", form.errors)
 
+    def test_credit_allows_inline_installment_count(self):
+        """Credito deve aceitar quantidade de parcelas maior que uma."""
+
+        form = TransactionForm(
+            data={
+                "description": "Notebook",
+                "payment_method": "credit",
+                "amount": "1000.00",
+                "transaction_type": Transaction.TransactionType.CARD_PURCHASE,
+                "status": Transaction.PaymentStatus.PENDING,
+                "card": self.credit_card.id,
+                "total_installments": "10",
+                "category": self.category.id,
+                "date": "2026-05-08",
+                "notes": "",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_credit_rejects_single_installment(self):
+        """Credito nao deve aceitar parcela unica como parcelamento inline."""
+
+        form = TransactionForm(
+            data={
+                "description": "Notebook",
+                "payment_method": "credit",
+                "amount": "1000.00",
+                "transaction_type": Transaction.TransactionType.CARD_PURCHASE,
+                "status": Transaction.PaymentStatus.PENDING,
+                "card": self.credit_card.id,
+                "total_installments": "1",
+                "category": self.category.id,
+                "date": "2026-05-08",
+                "notes": "",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("total_installments", form.errors)
+
     def test_benefit_requires_benefit_card(self):
         """Beneficio deve exigir cartao de beneficio."""
 

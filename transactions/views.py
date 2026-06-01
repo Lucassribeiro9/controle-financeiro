@@ -19,6 +19,7 @@ from .services import (
     create_transaction_by_payment_method,
     create_transfer,
 )
+from installments.models import InstallmentPlan
 
 
 def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
@@ -87,12 +88,17 @@ def transaction_create_page(request: HttpRequest) -> HttpResponse:
                     account=form.cleaned_data["account"],
                     category=form.cleaned_data["category"],
                     card=form.cleaned_data["card"],
+                    total_installments=form.cleaned_data.get("total_installments"),
                     status=form.cleaned_data["status"],
                     notes=form.cleaned_data["notes"],
                 )
             except ValidationError as exc:
                 map_service_errors_to_view(request, exc, form=form)
             else:
+                if isinstance(transaction, InstallmentPlan):
+                    messages.success(request, "Parcelamento criado com sucesso.")
+                    return redirect("installments:detail", plan_id=transaction.id)
+
                 messages.success(request, "Lançamento criado com sucesso.")
                 return redirect("transactions:detail", transaction_id=transaction.id)
     else:

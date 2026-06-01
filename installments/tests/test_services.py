@@ -13,6 +13,7 @@ from installments.models import InstallmentPlan
 from installments.services import (
     cancel_installment_plan,
     create_installment_plan,
+    create_installment_plan_from_purchase,
     get_installment_progress,
 )
 from institutions.models import Institution
@@ -65,6 +66,22 @@ class InstallmentPlanServiceTests(TestCase):
             ).count(),
             10,
         )
+
+    def test_create_installment_plan_from_purchase_uses_purchase_date(self):
+        """Parcelamento inline deve usar a data da compra como primeira parcela."""
+
+        plan = create_installment_plan_from_purchase(
+            description="Notebook",
+            total_amount=Decimal("1000.00"),
+            total_installments=10,
+            purchase_date=date(2026, 5, 8),
+            card=self.card,
+            category=self.category,
+        )
+
+        self.assertEqual(plan.first_installment_date, date(2026, 5, 8))
+        first_installment = plan.transactions.order_by("installment_number").first()
+        self.assertEqual(first_installment.date, date(2026, 5, 8))
 
     def test_installments_are_linked_to_correct_statements(self):
         """Cada parcela deve entrar na fatura correta."""

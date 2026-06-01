@@ -12,6 +12,7 @@ from cards.services import (
     debit_benefit_card_balance,
     get_or_create_card_statement,
 )
+from installments.services import create_installment_plan_from_purchase
 
 from .models import Transaction, Transfer
 
@@ -130,6 +131,7 @@ def create_transaction_by_payment_method(
     account=None,
     category=None,
     card=None,
+    total_installments=None,
     status=Transaction.PaymentStatus.PENDING,
     notes="",
 ):
@@ -156,6 +158,16 @@ def create_transaction_by_payment_method(
             raise ValidationError("Compra no cartão exige cartão vinculado.")
         if card.card_type != Card.CardType.CREDIT:
             raise ValidationError("Crédito exige cartão de crédito.")
+
+        if total_installments and total_installments > 1:
+            return create_installment_plan_from_purchase(
+                description=description,
+                total_amount=amount,
+                total_installments=total_installments,
+                purchase_date=date,
+                card=card,
+                category=category,
+            )
 
         statement = get_or_create_card_statement(card=card, transaction_date=date)
         return create_transaction(
