@@ -15,6 +15,7 @@ from cards.services import (
     debit_benefit_card_balance,
     get_or_create_card_statement,
     pay_statement,
+    refresh_statement_amounts,
 )
 from institutions.models import Institution
 from transactions.models import Transaction
@@ -135,6 +136,47 @@ class CardStatementServiceTests(TestCase):
         self.payment_account.refresh_from_db()
 
         self.assertEqual(self.payment_account.balance, Decimal("1000.00"))
+
+    def test_refresh_statement_amounts_updates_open_statement_expected_amount(self):
+        """Recalculo de fatura aberta deve atualizar previsto sem fechar valor."""
+
+        statement = get_or_create_card_statement(
+            card=self.card,
+            transaction_date=date(2026, 5, 8),
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 8),
+        )
+
+        refreshed_statement = refresh_statement_amounts(statement=statement)
+
+        self.assertEqual(refreshed_statement.expected_amount, Decimal("250.00"))
+        self.assertEqual(refreshed_statement.closed_amount, Decimal("0.00"))
+
+    def test_refresh_statement_amounts_updates_closed_statement_amounts(self):
+        """Recalculo de fatura fechada deve manter valor consolidado atualizado."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        Transaction.objects.create(
+            description="Farmacia",
+            amount=Decimal("50.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 10),
+        )
+
+        refreshed_statement = refresh_statement_amounts(statement=statement)
+
+        self.assertEqual(refreshed_statement.expected_amount, Decimal("400.00"))
+        self.assertEqual(refreshed_statement.closed_amount, Decimal("400.00"))
 
     def test_pay_statement_decreases_payment_account_balance(self):
         """Pagar fatura deve reduzir saldo da conta de pagamento."""
