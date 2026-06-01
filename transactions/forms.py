@@ -133,6 +133,45 @@ class TransactionForm(forms.Form):
             {"data-conditional-field": "payment-transfer"}
         )
 
+    @classmethod
+    def from_transaction(cls, transaction):
+        """Cria um form inicializado a partir de uma transacao existente."""
+
+        if transaction.transaction_type == Transaction.TransactionType.CARD_PURCHASE:
+            payment_method = (
+                "benefit"
+                if transaction.card and transaction.card.card_type == Card.CardType.BENEFIT
+                else "credit"
+            )
+        elif transaction.transaction_type == Transaction.TransactionType.INCOME:
+            payment_method = "debit"
+        elif transaction.transaction_type == Transaction.TransactionType.EXPENSE:
+            payment_method = "debit"
+        else:
+            payment_method = "cash"
+
+        return cls(
+            initial={
+                "description": transaction.description,
+                "payment_method": payment_method,
+                "amount": transaction.amount,
+                "transaction_type": transaction.transaction_type,
+                "status": transaction.status,
+                "account": transaction.account,
+                "from_account": None,
+                "destination_account": None,
+                "category": transaction.category,
+                "card": transaction.card,
+                "total_installments": (
+                    transaction.installment_plan.total_installments
+                    if transaction.installment_plan_id
+                    else None
+                ),
+                "date": transaction.date,
+                "notes": transaction.notes,
+            }
+        )
+
     def clean_amount(self):
         """Valida que o valor informado e positivo."""
 

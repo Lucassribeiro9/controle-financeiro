@@ -90,6 +90,88 @@ class TransactionViewTests(TestCase):
         self.assertContains(response, 'data-conditional-field="payment-card"', html=False)
         self.assertContains(response, "js/app.js")
 
+    def test_transaction_edit_page_returns_form_for_pending_transaction(self):
+        """Deve renderizar formulario de edicao para lancamento nao pago."""
+
+        transaction = Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        response = self.client.get(
+            reverse("transactions:edit", kwargs={"transaction_id": transaction.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "transactions/form.html")
+        self.assertContains(response, "Editar lançamento")
+        self.assertContains(response, "Atualizar")
+
+    def test_post_edit_pending_transaction_updates_it(self):
+        """Deve atualizar um lancamento nao pago via POST."""
+
+        transaction = Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        response = self.client.post(
+            reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
+            data={
+                "description": "Mercado maior",
+                "payment_method": "debit",
+                "amount": "300.00",
+                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "status": Transaction.PaymentStatus.PAID,
+                "account": self.account.id,
+                "category": self.category.id,
+                "date": "2026-05-09",
+                "notes": "Atualizado",
+            },
+        )
+
+        transaction.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("transactions:detail", kwargs={"transaction_id": transaction.id}))
+        self.assertEqual(transaction.description, "Mercado maior")
+        self.assertEqual(transaction.amount, Decimal("300.00"))
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("700.00"))
+
+    def test_get_edit_paid_transaction_redirects_with_message(self):
+        """Lancar pago deve bloquear edicao com mensagem clara."""
+
+        transaction = Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        response = self.client.get(
+            reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertRedirects(
+            response,
+            reverse("transactions:detail", kwargs={"transaction_id": transaction.id}),
+        )
+        self.assertContains(response, "Lançamento pago não pode ser editado.")
+
     def test_post_create_income_uses_service_and_increases_balance(self):
         """Deve criar receita via service e aumentar saldo da conta."""
 

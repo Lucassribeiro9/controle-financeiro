@@ -11,6 +11,9 @@
         </div>
 
         <a class="button button-secondary" href="{% url 'transactions:list' %}">Voltar</a>
+        {% if transaction.status != "paid" %}
+            <a class="button" href="{% url 'transactions:edit' transaction.id %}">Editar lançamento</a>
+        {% endif %}
     </header>
 
     <div class="summary-grid">

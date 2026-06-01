@@ -17,6 +17,7 @@ from transactions.services import (
     create_transaction_by_payment_method,
     create_transfer,
     mark_transaction_as_paid,
+    update_transaction,
 )
 
 
@@ -362,6 +363,92 @@ class TransactionServiceTests(TestCase):
         self.account.refresh_from_db()
 
         self.assertEqual(self.account.balance, Decimal("6000.00"))
+
+    def test_update_pending_transaction_allows_changes(self):
+        """Lançamento pendente deve poder ser atualizado."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        updated = update_transaction(
+            transaction_id=transaction.id,
+            description="Mercado maior",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            status=Transaction.PaymentStatus.PENDING,
+            date=date(2026, 5, 9),
+            notes="Atualizado",
+        )
+
+        self.assertEqual(updated.description, "Mercado maior")
+        self.assertEqual(updated.amount, Decimal("300.00"))
+        self.assertEqual(updated.date, date(2026, 5, 9))
+
+    def test_update_pending_transaction_can_mark_as_paid(self):
+        """Lançamento pendente pode ser editado para pago e impactar saldo."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        updated = update_transaction(
+            transaction_id=transaction.id,
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            status=Transaction.PaymentStatus.PAID,
+            date=date(2026, 5, 8),
+            notes="",
+        )
+
+        self.account.refresh_from_db()
+
+        self.assertEqual(updated.status, Transaction.PaymentStatus.PAID)
+        self.assertEqual(self.account.balance, Decimal("750.00"))
+
+    def test_update_paid_transaction_is_blocked(self):
+        """Lançamento pago não deve ser editado."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Lançamento pago não pode ser editado.",
+        ):
+            update_transaction(
+                transaction_id=transaction.id,
+                description="Mercado editado",
+                amount=Decimal("300.00"),
+                transaction_type=Transaction.TransactionType.EXPENSE,
+                account=self.account,
+                category=self.category,
+                status=Transaction.PaymentStatus.PAID,
+                date=date(2026, 5, 9),
+                notes="",
+            )
 
 
 class TransferServiceTests(TestCase):

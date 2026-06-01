@@ -20,4 +20,9 @@ urlpatterns = [
         views.transaction_detail_page,
         name="detail",
     ),
+    path(
+        "transactions/<int:transaction_id>/edit/",
+        views.transaction_edit_page,
+        name="edit",
+    ),
 ]
