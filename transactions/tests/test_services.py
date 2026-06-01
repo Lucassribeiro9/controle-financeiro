@@ -209,6 +209,29 @@ class TransactionServiceTests(TestCase):
         self.assertIsInstance(transaction.statement, CardStatement)
         self.assertEqual(transaction.statement.card, self.card)
 
+    def test_create_transaction_by_payment_method_creates_inline_installment_plan(self):
+        """Credito com parcelas deve criar parcelamento inline no mesmo fluxo."""
+
+        plan = create_transaction_by_payment_method(
+            payment_method="credit",
+            description="Notebook",
+            amount=Decimal("1000.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            total_installments=10,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        self.assertEqual(plan.total_installments, 10)
+        self.assertEqual(plan.total_amount, Decimal("1000.00"))
+        self.assertEqual(plan.transactions.count(), 10)
+        first_installment = plan.transactions.order_by("installment_number").first()
+        self.assertEqual(first_installment.card, self.card)
+        self.assertEqual(first_installment.installment_plan, plan)
+        self.assertEqual(first_installment.installment_number, 1)
+
     def test_create_transaction_by_payment_method_debits_benefit_balance(self):
         """Beneficio deve consumir o saldo proprio do cartao."""
 

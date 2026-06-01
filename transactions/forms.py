@@ -7,6 +7,7 @@ from cards.models import Card
 from categories.models import Category
 from core.forms import BRDateField
 from core.forms import BRDecimalField
+from core.forms import BRIntegerField
 
 from .models import Transaction
 
@@ -78,6 +79,11 @@ class TransactionForm(forms.Form):
         queryset=Card.objects.none(),
         required=False,
     )
+    total_installments = BRIntegerField(
+        label="Total de parcelas",
+        required=False,
+        min_value=1,
+    )
     date = BRDateField(label="Data")
     notes = forms.CharField(
         label="Observações",
@@ -117,6 +123,9 @@ class TransactionForm(forms.Form):
         self.fields["card"].widget.attrs.update(
             {"data-conditional-field": "payment-card"}
         )
+        self.fields["total_installments"].widget.attrs.update(
+            {"data-conditional-field": "payment-installments"}
+        )
         self.fields["from_account"].widget.attrs.update(
             {"data-conditional-field": "payment-transfer"}
         )
@@ -140,6 +149,7 @@ class TransactionForm(forms.Form):
         transaction_type = cleaned_data.get("transaction_type")
         account = cleaned_data.get("account")
         card = cleaned_data.get("card")
+        total_installments = cleaned_data.get("total_installments")
         from_account = cleaned_data.get("from_account")
         destination_account = cleaned_data.get("destination_account")
 
@@ -167,6 +177,11 @@ class TransactionForm(forms.Form):
                     "transaction_type",
                     "Crédito deve ser lançado como compra no cartão.",
                 )
+            if total_installments is not None and total_installments <= 1:
+                self.add_error(
+                    "total_installments",
+                    "Parcela inválida deve ter ao menos 2 parcelas.",
+                )
         elif payment_method == "benefit":
             if card is None:
                 self.add_error("card", "Benefício exige cartão vinculado.")
@@ -183,6 +198,12 @@ class TransactionForm(forms.Form):
 
         if payment_method == "credit" and card is not None and card.card_type != Card.CardType.CREDIT:
             self.add_error("card", "Crédito exige cartão de crédito.")
+
+        if payment_method != "credit" and total_installments:
+            self.add_error(
+                "total_installments",
+                "Parcelamento só pode ser usado em compras no crédito.",
+            )
 
         return cleaned_data
 

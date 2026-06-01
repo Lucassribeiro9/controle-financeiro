@@ -52,10 +52,14 @@
             const method = paymentMethod.value;
             const isTransfer = method === "transfer";
             const isCardPurchase = method === "credit" || method === "benefit";
+            const isCredit = method === "credit";
             const usesAccount = method === "debit" || method === "cash" || method === "benefit";
 
             fieldsFor(form, "payment-card").forEach((field) => {
                 setFieldVisible(field, isCardPurchase);
+            });
+            fieldsFor(form, "payment-installments").forEach((field) => {
+                setFieldVisible(field, isCredit);
             });
             fieldsFor(form, "payment-account").forEach((field) => {
                 setFieldVisible(field, usesAccount);

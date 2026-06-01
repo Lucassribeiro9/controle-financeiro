@@ -165,6 +165,29 @@ class TransactionViewTests(TestCase):
         self.assertIsNone(transaction.account)
         self.assertEqual(self.account.balance, Decimal("1000.00"))
 
+    def test_post_create_credit_purchase_with_installments_redirects_to_plan_detail(self):
+        """Compra parcelada no credito deve redirecionar para o parcelamento criado."""
+
+        response = self.client.post(
+            reverse("transactions:create"),
+            data={
+                "description": "Notebook",
+                "payment_method": "credit",
+                "amount": "1000.00",
+                "transaction_type": Transaction.TransactionType.CARD_PURCHASE,
+                "status": Transaction.PaymentStatus.PENDING,
+                "card": self.card.id,
+                "total_installments": "10",
+                "category": self.category.id,
+                "date": "2026-05-08",
+                "notes": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/installments/"))
+        self.assertEqual(Transaction.objects.filter(installment_plan__isnull=False).count(), 10)
+
     def test_post_create_expense_without_account_shows_form_error(self):
         """Formulario invalido deve mostrar erro sem criar transacao."""
 
