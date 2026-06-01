@@ -57,6 +57,12 @@ class Card(models.Model):
         null=True,
         blank=True,
     )
+    balance = models.DecimalField(
+        "Saldo",
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
+    )
 
     is_active = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
@@ -101,8 +107,6 @@ class Card(models.Model):
                         "payment_account": "Cartão de crédito exige conta padrão de pagamento."
                     }
                 )
-        
-
 
         if self.card_type == self.CardType.BENEFIT and self.estimated_balance is None:
             raise ValidationError(
@@ -129,6 +133,9 @@ class Card(models.Model):
             raise ValidationError(
                 {"estimated_balance": "Saldo estimado não pode ser negativo."}
             )
+
+        if self.balance is not None and self.balance < Decimal("0"):
+            raise ValidationError({"balance": "Saldo não pode ser negativo."})
 
     def __str__(self) -> str:
         """Retorna o nome amigavel do cartao para exibicao."""

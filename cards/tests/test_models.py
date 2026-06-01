@@ -64,11 +64,13 @@ class CardModelTests(TestCase):
             institution=self.institution,
             card_type=Card.CardType.BENEFIT,
             estimated_balance=Decimal("850.00"),
+            balance=Decimal("850.00"),
         )
         card.full_clean()
         card.save()
 
         self.assertEqual(card.estimated_balance, Decimal("850.00"))
+        self.assertEqual(card.balance, Decimal("850.00"))
 
     def test_benefit_card_requires_estimated_balance(self):
         """Nao deve validar cartao de beneficio sem saldo estimado."""
@@ -77,6 +79,20 @@ class CardModelTests(TestCase):
             name="Caju VR",
             institution=self.institution,
             card_type=Card.CardType.BENEFIT,
+        )
+
+        with self.assertRaises(ValidationError):
+            card.full_clean()
+
+    def test_benefit_card_balance_cannot_be_negative(self):
+        """Nao deve validar cartao de beneficio com saldo negativo."""
+
+        card = Card(
+            name="Caju VR",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("100.00"),
+            balance=Decimal("-1.00"),
         )
 
         with self.assertRaises(ValidationError):
