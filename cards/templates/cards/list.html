@@ -31,7 +31,7 @@
                             <th class="cell-count">Fechamento</th>
                             <th class="cell-count">Vencimento</th>
                             <th>Conta pagamento</th>
-                            <th class="cell-amount">Saldo estimado</th>
+                            <th class="cell-amount">Saldo</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -80,7 +80,13 @@
                                 <td class="cell-count">{{ card.statement_closing_day|default:"Não informado" }}</td>
                                 <td class="cell-count">{{ card.statement_due_day|default:"Não informado" }}</td>
                                 <td>{{ card.payment_account|default:"Não vinculada" }}</td>
-                                <td class="cell-amount">{{ card.estimated_balance|brl }}</td>
+                                <td class="cell-amount">
+                                    {% if card.card_type == "benefit" %}
+                                        {{ card.balance|brl }}
+                                    {% else %}
+                                        {{ card.estimated_balance|brl }}
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>

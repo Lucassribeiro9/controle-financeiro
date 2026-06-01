@@ -8,8 +8,6 @@ from django.db import transaction as db_transaction
 from accounts.models import FinancialAccount
 from cards.models import Card
 from cards.services import (
-    credit_benefit_card_balance,
-    debit_benefit_card_balance,
     get_or_create_card_statement,
 )
 from installments.services import create_installment_plan_from_purchase
@@ -79,6 +77,50 @@ def create_transaction(
     with db_transaction.atomic():
         transaction.save()
         _apply_balance_delta(transaction=transaction)
+
+    return transaction
+
+
+def _create_benefit_purchase(
+    *,
+    description,
+    amount,
+    date,
+    card,
+    category=None,
+    status=Transaction.PaymentStatus.PENDING,
+    notes="",
+):
+    """Cria compra em beneficio debitando saldo e transacao atomicamente."""
+
+    if amount <= Decimal("0.00"):
+        raise ValidationError("Valor deve ser maior que zero.")
+
+    with db_transaction.atomic():
+        card = Card.objects.select_for_update().get(pk=card.pk)
+        if card.card_type != Card.CardType.BENEFIT:
+            raise ValidationError("Benefício exige cartão de benefício.")
+
+        if card.balance < amount:
+            raise ValidationError("Saldo insuficiente no cartão de benefício.")
+
+        card.balance -= amount
+        card.full_clean()
+        card.save(update_fields=["balance", "updated_at"])
+
+        transaction = Transaction(
+            description=description,
+            amount=amount,
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            date=date,
+            card=card,
+            category=category,
+            statement=None,
+            status=status,
+            notes=notes,
+        )
+        transaction.full_clean()
+        transaction.save()
 
     return transaction
 
@@ -188,15 +230,12 @@ def create_transaction_by_payment_method(
         if card.card_type != Card.CardType.BENEFIT:
             raise ValidationError("Benefício exige cartão de benefício.")
 
-        debit_benefit_card_balance(card=card, amount=amount)
-        return create_transaction(
+        return _create_benefit_purchase(
             description=description,
             amount=amount,
-            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
             date=date,
             card=card,
             category=category,
-            statement=None,
             status=status,
             notes=notes,
         )

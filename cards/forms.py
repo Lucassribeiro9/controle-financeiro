@@ -85,6 +85,12 @@ class CardForm(forms.ModelForm):
         self.fields["estimated_balance"].widget.attrs.update(
             {"data-conditional-field": "card-balance"}
         )
+        if (
+            not self.is_bound
+            and self.instance.pk
+            and self.instance.card_type == Card.CardType.BENEFIT
+        ):
+            self.fields["estimated_balance"].initial = self.instance.balance
 
     def clean_name(self):
         """Normaliza espacos do nome."""
@@ -115,6 +121,23 @@ class CardForm(forms.ModelForm):
             )
 
         return cleaned_data
+
+    def save(self, commit=True):
+        """Inicializa saldo real de beneficio a partir do saldo informado."""
+
+        card = super().save(commit=False)
+
+        if (
+            card.card_type == Card.CardType.BENEFIT
+            and card.estimated_balance is not None
+        ):
+            card.balance = card.estimated_balance
+
+        if commit:
+            card.save()
+            self.save_m2m()
+
+        return card
 
 
 class StatementPaymentForm(forms.Form):

@@ -204,6 +204,7 @@ class CardViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(card.card_type, Card.CardType.BENEFIT)
         self.assertEqual(card.estimated_balance, Decimal("850.00"))
+        self.assertEqual(card.balance, Decimal("850.00"))
 
     def test_post_update_card_edits_card(self):
         """Deve editar um cartao cadastrado."""
@@ -238,6 +239,37 @@ class CardViewTests(TestCase):
         self.assertEqual(card.name, "Inter Platinum")
         self.assertEqual(card.credit_limit, Decimal("7000.00"))
         self.assertEqual(card.statement_closing_day, 18)
+
+    def test_post_update_benefit_card_updates_real_balance(self):
+        """Deve atualizar saldo real do beneficio pelo formulario."""
+
+        card = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("300.00"),
+            balance=Decimal("120.00"),
+        )
+
+        response = self.client.post(
+            reverse("cards:update", kwargs={"card_id": card.id}),
+            data={
+                "name": "Caju VA",
+                "institution": self.institution.id,
+                "card_type": Card.CardType.BENEFIT,
+                "credit_limit": "",
+                "statement_closing_day": "",
+                "statement_due_day": "",
+                "payment_account": "",
+                "estimated_balance": "90.00",
+                "is_active": "on",
+            },
+        )
+        card.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(card.estimated_balance, Decimal("90.00"))
+        self.assertEqual(card.balance, Decimal("90.00"))
 
 
 class StatementViewTests(TestCase):
