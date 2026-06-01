@@ -6,12 +6,13 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
-from django.db.models import Sum
+from django.utils import timezone
 
 from accounts.models import FinancialAccount
 from transactions.models import Transaction
 
 from .models import Card, CardStatement
+from .selectors import get_statement_purchase_total
 
 
 def _next_month(*, year, month):
@@ -128,24 +129,13 @@ def close_statement(*, statement):
         ):
             raise ValidationError("Fatura ja foi fechada.")
 
-        total = (
-            statement.transactions.filter(
-                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
-            )
-            .exclude(
-                status__in=[
-                    Transaction.PaymentStatus.CANCELED,
-                    Transaction.PaymentStatus.IGNORED,
-                ]
-            )
-            .aggregate(total=Sum("amount"))["total"]
-            or Decimal("0.00")
-        )
+        total = get_statement_purchase_total(statement)
 
+        statement.expected_amount = total
         statement.closed_amount = total
         statement.status = CardStatement.StatementStatus.PENDING
         statement.full_clean()
-        statement.save(update_fields=["closed_amount", "status", "updated_at"])
+        statement.save(update_fields=["expected_amount", "closed_amount", "status", "updated_at"])
 
     return statement
 
@@ -194,6 +184,9 @@ def pay_statement(*, statement, amount=None):
         statement.full_clean()
         statement.save(update_fields=["payment_account", "paid_amount", "status", "updated_at"])
 
+        if statement.status == CardStatement.StatementStatus.PAID:
+            _sync_statement_purchase_statuses(statement=statement)
+
         payment_transaction = Transaction(
             description=f"Pagamento fatura {statement}",
             amount=payment_amount,
@@ -208,6 +201,19 @@ def pay_statement(*, statement, amount=None):
         payment_transaction.save()
 
     return statement
+
+
+def _sync_statement_purchase_statuses(*, statement):
+    """Marca compras da fatura paga como pagas sem novo impacto financeiro."""
+
+    statement.transactions.filter(
+        transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+    ).exclude(
+        status__in=[
+            Transaction.PaymentStatus.CANCELED,
+            Transaction.PaymentStatus.IGNORED,
+        ]
+    ).update(status=Transaction.PaymentStatus.PAID, updated_at=timezone.now())
 
 
 def update_statement_status(*, statement, today=None):

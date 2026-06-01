@@ -299,16 +299,14 @@ class StatementViewTests(TestCase):
         """Deve exibir o resumo calculado com os valores corretos."""
 
         statement = self._create_statement(amount=Decimal("350.00"))
-        statement.expected_amount = Decimal("400.00")
         statement.paid_amount = Decimal("125.00")
-        statement.save(update_fields=["expected_amount", "paid_amount"])
+        statement.save(update_fields=["paid_amount"])
 
         response = self.client.get(
             reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "R$ 400,00")
         self.assertContains(response, "R$ 350,00")
         self.assertContains(response, "R$ 125,00")
         self.assertContains(response, "R$ 225,00")

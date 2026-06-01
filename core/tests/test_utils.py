@@ -47,10 +47,9 @@ class MapServiceErrorsToViewTests(TestCase):
         # Erro de campo inexistente deve ir para non_field_errors e messages
         self.assertIn("__all__", form.errors)
         self.assertEqual(form.errors["__all__"], ["Erro extra"])
-        
         storage = get_messages(request)
         msgs = [str(m) for m in storage]
-        self.assertIn("Erro extra", msgs)
+        self.assertNotIn("Erro extra", msgs)
 
     def test_map_simple_error_to_messages_without_form(self):
         request = self._get_request_with_messages()

@@ -111,6 +111,7 @@ class CardStatementServiceTests(TestCase):
         closed_statement = close_statement(statement=statement)
 
         self.assertEqual(closed_statement.closed_amount, Decimal("350.00"))
+        self.assertEqual(closed_statement.expected_amount, Decimal("350.00"))
         self.assertEqual(closed_statement.status, CardStatement.StatementStatus.PENDING)
 
     def test_close_statement_does_not_change_payment_account_balance(self):
@@ -145,6 +146,38 @@ class CardStatementServiceTests(TestCase):
 
         self.assertEqual(paid_statement.status, CardStatement.StatementStatus.PAID)
         self.assertEqual(self.payment_account.balance, Decimal("650.00"))
+
+    def test_pay_statement_marks_linked_card_purchases_as_paid(self):
+        """Fatura paga deve sincronizar o status das compras vinculadas."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        purchase = statement.transactions.get(
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE
+        )
+
+        self.assertEqual(purchase.status, Transaction.PaymentStatus.PENDING)
+
+        paid_statement = pay_statement(statement=statement)
+        purchase.refresh_from_db()
+
+        self.assertEqual(paid_statement.status, CardStatement.StatementStatus.PAID)
+        self.assertEqual(purchase.status, Transaction.PaymentStatus.PAID)
+
+    def test_partial_payment_keeps_linked_card_purchases_pending(self):
+        """Pagamento parcial nao deve mudar status das compras vinculadas."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        purchase = statement.transactions.get(
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE
+        )
+
+        pay_statement(statement=statement, amount=Decimal("150.00"))
+        purchase.refresh_from_db()
+
+        self.assertEqual(
+            purchase.status,
+            Transaction.PaymentStatus.PENDING,
+        )
 
     def test_pay_statement_rejects_already_paid_statement(self):
         """Fatura ja paga deve ser bloqueada com mensagem clara."""

@@ -37,16 +37,36 @@ def get_card_limits(card):
     }
 
 
+def get_statement_purchase_total(statement):
+    """Calcula o total ativo das compras vinculadas a uma fatura."""
+
+    return (
+        statement.transactions.filter(
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+        )
+        .exclude(
+            status__in=[
+                Transaction.PaymentStatus.CANCELED,
+                Transaction.PaymentStatus.IGNORED,
+            ]
+        )
+        .aggregate(total=Sum("amount"))["total"]
+        or Decimal("0.00")
+    )
+
+
 def get_statement_summary(statement):
     """Calcula o resumo de valores da fatura para a tela de detalhe."""
 
-    remaining_amount = statement.closed_amount - statement.paid_amount
+    purchase_total = get_statement_purchase_total(statement)
+    closed_amount = statement.closed_amount or purchase_total
+    remaining_amount = max(closed_amount - statement.paid_amount, Decimal("0.00"))
 
     return {
-        "expected_amount": statement.expected_amount,
-        "closed_amount": statement.closed_amount,
+        "expected_amount": purchase_total,
+        "closed_amount": closed_amount,
         "paid_amount": statement.paid_amount,
         "remaining_amount": remaining_amount,
         "status": statement.status,
-        "is_fully_paid": remaining_amount == Decimal("0.00"),
+        "is_fully_paid": closed_amount > Decimal("0.00") and remaining_amount == Decimal("0.00"),
     }
