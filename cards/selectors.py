@@ -8,6 +8,14 @@ from transactions.models import Transaction
 
 from .models import CardStatement
 
+MONEY_QUANT = Decimal("0.01")
+
+
+def _money(value):
+    """Normaliza valores monetarios para a precisao dos campos Decimal."""
+
+    return (value or Decimal("0.00")).quantize(MONEY_QUANT)
+
 
 def get_card_limits(card):
     """Calcula limite cadastrado, usado e disponivel de um cartao de credito."""
@@ -40,7 +48,7 @@ def get_card_limits(card):
 def get_statement_purchase_total(statement):
     """Calcula o total ativo das compras vinculadas a uma fatura."""
 
-    return (
+    total = (
         statement.transactions.filter(
             transaction_type=Transaction.TransactionType.CARD_PURCHASE,
         )
@@ -53,19 +61,22 @@ def get_statement_purchase_total(statement):
         .aggregate(total=Sum("amount"))["total"]
         or Decimal("0.00")
     )
+    return _money(total)
 
 
 def get_statement_summary(statement):
     """Calcula o resumo de valores da fatura para a tela de detalhe."""
 
     purchase_total = get_statement_purchase_total(statement)
-    closed_amount = statement.closed_amount or purchase_total
-    remaining_amount = max(closed_amount - statement.paid_amount, Decimal("0.00"))
+    persisted_closed_amount = _money(statement.closed_amount)
+    closed_amount = persisted_closed_amount or purchase_total
+    paid_amount = _money(statement.paid_amount)
+    remaining_amount = max(closed_amount - paid_amount, Decimal("0.00"))
 
     return {
         "expected_amount": purchase_total,
         "closed_amount": closed_amount,
-        "paid_amount": statement.paid_amount,
+        "paid_amount": paid_amount,
         "remaining_amount": remaining_amount,
         "status": statement.status,
         "is_fully_paid": closed_amount > Decimal("0.00") and remaining_amount == Decimal("0.00"),

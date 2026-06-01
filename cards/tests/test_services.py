@@ -232,6 +232,37 @@ class CardStatementServiceTests(TestCase):
         )
         self.assertEqual(self.payment_account.balance, Decimal("850.00"))
 
+    def test_partial_payment_uses_linked_purchases_when_closed_amount_is_stale(self):
+        """Pagamento parcial deve considerar compras vinculadas se a fatura estiver defasada."""
+
+        statement = get_or_create_card_statement(
+            card=self.card,
+            transaction_date=date(2026, 5, 8),
+        )
+        statement.status = CardStatement.StatementStatus.PENDING
+        statement.save(update_fields=["status", "updated_at"])
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 8),
+        )
+
+        paid_statement = pay_statement(statement=statement, amount=Decimal("150.00"))
+        self.payment_account.refresh_from_db()
+
+        self.assertEqual(paid_statement.expected_amount, Decimal("350.00"))
+        self.assertEqual(paid_statement.closed_amount, Decimal("350.00"))
+        self.assertEqual(paid_statement.paid_amount, Decimal("150.00"))
+        self.assertEqual(
+            paid_statement.status,
+            CardStatement.StatementStatus.PARTIALLY_PAID,
+        )
+        self.assertEqual(self.payment_account.balance, Decimal("850.00"))
+
     def test_full_payment_marks_statement_as_paid(self):
         """Pagamento total deve marcar fatura como paga."""
 

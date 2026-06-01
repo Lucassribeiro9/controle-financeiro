@@ -277,6 +277,32 @@ class StatementViewTests(TestCase):
         self.assertContains(response, "Pendente")
         self.assertContains(response, 'class="badge badge-warning"', html=False)
 
+    def test_statement_list_page_shows_computed_summary_values(self):
+        """Lista de faturas deve mostrar valores calculados das compras vinculadas."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            closing_date="2026-05-20",
+            due_date="2026-05-27",
+            payment_account=self.payment_account,
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date="2026-05-08",
+        )
+
+        response = self.client.get(reverse("cards:statements"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "R$ 350,00")
+
     def test_statement_detail_page_returns_success(self):
         """Deve renderizar detalhe da fatura."""
 
@@ -416,6 +442,49 @@ class StatementViewTests(TestCase):
             reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
         )
         self.assertContains(response, "Fatura paga com sucesso.")
+
+    def test_post_pay_statement_accepts_partial_payment_with_computed_remaining_amount(self):
+        """Pagamento parcial deve validar contra o total calculado da fatura."""
+
+        due_date = timezone.localdate() + timedelta(days=5)
+        closing_date = due_date - timedelta(days=7)
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=due_date.year,
+            month=due_date.month,
+            closing_date=closing_date,
+            due_date=due_date,
+            status=CardStatement.StatementStatus.PENDING,
+            payment_account=self.payment_account,
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=closing_date,
+        )
+
+        response = self.client.post(
+            reverse("cards:pay-statement", kwargs={"statement_id": statement.id}),
+            data={"amount": "150,00"},
+            follow=True,
+        )
+        statement.refresh_from_db()
+
+        self.assertRedirects(
+            response,
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id}),
+        )
+        self.assertContains(response, "Fatura paga com sucesso.")
+        self.assertEqual(statement.paid_amount, Decimal("150.00"))
+        self.assertEqual(statement.closed_amount, Decimal("350.00"))
+        self.assertEqual(
+            statement.status,
+            CardStatement.StatementStatus.PARTIALLY_PAID,
+        )
 
     def _create_statement(self, *, amount=Decimal("250.00")):
         """Cria uma fatura fechada com compra vinculada."""
