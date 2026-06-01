@@ -19,6 +19,25 @@
             <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
         </div>
 
+        <div class="summary-grid">
+            <div class="metric-card">
+                <span>Previsto</span>
+                <strong>{{ statement_summary.expected_amount|brl }}</strong>
+            </div>
+            <div class="metric-card">
+                <span>Fechado</span>
+                <strong>{{ statement_summary.closed_amount|brl }}</strong>
+            </div>
+            <div class="metric-card">
+                <span>Pago</span>
+                <strong>{{ statement_summary.paid_amount|brl }}</strong>
+            </div>
+            <div class="metric-card">
+                <span>Pendente</span>
+                <strong>{{ statement_summary.remaining_amount|brl }}</strong>
+            </div>
+        </div>
+
         <dl class="detail-list">
             <div>
                 <dt>Mês/Ano</dt>

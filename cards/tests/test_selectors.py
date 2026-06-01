@@ -7,7 +7,7 @@ from django.test import TestCase
 
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
-from cards.selectors import get_card_limits
+from cards.selectors import get_card_limits, get_statement_summary
 from institutions.models import Institution
 from transactions.models import Transaction
 
@@ -185,3 +185,71 @@ class CardLimitSelectorTests(TestCase):
             installment_number=installment_number,
             date=transaction_date,
         )
+
+
+class CardStatementSummarySelectorTests(TestCase):
+    """Garante o resumo da fatura na tela de detalhe."""
+
+    def setUp(self):
+        self.institution = Institution.objects.create(name="Inter", code="077")
+        self.payment_account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.card = Card.objects.create(
+            name="Inter Gold",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=self.payment_account,
+        )
+
+    def test_statement_summary_returns_expected_closed_paid_and_remaining_amounts(self):
+        """Resumo deve refletir os valores atuais da fatura."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            expected_amount=Decimal("500.00"),
+            closed_amount=Decimal("420.00"),
+            paid_amount=Decimal("150.00"),
+            closing_date=date(2026, 5, 20),
+            due_date=date(2026, 5, 27),
+            status=CardStatement.StatementStatus.PARTIALLY_PAID,
+            payment_account=self.payment_account,
+        )
+
+        summary = get_statement_summary(statement)
+
+        self.assertEqual(summary["expected_amount"], Decimal("500.00"))
+        self.assertEqual(summary["closed_amount"], Decimal("420.00"))
+        self.assertEqual(summary["paid_amount"], Decimal("150.00"))
+        self.assertEqual(summary["remaining_amount"], Decimal("270.00"))
+        self.assertEqual(summary["status"], CardStatement.StatementStatus.PARTIALLY_PAID)
+        self.assertFalse(summary["is_fully_paid"])
+
+    def test_paid_statement_summary_marks_fully_paid(self):
+        """Fatura paga deve marcar o resumo como totalmente quitado."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            expected_amount=Decimal("500.00"),
+            closed_amount=Decimal("420.00"),
+            paid_amount=Decimal("420.00"),
+            closing_date=date(2026, 5, 20),
+            due_date=date(2026, 5, 27),
+            status=CardStatement.StatementStatus.PAID,
+            payment_account=self.payment_account,
+        )
+
+        summary = get_statement_summary(statement)
+
+        self.assertEqual(summary["remaining_amount"], Decimal("0.00"))
+        self.assertTrue(summary["is_fully_paid"])

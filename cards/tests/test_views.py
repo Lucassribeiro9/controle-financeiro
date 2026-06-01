@@ -290,6 +290,28 @@ class StatementViewTests(TestCase):
         self.assertTemplateUsed(response, "cards/statement_detail.html")
         self.assertContains(response, self.card.name)
         self.assertContains(response, "Valor fechado")
+        self.assertContains(response, "Previsto")
+        self.assertContains(response, "Fechado")
+        self.assertContains(response, "Pago")
+        self.assertContains(response, "Pendente")
+
+    def test_statement_detail_page_shows_contextual_summary_values(self):
+        """Deve exibir o resumo calculado com os valores corretos."""
+
+        statement = self._create_statement(amount=Decimal("350.00"))
+        statement.expected_amount = Decimal("400.00")
+        statement.paid_amount = Decimal("125.00")
+        statement.save(update_fields=["expected_amount", "paid_amount"])
+
+        response = self.client.get(
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "R$ 400,00")
+        self.assertContains(response, "R$ 350,00")
+        self.assertContains(response, "R$ 125,00")
+        self.assertContains(response, "R$ 225,00")
 
     def test_post_pay_statement_pays_statement(self):
         """Deve pagar fatura via POST usando pay_statement."""
