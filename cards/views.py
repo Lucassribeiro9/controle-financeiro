@@ -9,6 +9,7 @@ from core.utils import map_service_errors_to_view
 from core.forms import normalize_decimal
 from .forms import CardForm, StatementPaymentForm
 from .models import Card, CardStatement
+from .selectors import get_card_limits
 from .services import close_statement, pay_statement, update_statement_status
 from decimal import Decimal, InvalidOperation
 
@@ -16,10 +17,12 @@ from decimal import Decimal, InvalidOperation
 def card_list_page(request: HttpRequest) -> HttpResponse:
     """Renderiza a lista de cartoes."""
 
-    cards = (
+    cards = list(
         Card.objects.select_related("institution", "payment_account")
         .order_by("-is_active", "institution__name", "name")
     )
+    for card in cards:
+        card.limit_summary = get_card_limits(card) if card.card_type == Card.CardType.CREDIT else None
 
     return render(
         request,

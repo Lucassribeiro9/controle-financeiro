@@ -843,6 +843,25 @@ h2 {
     color: var(--info);
 }
 
+.limit-bar {
+    background: #e2e8f0;
+    border-radius: 999px;
+    height: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.limit-bar-fill {
+    background: #2563eb;
+    display: block;
+    height: 100%;
+}
+
+.limit-bar-over {
+    background: #dc2626;
+}
+
 .badge-neutral {
     background: var(--neutral-soft);
     color: var(--neutral);

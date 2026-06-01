@@ -10,6 +10,7 @@ from django.utils import timezone
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
 from cards.services import close_statement
+from cards.selectors import get_card_limits
 from institutions.models import Institution
 from transactions.models import Transaction
 
@@ -49,6 +50,98 @@ class CardViewTests(TestCase):
         self.assertContains(response, "Inter")
         self.assertContains(response, "Crédito")
         self.assertContains(response, "Conta corrente")
+
+    def test_card_list_page_shows_credit_limit_summary(self):
+        """Deve mostrar limite usado, disponivel e total de cartao de credito."""
+
+        card = Card.objects.create(
+            name="Inter Gold",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=self.payment_account,
+        )
+        statement = CardStatement.objects.create(
+            card=card,
+            year=2026,
+            month=5,
+            closing_date="2026-05-20",
+            due_date="2026-05-27",
+        )
+        Transaction.objects.create(
+            description="Compra no cartao",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=card,
+            statement=statement,
+            date="2026-05-08",
+        )
+
+        response = self.client.get(reverse("cards:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "5.000,00")
+        self.assertContains(response, "350,00")
+        self.assertContains(response, "4.650,00")
+        self.assertContains(response, 'class="limit-bar"', html=False)
+
+        limits = get_card_limits(card)
+        self.assertEqual(limits["credit_limit"], Decimal("5000.00"))
+        self.assertEqual(limits["used_limit"], Decimal("350.00"))
+        self.assertEqual(limits["available_limit"], Decimal("4650.00"))
+
+    def test_card_list_page_marks_overlimit_cards(self):
+        """Deve exibir alerta visual quando limite estiver excedido."""
+
+        card = Card.objects.create(
+            name="Inter Gold",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("100.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=self.payment_account,
+        )
+        statement = CardStatement.objects.create(
+            card=card,
+            year=2026,
+            month=5,
+            closing_date="2026-05-20",
+            due_date="2026-05-27",
+        )
+        Transaction.objects.create(
+            description="Compra no cartao",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=card,
+            statement=statement,
+            date="2026-05-08",
+        )
+
+        response = self.client.get(reverse("cards:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Limite excedido")
+        self.assertContains(response, 'class="limit-bar-fill limit-bar-over"', html=False)
+
+    def test_card_list_page_does_not_show_credit_summary_for_non_credit_cards(self):
+        """Cartoes nao credito nao devem mostrar indicadores de limite de credito."""
+
+        Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("850.00"),
+            balance=Decimal("850.00"),
+        )
+
+        response = self.client.get(reverse("cards:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Não se aplica")
+        self.assertNotContains(response, 'class="limit-bar"', html=False)
 
     def test_card_create_page_returns_form(self):
         """Deve renderizar formulario de criacao de cartao."""

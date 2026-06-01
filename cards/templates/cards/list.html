@@ -26,6 +26,8 @@
                             <th>Instituição</th>
                             <th>Tipo</th>
                             <th class="cell-amount">Limite</th>
+                            <th class="cell-amount">Usado</th>
+                            <th class="cell-amount">Disponível</th>
                             <th class="cell-count">Fechamento</th>
                             <th class="cell-count">Vencimento</th>
                             <th>Conta pagamento</th>
@@ -45,7 +47,36 @@
                                 </td>
                                 <td>{{ card.institution }}</td>
                                 <td>{{ card.get_card_type_display }}</td>
-                                <td class="cell-amount">{{ card.credit_limit|brl }}</td>
+                                <td class="cell-amount">
+                                    {% if card.card_type == "credit" %}
+                                        {{ card.limit_summary.credit_limit|brl }}
+                                    {% else %}
+                                        Não se aplica
+                                    {% endif %}
+                                </td>
+                                <td class="cell-amount">
+                                    {% if card.card_type == "credit" %}
+                                        {{ card.limit_summary.used_limit|brl }}
+                                        <div class="limit-bar" aria-hidden="true">
+                                            <span
+                                                class="limit-bar-fill {% if card.limit_summary.available_limit < 0 %}limit-bar-over{% endif %}"
+                                                style="width: {% if card.limit_summary.credit_limit > 0 %}{% widthratio card.limit_summary.used_limit card.limit_summary.credit_limit 100 %}{% else %}0{% endif %}%"
+                                            ></span>
+                                        </div>
+                                    {% else %}
+                                        Não se aplica
+                                    {% endif %}
+                                </td>
+                                <td class="cell-amount">
+                                    {% if card.card_type == "credit" %}
+                                        {{ card.limit_summary.available_limit|brl }}
+                                        {% if card.limit_summary.available_limit < 0 %}
+                                            <p class="muted">Limite excedido</p>
+                                        {% endif %}
+                                    {% else %}
+                                        Não se aplica
+                                    {% endif %}
+                                </td>
                                 <td class="cell-count">{{ card.statement_closing_day|default:"Não informado" }}</td>
                                 <td class="cell-count">{{ card.statement_due_day|default:"Não informado" }}</td>
                                 <td>{{ card.payment_account|default:"Não vinculada" }}</td>
