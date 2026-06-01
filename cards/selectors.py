@@ -69,9 +69,18 @@ def get_statement_summary(statement):
 
     purchase_total = get_statement_purchase_total(statement)
     persisted_closed_amount = _money(statement.closed_amount)
-    closed_amount = persisted_closed_amount or purchase_total
+    is_open_statement = statement.status in (
+        CardStatement.StatementStatus.OPEN,
+        CardStatement.StatementStatus.FORECASTED,
+    )
+    closed_amount = (
+        persisted_closed_amount
+        if is_open_statement
+        else persisted_closed_amount or purchase_total
+    )
     paid_amount = _money(statement.paid_amount)
-    remaining_amount = max(closed_amount - paid_amount, Decimal("0.00"))
+    remaining_base = purchase_total if is_open_statement else closed_amount
+    remaining_amount = max(remaining_base - paid_amount, Decimal("0.00"))
 
     return {
         "expected_amount": purchase_total,
