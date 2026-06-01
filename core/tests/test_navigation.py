@@ -42,3 +42,15 @@ class NavigationTests(TestCase):
             count=2,
         )
         self.assertNotContains(response, 'href="/transactions/" aria-current="page"')
+
+    def test_statement_navigation_marks_statements_active(self):
+        response = self.client.get(reverse("cards:statements"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'href="/cards/statements/" aria-current="page"',
+            count=2,
+        )
+        self.assertContains(response, "Faturas")
+        self.assertNotContains(response, 'href="/cards/" aria-current="page"')

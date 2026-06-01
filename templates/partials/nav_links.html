@@ -42,7 +42,7 @@
 
     <div class="app-nav-group">
         <p id="nav-{{ nav_id }}-operation" class="app-nav-group-label">Operação</p>
-        <a class="app-nav-link{% if namespace == "cards" %} active{% endif %}" href="/cards/" {% if namespace == "cards" %}aria-current="page"{% endif %}>
+        <a class="app-nav-link{% if namespace == "cards" and "/cards/statements/" not in path %} active{% endif %}" href="/cards/" {% if namespace == "cards" and "/cards/statements/" not in path %}aria-current="page"{% endif %}>
             <span class="nav-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false">
                     <rect x="3" y="6" width="18" height="12" rx="2"></rect>
@@ -51,6 +51,18 @@
                 </svg>
             </span>
             <span>Cartões</span>
+        </a>
+        <a class="app-nav-link{% if namespace == "cards" and "/cards/statements/" in path %} active{% endif %}" href="/cards/statements/" {% if namespace == "cards" and "/cards/statements/" in path %}aria-current="page"{% endif %}>
+            <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 7h16"></path>
+                    <path d="M6 4h12"></path>
+                    <path d="M6 7v13h12V7"></path>
+                    <path d="M9 11h6"></path>
+                    <path d="M9 15h6"></path>
+                </svg>
+            </span>
+            <span>Faturas</span>
         </a>
         <a class="app-nav-link{% if namespace == "transactions" and "/transactions/transfers/" not in path %} active{% endif %}" href="/transactions/" {% if namespace == "transactions" and "/transactions/transfers/" not in path %}aria-current="page"{% endif %}>
             <span class="nav-icon" aria-hidden="true">
