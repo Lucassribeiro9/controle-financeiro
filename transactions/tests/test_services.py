@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -252,6 +253,54 @@ class TransactionServiceTests(TestCase):
         self.assertEqual(transaction.transaction_type, Transaction.TransactionType.CARD_PURCHASE)
         self.assertEqual(transaction.card, self.benefit_card)
         self.assertEqual(self.benefit_card.balance, Decimal("265.00"))
+        self.assertIsNone(transaction.statement)
+
+    def test_create_benefit_purchase_rolls_back_balance_when_transaction_fails(self):
+        """Falha apos debito nao deve persistir reducao de saldo."""
+
+        with patch(
+            "transactions.services.Transaction.save",
+            side_effect=RuntimeError("falha ao salvar transacao"),
+        ):
+            with self.assertRaisesMessage(RuntimeError, "falha ao salvar transacao"):
+                create_transaction_by_payment_method(
+                    payment_method="benefit",
+                    description="Almoco",
+                    amount=Decimal("35.00"),
+                    transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                    status=Transaction.PaymentStatus.PENDING,
+                    card=self.benefit_card,
+                    category=self.category,
+                    date=date(2026, 5, 8),
+                )
+
+        self.benefit_card.refresh_from_db()
+
+        self.assertEqual(self.benefit_card.balance, Decimal("300.00"))
+        self.assertFalse(Transaction.objects.filter(description="Almoco").exists())
+
+    def test_create_transaction_by_payment_method_rejects_insufficient_benefit_balance(self):
+        """Beneficio deve bloquear compra maior que saldo disponivel."""
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Saldo insuficiente no cartão de benefício.",
+        ):
+            create_transaction_by_payment_method(
+                payment_method="benefit",
+                description="Compra alta",
+                amount=Decimal("350.00"),
+                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                status=Transaction.PaymentStatus.PENDING,
+                card=self.benefit_card,
+                category=self.category,
+                date=date(2026, 5, 8),
+            )
+
+        self.benefit_card.refresh_from_db()
+
+        self.assertEqual(self.benefit_card.balance, Decimal("300.00"))
+        self.assertFalse(Transaction.objects.filter(description="Compra alta").exists())
 
     def test_create_transaction_by_payment_method_rejects_transfer(self):
         """Transferencia nao deve entrar pelo orquestrador de lancamento."""
