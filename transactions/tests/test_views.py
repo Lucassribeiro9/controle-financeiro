@@ -63,6 +63,28 @@ class TransactionViewTests(TestCase):
         self.assertTemplateUsed(response, "transactions/list.html")
         self.assertContains(response, "Mercado")
 
+    def test_transaction_list_page_preserves_filters_in_context(self):
+        """Deve manter filtros ativos na query string/contexto."""
+
+        response = self.client.get(
+            reverse("transactions:list"),
+            data={
+                "year": 2026,
+                "month": 5,
+                "status": Transaction.PaymentStatus.PAID,
+                "transaction_type": Transaction.TransactionType.EXPENSE,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["status"], Transaction.PaymentStatus.PAID)
+        self.assertEqual(
+            response.context["transaction_type"],
+            Transaction.TransactionType.EXPENSE,
+        )
+        self.assertEqual(response.context["query_params"]["year"], 2026)
+        self.assertEqual(response.context["query_params"]["month"], 5)
+
     def test_transaction_list_page_uses_current_period_by_default(self):
         """Deve usar o periodo atual quando a query string nao informar periodo."""
 
@@ -73,6 +95,22 @@ class TransactionViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["year"], today.year)
         self.assertEqual(response.context["month"], today.month)
+
+    def test_transaction_list_page_shows_empty_state_when_filtered_result_is_empty(self):
+        """Deve mostrar estado vazio quando filtros nao retornarem resultados."""
+
+        response = self.client.get(
+            reverse("transactions:list"),
+            data={
+                "year": 2026,
+                "month": 5,
+                "status": Transaction.PaymentStatus.PAID,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nenhum lançamento encontrado")
+        self.assertContains(response, "Limpar filtros")
 
     def test_transaction_create_page_returns_form(self):
         """Deve renderizar o formulario de criacao."""

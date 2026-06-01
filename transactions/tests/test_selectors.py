@@ -11,6 +11,7 @@ from institutions.models import Institution
 from transactions.models import Transaction, Transfer
 from transactions.selectors import (
     get_account_balance,
+    get_filtered_transactions,
     get_recent_transactions,
     get_monthly_expense_total,
     get_monthly_income_total,
@@ -402,3 +403,42 @@ class TransactionSelectorTests(TestCase):
         )
 
         self.assertEqual(transactions, [card_purchase])
+
+    def test_get_filtered_transactions_combines_period_status_and_type(self):
+        """Deve combinar filtros de periodo, status e tipo."""
+
+        matched = Transaction.objects.create(
+            description="Compra no cartao",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PAID,
+            card=self.card,
+            date=date(2026, 5, 1),
+        )
+        Transaction.objects.create(
+            description="Compra pendente",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            date=date(2026, 5, 1),
+        )
+        Transaction.objects.create(
+            description="Outro mes",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PAID,
+            card=self.card,
+            date=date(2026, 6, 1),
+        )
+
+        transactions = list(
+            get_filtered_transactions(
+                year=2026,
+                month=5,
+                status=Transaction.PaymentStatus.PAID,
+                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            )
+        )
+
+        self.assertEqual(transactions, [matched])

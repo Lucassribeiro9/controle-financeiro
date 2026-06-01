@@ -11,6 +11,7 @@ from core.utils import map_service_errors_to_view
 from .forms import TransactionForm, TransferForm
 from .models import Transaction
 from .selectors import (
+    get_filtered_transactions,
     get_transactions_by_status,
     get_transactions_by_type,
     get_transactions_for_period,
@@ -39,13 +40,12 @@ def transaction_list_page(request: HttpRequest) -> HttpResponse:
     year, month = _get_period_from_request(request)
     status = request.GET.get("status")
     transaction_type = request.GET.get("transaction_type")
-
-    if status:
-        transactions = get_transactions_by_status(status=status)
-    elif transaction_type:
-        transactions = get_transactions_by_type(transaction_type=transaction_type)
-    else:
-        transactions = get_transactions_for_period(year=year, month=month)
+    transactions = get_filtered_transactions(
+        year=year,
+        month=month,
+        status=status,
+        transaction_type=transaction_type,
+    )
 
     return render(
         request,
@@ -58,6 +58,12 @@ def transaction_list_page(request: HttpRequest) -> HttpResponse:
             "status_choices": Transaction.PaymentStatus.choices,
             "transaction_type_choices": Transaction.TransactionType.choices,
             "transactions": transactions,
+            "query_params": {
+                "year": year,
+                "month": month,
+                "status": status or "",
+                "transaction_type": transaction_type or "",
+            },
         },
     )
 
