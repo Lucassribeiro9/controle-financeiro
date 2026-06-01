@@ -267,9 +267,37 @@ class CardStatementSummarySelectorTests(TestCase):
         summary = get_statement_summary(statement)
 
         self.assertEqual(summary["expected_amount"], Decimal("350.00"))
-        self.assertEqual(summary["closed_amount"], Decimal("350.00"))
+        self.assertEqual(summary["closed_amount"], Decimal("0.00"))
         self.assertEqual(summary["remaining_amount"], Decimal("350.00"))
         self.assertFalse(summary["is_fully_paid"])
+
+    def test_pending_statement_summary_uses_purchase_total_when_closed_amount_is_stale(self):
+        """Fatura fechada defasada deve consolidar o valor fechado pelas compras."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            closing_date=date(2026, 5, 20),
+            due_date=date(2026, 5, 27),
+            status=CardStatement.StatementStatus.PENDING,
+            payment_account=self.payment_account,
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 8),
+        )
+
+        summary = get_statement_summary(statement)
+
+        self.assertEqual(summary["expected_amount"], Decimal("350.00"))
+        self.assertEqual(summary["closed_amount"], Decimal("350.00"))
+        self.assertEqual(summary["remaining_amount"], Decimal("350.00"))
 
     def test_paid_statement_summary_marks_fully_paid(self):
         """Fatura paga deve marcar o resumo como totalmente quitado."""

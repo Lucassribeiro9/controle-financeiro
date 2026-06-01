@@ -302,6 +302,10 @@ class StatementViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "R$ 350,00")
+        summary = response.context["statements"][0].summary
+        self.assertEqual(summary["expected_amount"], Decimal("350.00"))
+        self.assertEqual(summary["closed_amount"], Decimal("0.00"))
+        self.assertEqual(summary["remaining_amount"], Decimal("350.00"))
 
     def test_statement_detail_page_returns_success(self):
         """Deve renderizar detalhe da fatura."""
@@ -336,6 +340,35 @@ class StatementViewTests(TestCase):
         self.assertContains(response, "R$ 350,00")
         self.assertContains(response, "R$ 125,00")
         self.assertContains(response, "R$ 225,00")
+
+    def test_statement_detail_page_keeps_open_statement_closed_amount_empty(self):
+        """Fatura aberta deve mostrar previsto e pendente sem valor fechado."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            closing_date="2026-05-20",
+            due_date="2026-05-27",
+            payment_account=self.payment_account,
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date="2026-05-08",
+        )
+
+        response = self.client.get(
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
+        )
+
+        self.assertEqual(response.context["statement_summary"]["expected_amount"], Decimal("350.00"))
+        self.assertEqual(response.context["statement_summary"]["closed_amount"], Decimal("0.00"))
+        self.assertEqual(response.context["statement_summary"]["remaining_amount"], Decimal("350.00"))
 
     def test_post_pay_statement_pays_statement(self):
         """Deve pagar fatura via POST usando pay_statement."""
