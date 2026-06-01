@@ -4,11 +4,18 @@ from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
-from cards.services import close_statement, get_or_create_card_statement, pay_statement
+from cards.services import (
+    close_statement,
+    credit_benefit_card_balance,
+    debit_benefit_card_balance,
+    get_or_create_card_statement,
+    pay_statement,
+)
 from institutions.models import Institution
 from transactions.models import Transaction
 
@@ -211,3 +218,100 @@ class CardStatementServiceTests(TestCase):
         )
 
         return close_statement(statement=statement)
+
+
+class BenefitCardBalanceServiceTests(TestCase):
+    """Garante as regras de saldo proprio para cartoes de beneficio."""
+
+    def setUp(self):
+        """Cria dados base para os cenarios de saldo de beneficio."""
+
+        self.institution = Institution.objects.create(name="Caju", code="336")
+        self.benefit_card = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("100.00"),
+            balance=Decimal("100.00"),
+        )
+        self.payment_account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.credit_card = Card.objects.create(
+            name="Caju Credito",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=self.payment_account,
+        )
+
+    def test_credit_benefit_card_balance_increases_balance(self):
+        """Carga de beneficio deve aumentar saldo do cartao."""
+
+        card = credit_benefit_card_balance(
+            card=self.benefit_card,
+            amount=Decimal("50.00"),
+        )
+
+        self.assertEqual(card.balance, Decimal("150.00"))
+
+    def test_debit_benefit_card_balance_decreases_balance(self):
+        """Compra em beneficio deve consumir saldo do cartao."""
+
+        card = debit_benefit_card_balance(
+            card=self.benefit_card,
+            amount=Decimal("35.50"),
+        )
+
+        self.assertEqual(card.balance, Decimal("64.50"))
+
+    def test_debit_benefit_card_balance_rejects_insufficient_balance(self):
+        """Compra maior que saldo disponivel deve ser bloqueada."""
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Saldo insuficiente no cartão de benefício.",
+        ):
+            debit_benefit_card_balance(
+                card=self.benefit_card,
+                amount=Decimal("150.00"),
+            )
+
+        self.benefit_card.refresh_from_db()
+        self.assertEqual(self.benefit_card.balance, Decimal("100.00"))
+
+    def test_benefit_balance_services_reject_credit_card(self):
+        """Saldo de beneficio nao deve ser aplicado a cartao de credito."""
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Apenas cartões de benefício possuem saldo próprio.",
+        ):
+            credit_benefit_card_balance(
+                card=self.credit_card,
+                amount=Decimal("50.00"),
+            )
+
+        self.credit_card.refresh_from_db()
+        self.assertEqual(self.credit_card.credit_limit, Decimal("5000.00"))
+        self.assertEqual(self.credit_card.balance, Decimal("0.00"))
+
+    def test_benefit_balance_services_reject_non_positive_amount(self):
+        """Movimentacao de beneficio deve exigir valor positivo."""
+
+        with self.assertRaisesMessage(ValidationError, "Valor deve ser maior que zero."):
+            credit_benefit_card_balance(
+                card=self.benefit_card,
+                amount=Decimal("0.00"),
+            )
+
+        with self.assertRaisesMessage(ValidationError, "Valor deve ser maior que zero."):
+            debit_benefit_card_balance(
+                card=self.benefit_card,
+                amount=Decimal("-1.00"),
+            )

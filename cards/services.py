@@ -73,6 +73,45 @@ def get_or_create_card_statement(*, card, transaction_date):
     return statement
 
 
+def credit_benefit_card_balance(*, card, amount):
+    """Credita saldo em cartao de beneficio."""
+
+    if amount <= Decimal("0.00"):
+        raise ValidationError("Valor deve ser maior que zero.")
+
+    with db_transaction.atomic():
+        card = Card.objects.select_for_update().get(pk=card.pk)
+        if card.card_type != Card.CardType.BENEFIT:
+            raise ValidationError("Apenas cartões de benefício possuem saldo próprio.")
+
+        card.balance += amount
+        card.full_clean()
+        card.save(update_fields=["balance", "updated_at"])
+
+    return card
+
+
+def debit_benefit_card_balance(*, card, amount):
+    """Debita saldo de cartao de beneficio."""
+
+    if amount <= Decimal("0.00"):
+        raise ValidationError("Valor deve ser maior que zero.")
+
+    with db_transaction.atomic():
+        card = Card.objects.select_for_update().get(pk=card.pk)
+        if card.card_type != Card.CardType.BENEFIT:
+            raise ValidationError("Apenas cartões de benefício possuem saldo próprio.")
+
+        if card.balance < amount:
+            raise ValidationError("Saldo insuficiente no cartão de benefício.")
+
+        card.balance -= amount
+        card.full_clean()
+        card.save(update_fields=["balance", "updated_at"])
+
+    return card
+
+
 def close_statement(*, statement):
     """Fecha a fatura calculando o valor fechado sem alterar saldo."""
 
