@@ -9,7 +9,7 @@ from core.utils import map_service_errors_to_view
 from core.forms import normalize_decimal
 from .forms import CardForm, StatementPaymentForm
 from .models import Card, CardStatement
-from .selectors import get_card_limits
+from .selectors import get_card_limits, get_statement_summary
 from .services import close_statement, pay_statement, update_statement_status
 from decimal import Decimal, InvalidOperation
 
@@ -123,6 +123,7 @@ def statement_detail_page(request: HttpRequest, statement_id: int) -> HttpRespon
 
     statement = update_statement_status(statement=statement)
     payment_form = StatementPaymentForm(statement=statement)
+    statement_summary = get_statement_summary(statement)
 
     return render(
         request,
@@ -130,6 +131,7 @@ def statement_detail_page(request: HttpRequest, statement_id: int) -> HttpRespon
         {
             "statement": statement,
             "payment_form": payment_form,
+            "statement_summary": statement_summary,
             "transactions": statement.transactions.order_by("-date", "-created_at"),
         },
     )
