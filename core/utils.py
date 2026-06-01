@@ -24,13 +24,13 @@ def map_service_errors_to_view(
                 for error in errors:
                     form.add_error(field, error)
             else:
-                # Se o campo não existe no form, vai para non_field_errors e messages
+                # Se o campo não existe no form, vai apenas para non_field_errors.
                 for error in errors:
                     form.add_error(None, error)
-                    messages.error(request, error)
     else:
         # Erro simples (string) ou sem formulário associado
         error_msg = fallback_message or str(exc.message if hasattr(exc, "message") else exc)
         if form:
             form.add_error(None, error_msg)
-        messages.error(request, error_msg)
+        else:
+            messages.error(request, error_msg)

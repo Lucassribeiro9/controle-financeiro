@@ -111,6 +111,7 @@ class CardStatementServiceTests(TestCase):
         closed_statement = close_statement(statement=statement)
 
         self.assertEqual(closed_statement.closed_amount, Decimal("350.00"))
+        self.assertEqual(closed_statement.expected_amount, Decimal("350.00"))
         self.assertEqual(closed_statement.status, CardStatement.StatementStatus.PENDING)
 
     def test_close_statement_does_not_change_payment_account_balance(self):
@@ -145,6 +146,38 @@ class CardStatementServiceTests(TestCase):
 
         self.assertEqual(paid_statement.status, CardStatement.StatementStatus.PAID)
         self.assertEqual(self.payment_account.balance, Decimal("650.00"))
+
+    def test_pay_statement_marks_linked_card_purchases_as_paid(self):
+        """Fatura paga deve sincronizar o status das compras vinculadas."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        purchase = statement.transactions.get(
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE
+        )
+
+        self.assertEqual(purchase.status, Transaction.PaymentStatus.PENDING)
+
+        paid_statement = pay_statement(statement=statement)
+        purchase.refresh_from_db()
+
+        self.assertEqual(paid_statement.status, CardStatement.StatementStatus.PAID)
+        self.assertEqual(purchase.status, Transaction.PaymentStatus.PAID)
+
+    def test_partial_payment_keeps_linked_card_purchases_pending(self):
+        """Pagamento parcial nao deve mudar status das compras vinculadas."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        purchase = statement.transactions.get(
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE
+        )
+
+        pay_statement(statement=statement, amount=Decimal("150.00"))
+        purchase.refresh_from_db()
+
+        self.assertEqual(
+            purchase.status,
+            Transaction.PaymentStatus.PENDING,
+        )
 
     def test_pay_statement_rejects_already_paid_statement(self):
         """Fatura ja paga deve ser bloqueada com mensagem clara."""
@@ -192,6 +225,37 @@ class CardStatementServiceTests(TestCase):
         paid_statement = pay_statement(statement=statement, amount=Decimal("150.00"))
         self.payment_account.refresh_from_db()
 
+        self.assertEqual(paid_statement.paid_amount, Decimal("150.00"))
+        self.assertEqual(
+            paid_statement.status,
+            CardStatement.StatementStatus.PARTIALLY_PAID,
+        )
+        self.assertEqual(self.payment_account.balance, Decimal("850.00"))
+
+    def test_partial_payment_uses_linked_purchases_when_closed_amount_is_stale(self):
+        """Pagamento parcial deve considerar compras vinculadas se a fatura estiver defasada."""
+
+        statement = get_or_create_card_statement(
+            card=self.card,
+            transaction_date=date(2026, 5, 8),
+        )
+        statement.status = CardStatement.StatementStatus.PENDING
+        statement.save(update_fields=["status", "updated_at"])
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 8),
+        )
+
+        paid_statement = pay_statement(statement=statement, amount=Decimal("150.00"))
+        self.payment_account.refresh_from_db()
+
+        self.assertEqual(paid_statement.expected_amount, Decimal("350.00"))
+        self.assertEqual(paid_statement.closed_amount, Decimal("350.00"))
         self.assertEqual(paid_statement.paid_amount, Decimal("150.00"))
         self.assertEqual(
             paid_statement.status,

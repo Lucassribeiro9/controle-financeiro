@@ -39,9 +39,9 @@
                                     <p class="muted">{{ statement.card.institution }}</p>
                                 </td>
                                 <td class="cell-period">{{ statement.month }}/{{ statement.year }}</td>
-                                <td class="cell-amount">{{ statement.expected_amount|brl }}</td>
-                                <td class="cell-amount">{{ statement.closed_amount|brl }}</td>
-                                <td class="cell-amount">{{ statement.paid_amount|brl }}</td>
+                                <td class="cell-amount">{{ statement.summary.expected_amount|brl }}</td>
+                                <td class="cell-amount">{{ statement.summary.closed_amount|brl }}</td>
+                                <td class="cell-amount">{{ statement.summary.paid_amount|brl }}</td>
                                 <td class="cell-status">
                                     <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
                                 </td>

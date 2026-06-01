@@ -8,6 +8,7 @@ from core.forms import BRIntegerField
 from institutions.models import Institution
 
 from .models import Card
+from .selectors import get_statement_summary
 
 
 class CardForm(forms.ModelForm):
@@ -143,7 +144,7 @@ class StatementPaymentForm(forms.Form):
             raise forms.ValidationError("Valor de pagamento deve ser maior que zero.")
 
         if self.statement is not None:
-            remaining_amount = self.statement.closed_amount - self.statement.paid_amount
+            remaining_amount = get_statement_summary(self.statement)["remaining_amount"]
             if amount > remaining_amount:
                 raise forms.ValidationError(
                     "Valor de pagamento não pode superar o saldo da fatura."

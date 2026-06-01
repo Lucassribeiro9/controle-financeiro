@@ -98,6 +98,8 @@ def statement_list_page(request: HttpRequest) -> HttpResponse:
         update_statement_status(statement=statement)
         for statement in statements
     ]
+    for statement in statements:
+        statement.summary = get_statement_summary(statement)
 
     return render(
         request,
@@ -141,6 +143,7 @@ def pay_statement_page(request: HttpRequest, statement_id: int) -> HttpResponse:
     """Processa ou confirma pagamento de fatura."""
 
     statement = _get_statement(statement_id=statement_id)
+    statement_summary = get_statement_summary(statement)
     payment_account = statement.payment_account or statement.card.payment_account
 
     if not payment_account:
@@ -172,7 +175,7 @@ def pay_statement_page(request: HttpRequest, statement_id: int) -> HttpResponse:
                 pass
         
         if initial_amount is None:
-            initial_amount = statement.closed_amount - statement.paid_amount
+            initial_amount = statement_summary["remaining_amount"]
             
         form = StatementPaymentForm(initial={"amount": initial_amount}, statement=statement)
 
@@ -182,9 +185,9 @@ def pay_statement_page(request: HttpRequest, statement_id: int) -> HttpResponse:
     # Se o form for valido (POST) ou tiver valor inicial (GET), calcula projecao
     payment_amount = Decimal("0.00")
     if form.is_bound and form.is_valid():
-        payment_amount = form.cleaned_data.get("amount") or (statement.closed_amount - statement.paid_amount)
+        payment_amount = form.cleaned_data.get("amount") or statement_summary["remaining_amount"]
     else:
-        payment_amount = form.initial.get("amount") or (statement.closed_amount - statement.paid_amount)
+        payment_amount = form.initial.get("amount") or statement_summary["remaining_amount"]
     
     projected_balance = current_balance - payment_amount
 

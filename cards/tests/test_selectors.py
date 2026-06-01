@@ -223,6 +223,15 @@ class CardStatementSummarySelectorTests(TestCase):
             status=CardStatement.StatementStatus.PARTIALLY_PAID,
             payment_account=self.payment_account,
         )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("500.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 8),
+        )
 
         summary = get_statement_summary(statement)
 
@@ -231,6 +240,35 @@ class CardStatementSummarySelectorTests(TestCase):
         self.assertEqual(summary["paid_amount"], Decimal("150.00"))
         self.assertEqual(summary["remaining_amount"], Decimal("270.00"))
         self.assertEqual(summary["status"], CardStatement.StatementStatus.PARTIALLY_PAID)
+        self.assertFalse(summary["is_fully_paid"])
+
+    def test_open_statement_summary_uses_linked_purchase_total(self):
+        """Fatura aberta deve mostrar o total das compras vinculadas como previsto."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            closing_date=date(2026, 5, 20),
+            due_date=date(2026, 5, 27),
+            status=CardStatement.StatementStatus.OPEN,
+            payment_account=self.payment_account,
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 8),
+        )
+
+        summary = get_statement_summary(statement)
+
+        self.assertEqual(summary["expected_amount"], Decimal("350.00"))
+        self.assertEqual(summary["closed_amount"], Decimal("350.00"))
+        self.assertEqual(summary["remaining_amount"], Decimal("350.00"))
         self.assertFalse(summary["is_fully_paid"])
 
     def test_paid_statement_summary_marks_fully_paid(self):
