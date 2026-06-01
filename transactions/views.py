@@ -156,10 +156,6 @@ def transaction_edit_page(request: HttpRequest, transaction_id: int) -> HttpResp
         pk=transaction_id,
     )
 
-    if transaction.status == Transaction.PaymentStatus.PAID:
-        messages.error(request, "Lançamento pago não pode ser editado.")
-        return redirect("transactions:detail", transaction_id=transaction.id)
-
     if request.method == "POST":
         form = TransactionForm(request.POST)
         if form.is_valid():
@@ -191,7 +187,7 @@ def transaction_edit_page(request: HttpRequest, transaction_id: int) -> HttpResp
             "form": form,
             "page_title": "Editar lançamento",
             "page_heading": "Editar lançamento",
-            "page_description": "Altere os dados do lançamento não pago.",
+            "page_description": "Altere os dados do lançamento.",
             "submit_label": "Atualizar",
             "cancel_url": reverse("transactions:detail", kwargs={"transaction_id": transaction.id}),
         },

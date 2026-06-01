@@ -12,6 +12,7 @@ from cards.models import Card
 from categories.models import Category
 from institutions.models import Institution
 from transactions.models import Transaction, Transfer
+from transactions.services import create_transaction
 
 
 class TransactionViewTests(TestCase):
@@ -185,10 +186,10 @@ class TransactionViewTests(TestCase):
         self.account.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal("700.00"))
 
-    def test_get_edit_paid_transaction_redirects_with_message(self):
-        """Lancar pago deve bloquear edicao com mensagem clara."""
+    def test_get_edit_paid_transaction_returns_form(self):
+        """Lancamento pago tambem deve permitir formulario de edicao."""
 
-        transaction = Transaction.objects.create(
+        transaction = create_transaction(
             description="Mercado",
             amount=Decimal("250.00"),
             transaction_type=Transaction.TransactionType.EXPENSE,
@@ -200,15 +201,51 @@ class TransactionViewTests(TestCase):
 
         response = self.client.get(
             reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
-            follow=True,
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "transactions/form.html")
+        self.assertContains(response, "Editar lançamento")
+
+    def test_post_edit_paid_transaction_updates_balance_and_shows_message(self):
+        """POST de edicao paga deve ajustar saldo e redirecionar com mensagem."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        response = self.client.post(
+            reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
+            data={
+                "description": "Mercado maior",
+                "payment_method": "debit",
+                "amount": "300.00",
+                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "status": Transaction.PaymentStatus.PAID,
+                "account": self.account.id,
+                "category": self.category.id,
+                "date": "2026-05-09",
+                "notes": "Atualizado",
+            },
+            follow=True,
+        )
+
+        transaction.refresh_from_db()
+        self.account.refresh_from_db()
+
         self.assertRedirects(
             response,
             reverse("transactions:detail", kwargs={"transaction_id": transaction.id}),
         )
-        self.assertContains(response, "Lançamento pago não pode ser editado.")
+        self.assertContains(response, "Lançamento atualizado com sucesso.")
+        self.assertEqual(transaction.amount, Decimal("300.00"))
+        self.assertEqual(self.account.balance, Decimal("700.00"))
 
     def test_post_create_income_uses_service_and_increases_balance(self):
         """Deve criar receita via service e aumentar saldo da conta."""
@@ -372,6 +409,30 @@ class TransactionViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/detail.html")
         self.assertContains(response, "Mercado")
+
+    def test_transaction_detail_page_shows_edit_link_for_paid_transaction(self):
+        """Detalhe deve permitir acessar edicao de lancamento pago."""
+
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        response = self.client.get(
+            reverse("transactions:detail", kwargs={"transaction_id": transaction.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
+        )
+        self.assertContains(response, "Editar lançamento")
 
 
 class TransferViewTests(TestCase):

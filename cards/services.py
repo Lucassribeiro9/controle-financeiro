@@ -140,6 +140,34 @@ def close_statement(*, statement):
     return statement
 
 
+def refresh_statement_amounts(*, statement):
+    """Recalcula valores persistidos da fatura a partir das compras vinculadas."""
+
+    with db_transaction.atomic():
+        statement = CardStatement.objects.select_for_update().get(pk=statement.pk)
+
+        if statement.status == CardStatement.StatementStatus.CANCELED:
+            raise ValidationError("Fatura cancelada nao pode ser recalculada.")
+
+        if statement.status == CardStatement.StatementStatus.PAID:
+            raise ValidationError("Fatura paga nao pode ser recalculada.")
+
+        total = get_statement_purchase_total(statement)
+        statement.expected_amount = total
+        if statement.status in (
+            CardStatement.StatementStatus.OPEN,
+            CardStatement.StatementStatus.FORECASTED,
+        ):
+            statement.closed_amount = Decimal("0.00")
+        else:
+            statement.closed_amount = total
+
+        statement.full_clean()
+        statement.save(update_fields=["expected_amount", "closed_amount", "updated_at"])
+
+    return statement
+
+
 def pay_statement(*, statement, amount=None):
     """Paga total ou parcialmente uma fatura e reduz a conta de pagamento."""
 

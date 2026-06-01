@@ -470,8 +470,8 @@ class TransactionServiceTests(TestCase):
         self.assertEqual(updated.status, Transaction.PaymentStatus.PAID)
         self.assertEqual(self.account.balance, Decimal("750.00"))
 
-    def test_update_paid_transaction_is_blocked(self):
-        """Lançamento pago não deve ser editado."""
+    def test_update_paid_expense_adjusts_previous_balance_impact(self):
+        """Editar despesa paga deve reverter impacto anterior e aplicar novo."""
 
         transaction = create_transaction(
             description="Mercado",
@@ -483,19 +483,183 @@ class TransactionServiceTests(TestCase):
             date=date(2026, 5, 8),
         )
 
+        update_transaction(
+            transaction_id=transaction.id,
+            description="Mercado editado",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            status=Transaction.PaymentStatus.PAID,
+            date=date(2026, 5, 9),
+            notes="",
+        )
+
+        self.account.refresh_from_db()
+
+        self.assertEqual(self.account.balance, Decimal("700.00"))
+
+    def test_update_paid_income_adjusts_previous_balance_impact(self):
+        """Editar receita paga deve reverter impacto anterior e aplicar novo."""
+
+        transaction = create_transaction(
+            description="Salario",
+            amount=Decimal("5000.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        update_transaction(
+            transaction_id=transaction.id,
+            description="Salario ajustado",
+            amount=Decimal("4500.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            account=self.account,
+            category=self.category,
+            status=Transaction.PaymentStatus.PAID,
+            date=date(2026, 5, 8),
+            notes="",
+        )
+
+        self.account.refresh_from_db()
+
+        self.assertEqual(self.account.balance, Decimal("5500.00"))
+
+    def test_update_paid_transaction_moves_balance_between_accounts(self):
+        """Trocar conta de lancamento pago deve desfazer antiga e aplicar nova."""
+
+        destination_account = FinancialAccount.objects.create(
+            name="Conta reserva",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("500.00"),
+        )
+        transaction = create_transaction(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        update_transaction(
+            transaction_id=transaction.id,
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=destination_account,
+            category=self.category,
+            status=Transaction.PaymentStatus.PAID,
+            date=date(2026, 5, 8),
+            notes="",
+        )
+
+        self.account.refresh_from_db()
+        destination_account.refresh_from_db()
+
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+        self.assertEqual(destination_account.balance, Decimal("250.00"))
+
+    def test_update_credit_purchase_recalculates_statement_when_date_changes(self):
+        """Alterar data de compra no credito deve mover e recalcular faturas."""
+
+        transaction = create_transaction_by_payment_method(
+            payment_method="credit",
+            description="Compra online",
+            amount=Decimal("120.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+        old_statement = transaction.statement
+
+        update_transaction(
+            transaction_id=transaction.id,
+            description="Compra online",
+            amount=Decimal("200.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=self.card,
+            category=self.category,
+            status=Transaction.PaymentStatus.PENDING,
+            date=date(2026, 5, 21),
+            notes="",
+        )
+
+        transaction.refresh_from_db()
+        old_statement.refresh_from_db()
+        new_statement = transaction.statement
+
+        self.assertNotEqual(new_statement, old_statement)
+        self.assertEqual(old_statement.expected_amount, Decimal("0.00"))
+        self.assertEqual(new_statement.expected_amount, Decimal("200.00"))
+
+    def test_update_benefit_purchase_adjusts_card_balance(self):
+        """Editar compra em beneficio deve refazer consumo do saldo proprio."""
+
+        transaction = create_transaction_by_payment_method(
+            payment_method="benefit",
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.benefit_card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        update_transaction(
+            transaction_id=transaction.id,
+            description="Almoco",
+            amount=Decimal("50.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=self.benefit_card,
+            category=self.category,
+            status=Transaction.PaymentStatus.PENDING,
+            date=date(2026, 5, 8),
+            notes="",
+        )
+
+        self.benefit_card.refresh_from_db()
+
+        self.assertEqual(self.benefit_card.balance, Decimal("250.00"))
+
+    def test_update_credit_purchase_rejects_paid_statement_change(self):
+        """Compra vinculada a fatura paga nao deve ser alterada."""
+
+        transaction = create_transaction_by_payment_method(
+            payment_method="credit",
+            description="Compra online",
+            amount=Decimal("120.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+        statement = transaction.statement
+        statement.status = CardStatement.StatementStatus.PAID
+        statement.save(update_fields=["status", "updated_at"])
+
         with self.assertRaisesMessage(
             ValidationError,
-            "Lançamento pago não pode ser editado.",
+            "Fatura paga nao permite alteracao de compras.",
         ):
             update_transaction(
                 transaction_id=transaction.id,
-                description="Mercado editado",
-                amount=Decimal("300.00"),
-                transaction_type=Transaction.TransactionType.EXPENSE,
-                account=self.account,
+                description="Compra online",
+                amount=Decimal("200.00"),
+                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                card=self.card,
                 category=self.category,
-                status=Transaction.PaymentStatus.PAID,
-                date=date(2026, 5, 9),
+                status=Transaction.PaymentStatus.PENDING,
+                date=date(2026, 5, 8),
                 notes="",
             )
 

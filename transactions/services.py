@@ -6,9 +6,10 @@ from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
 
 from accounts.models import FinancialAccount
-from cards.models import Card
+from cards.models import Card, CardStatement
 from cards.services import (
     get_or_create_card_statement,
+    refresh_statement_amounts,
 )
 from installments.services import create_installment_plan_from_purchase
 
@@ -38,11 +39,74 @@ def _apply_balance_delta(*, transaction):
     if not transaction.account_id or balance_delta == Decimal("0.00"):
         return
 
-    transaction.account = FinancialAccount.objects.select_for_update().get(
-        pk=transaction.account_id
-    )
-    transaction.account.balance += balance_delta
-    transaction.account.save(update_fields=["balance", "updated_at"])
+    _apply_account_delta(account_id=transaction.account_id, delta=balance_delta)
+
+
+def _apply_account_delta(*, account_id, delta):
+    """Aplica ajuste em conta financeira com lock pessimista."""
+
+    if not account_id or delta == Decimal("0.00"):
+        return
+
+    account = FinancialAccount.objects.select_for_update().get(pk=account_id)
+    account.balance += delta
+    account.save(update_fields=["balance", "updated_at"])
+
+
+def _get_benefit_card_purchase_amount(transaction):
+    """Retorna impacto em saldo proprio de beneficio, quando aplicavel."""
+
+    if (
+        transaction.transaction_type == Transaction.TransactionType.CARD_PURCHASE
+        and transaction.card_id
+        and transaction.card.card_type == Card.CardType.BENEFIT
+    ):
+        return transaction.amount
+
+    return Decimal("0.00")
+
+
+def _apply_benefit_card_delta(*, card_id, delta):
+    """Aplica ajuste no saldo proprio do cartao de beneficio."""
+
+    if not card_id or delta == Decimal("0.00"):
+        return
+
+    card = Card.objects.select_for_update().get(pk=card_id)
+    if card.card_type != Card.CardType.BENEFIT:
+        raise ValidationError("Benefício exige cartão de benefício.")
+
+    card.balance += delta
+    if card.balance < Decimal("0.00"):
+        raise ValidationError("Saldo insuficiente no cartão de benefício.")
+
+    card.full_clean()
+    card.save(update_fields=["balance", "updated_at"])
+
+
+def _resolve_card_purchase_statement(*, transaction_type, card, transaction_date):
+    """Resolve fatura conforme tipo de cartao usado na compra."""
+
+    if transaction_type != Transaction.TransactionType.CARD_PURCHASE or card is None:
+        return None
+
+    if card.card_type == Card.CardType.CREDIT:
+        return get_or_create_card_statement(card=card, transaction_date=transaction_date)
+
+    return None
+
+
+def _ensure_statement_can_change(statement):
+    """Bloqueia alteracao de compras em faturas finais."""
+
+    if statement is None:
+        return
+
+    statement.refresh_from_db()
+    if statement.status == CardStatement.StatementStatus.CANCELED:
+        raise ValidationError("Fatura cancelada nao permite alteracao de compras.")
+    if statement.status == CardStatement.StatementStatus.PAID:
+        raise ValidationError("Fatura paga nao permite alteracao de compras.")
 
 
 def create_transaction(
@@ -256,16 +320,48 @@ def update_transaction(
     status=Transaction.PaymentStatus.PENDING,
     notes="",
 ):
-    """Atualiza um lancamento nao pago e aplica impacto quando ele passa a pago."""
+    """Atualiza um lancamento e recalcula impactos financeiros."""
 
     with db_transaction.atomic():
-        transaction = Transaction.objects.select_for_update().get(pk=transaction_id)
+        transaction = (
+            Transaction.objects.select_for_update()
+            .select_related("account", "card", "statement")
+            .get(pk=transaction_id)
+        )
 
-        if transaction.status == Transaction.PaymentStatus.PAID:
-            raise ValidationError("Lançamento pago não pode ser editado.")
-
-        previous_status = transaction.status
         previous_account_id = transaction.account_id
+        previous_balance_delta = _get_balance_delta(transaction)
+        previous_benefit_card_id = transaction.card_id
+        previous_benefit_amount = _get_benefit_card_purchase_amount(transaction)
+        previous_statement = transaction.statement
+        new_statement = _resolve_card_purchase_statement(
+            transaction_type=transaction_type,
+            card=card,
+            transaction_date=date,
+        )
+        affected_statements = [
+            statement
+            for statement in (previous_statement, new_statement)
+            if statement is not None
+        ]
+        for statement in affected_statements:
+            _ensure_statement_can_change(statement)
+
+        if transaction_type != Transaction.TransactionType.CARD_PURCHASE:
+            card = None
+            new_statement = None
+
+        if card and card.card_type in (Card.CardType.CREDIT, Card.CardType.BENEFIT):
+            account = None
+
+        _apply_account_delta(
+            account_id=previous_account_id,
+            delta=previous_balance_delta * Decimal("-1"),
+        )
+        _apply_benefit_card_delta(
+            card_id=previous_benefit_card_id,
+            delta=previous_benefit_amount,
+        )
 
         transaction.description = description
         transaction.amount = amount
@@ -274,22 +370,24 @@ def update_transaction(
         transaction.account = account
         transaction.category = category
         transaction.card = card
+        transaction.statement = new_statement
         transaction.status = status
         transaction.notes = notes
         transaction.full_clean()
         transaction.save()
 
-        if previous_status != Transaction.PaymentStatus.PAID and transaction.status == Transaction.PaymentStatus.PAID:
-            _apply_balance_delta(transaction=transaction)
+        _apply_balance_delta(transaction=transaction)
+        _apply_benefit_card_delta(
+            card_id=transaction.card_id,
+            delta=_get_benefit_card_purchase_amount(transaction) * Decimal("-1"),
+        )
 
-        if (
-            previous_account_id
-            and transaction.status == Transaction.PaymentStatus.PAID
-            and previous_account_id != transaction.account_id
-        ):
-            # A regra de impacto usa a conta final da edição; se a conta mudou,
-            # o ajuste já foi aplicado na conta atual.
-            pass
+        refreshed_statement_ids = set()
+        for statement in affected_statements:
+            if statement.id in refreshed_statement_ids:
+                continue
+            refresh_statement_amounts(statement=statement)
+            refreshed_statement_ids.add(statement.id)
 
     return transaction
 
