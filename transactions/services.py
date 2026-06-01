@@ -2,9 +2,16 @@
 
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
 
 from accounts.models import FinancialAccount
+from cards.models import Card
+from cards.services import (
+    credit_benefit_card_balance,
+    debit_benefit_card_balance,
+    get_or_create_card_statement,
+)
 
 from .models import Transaction, Transfer
 
@@ -48,6 +55,7 @@ def create_transaction(
     account=None,
     category=None,
     card=None,
+    statement=None,
     status=Transaction.PaymentStatus.PENDING,
     notes="",
 ):
@@ -61,6 +69,7 @@ def create_transaction(
         account=account,
         category=category,
         card=card,
+        statement=statement,
         date=date,
         notes=notes,
     )
@@ -109,6 +118,78 @@ def create_transfer(
         target_account.save(update_fields=["balance", "updated_at"])
 
     return transfer
+
+
+def create_transaction_by_payment_method(
+    *,
+    payment_method,
+    description,
+    amount,
+    transaction_type,
+    date,
+    account=None,
+    category=None,
+    card=None,
+    status=Transaction.PaymentStatus.PENDING,
+    notes="",
+):
+    """Cria o lancamento correto a partir da forma de pagamento informada."""
+
+    if payment_method == "transfer":
+        raise ValidationError("Transferência deve ser criada pelo fluxo de transferências.")
+
+    if payment_method in {"debit", "cash"}:
+        return create_transaction(
+            description=description,
+            amount=amount,
+            transaction_type=transaction_type,
+            date=date,
+            account=account,
+            category=category,
+            card=card,
+            status=status,
+            notes=notes,
+        )
+
+    if payment_method == "credit":
+        if card is None:
+            raise ValidationError("Compra no cartão exige cartão vinculado.")
+        if card.card_type != Card.CardType.CREDIT:
+            raise ValidationError("Crédito exige cartão de crédito.")
+
+        statement = get_or_create_card_statement(card=card, transaction_date=date)
+        return create_transaction(
+            description=description,
+            amount=amount,
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            date=date,
+            card=card,
+            statement=statement,
+            category=category,
+            status=status,
+            notes=notes,
+        )
+
+    if payment_method == "benefit":
+        if card is None:
+            raise ValidationError("Benefício exige cartão vinculado.")
+        if card.card_type != Card.CardType.BENEFIT:
+            raise ValidationError("Benefício exige cartão de benefício.")
+
+        debit_benefit_card_balance(card=card, amount=amount)
+        return create_transaction(
+            description=description,
+            amount=amount,
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            date=date,
+            card=card,
+            category=category,
+            statement=None,
+            status=status,
+            notes=notes,
+        )
+
+    raise ValidationError("Forma de pagamento inválida.")
 
 
 def mark_transaction_as_paid(transaction_id):

@@ -15,7 +15,10 @@ from .selectors import (
     get_transactions_for_period,
     get_transfers_for_period,
 )
-from .services import create_transaction, create_transfer
+from .services import (
+    create_transaction_by_payment_method,
+    create_transfer,
+)
 
 
 def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
@@ -75,7 +78,8 @@ def transaction_create_page(request: HttpRequest) -> HttpResponse:
                     messages.success(request, "Transferência criada com sucesso.")
                     return redirect("transactions:transfers")
 
-                transaction = create_transaction(
+                transaction = create_transaction_by_payment_method(
+                    payment_method=form.cleaned_data["payment_method"],
                     description=form.cleaned_data["description"],
                     amount=form.cleaned_data["amount"],
                     transaction_type=form.cleaned_data["transaction_type"],

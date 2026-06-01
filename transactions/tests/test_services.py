@@ -3,14 +3,21 @@
 from datetime import date
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from accounts.models import FinancialAccount
 from cards.models import Card
+from cards.models import CardStatement
 from categories.models import Category
 from institutions.models import Institution
 from transactions.models import Transaction
-from transactions.services import create_transaction, create_transfer, mark_transaction_as_paid
+from transactions.services import (
+    create_transaction,
+    create_transaction_by_payment_method,
+    create_transfer,
+    mark_transaction_as_paid,
+)
 
 
 class TransactionServiceTests(TestCase):
@@ -35,6 +42,13 @@ class TransactionServiceTests(TestCase):
             statement_closing_day=20,
             statement_due_day=27,
             payment_account=self.account,
+        )
+        self.benefit_card = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("300.00"),
+            balance=Decimal("300.00"),
         )
 
     def test_create_pending_income_does_not_change_account_balance(self):
@@ -156,6 +170,79 @@ class TransactionServiceTests(TestCase):
         self.account.refresh_from_db()
 
         self.assertEqual(self.account.balance, Decimal("1000.00"))
+
+    def test_create_transaction_by_payment_method_creates_debit_transaction(self):
+        """Debito deve usar o service orquestrador sem alterar o dominio interno."""
+
+        transaction = create_transaction_by_payment_method(
+            payment_method="debit",
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        self.account.refresh_from_db()
+
+        self.assertEqual(transaction.transaction_type, Transaction.TransactionType.EXPENSE)
+        self.assertEqual(self.account.balance, Decimal("750.00"))
+
+    def test_create_transaction_by_payment_method_creates_credit_purchase_with_statement(self):
+        """Credito deve criar compra vinculada a fatura do mesmo cartao."""
+
+        transaction = create_transaction_by_payment_method(
+            payment_method="credit",
+            description="Compra online",
+            amount=Decimal("120.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        self.assertEqual(transaction.transaction_type, Transaction.TransactionType.CARD_PURCHASE)
+        self.assertEqual(transaction.card, self.card)
+        self.assertIsInstance(transaction.statement, CardStatement)
+        self.assertEqual(transaction.statement.card, self.card)
+
+    def test_create_transaction_by_payment_method_debits_benefit_balance(self):
+        """Beneficio deve consumir o saldo proprio do cartao."""
+
+        transaction = create_transaction_by_payment_method(
+            payment_method="benefit",
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.benefit_card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        self.benefit_card.refresh_from_db()
+
+        self.assertEqual(transaction.transaction_type, Transaction.TransactionType.CARD_PURCHASE)
+        self.assertEqual(transaction.card, self.benefit_card)
+        self.assertEqual(self.benefit_card.balance, Decimal("265.00"))
+
+    def test_create_transaction_by_payment_method_rejects_transfer(self):
+        """Transferencia nao deve entrar pelo orquestrador de lancamento."""
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Transferência deve ser criada pelo fluxo de transferências.",
+        ):
+            create_transaction_by_payment_method(
+                payment_method="transfer",
+                description="Aporte reserva",
+                amount=Decimal("100.00"),
+                transaction_type=Transaction.TransactionType.ADJUSTMENT,
+                date=date(2026, 5, 8),
+            )
 
     def test_mark_transaction_as_paid_updates_status(self):
         """Deve marcar uma transacao como paga."""
