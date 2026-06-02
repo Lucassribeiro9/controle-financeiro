@@ -14,6 +14,10 @@ EXCLUDED_STATUSES = [
     Transaction.PaymentStatus.CANCELED,
     Transaction.PaymentStatus.FORECASTED,
 ]
+EXPENSE_TRANSACTION_TYPES = [
+    Transaction.TransactionType.EXPENSE,
+    Transaction.TransactionType.BENEFIT_PURCHASE,
+]
 
 
 def get_account_balance(*, account=None, account_id=None):
@@ -50,7 +54,7 @@ def get_monthly_income_total(*, year, month):
 def get_monthly_expense_total(*, year, month):
     """Calcula o total de despesas mensais."""
     total = Transaction.objects.filter(
-        transaction_type=Transaction.TransactionType.EXPENSE,
+        transaction_type__in=EXPENSE_TRANSACTION_TYPES,
         date__year=year,
         date__month=month,
     ).exclude(status__in=EXCLUDED_STATUSES).aggregate(total=Sum("amount"))[

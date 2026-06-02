@@ -51,6 +51,13 @@ class TransactionSelectorTests(TestCase):
             statement_due_day=27,
             payment_account=self.account,
         )
+        self.benefit_card = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("300.00"),
+            balance=Decimal("300.00"),
+        )
 
     def test_get_account_balance_returns_balance_by_account(self):
         """Deve retornar o saldo persistido da conta informada."""
@@ -197,6 +204,28 @@ class TransactionSelectorTests(TestCase):
         total = get_monthly_expense_total(year=2026, month=5)
 
         self.assertEqual(total, Decimal("250.00"))
+
+    def test_get_monthly_expense_total_includes_benefit_purchase(self):
+        """Compra de beneficio deve compor o total mensal de despesas."""
+
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            date=date(2026, 5, 8),
+        )
+        Transaction.objects.create(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            card=self.benefit_card,
+            date=date(2026, 5, 9),
+        )
+
+        total = get_monthly_expense_total(year=2026, month=5)
+
+        self.assertEqual(total, Decimal("285.00"))
 
     def test_monthly_totals_ignore_canceled_ignored_and_forecasted_transactions(self):
         """Nao deve somar transacoes canceladas, ignoradas ou previstas."""

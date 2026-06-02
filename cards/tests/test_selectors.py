@@ -34,6 +34,13 @@ class CardLimitSelectorTests(TestCase):
             statement_due_day=27,
             payment_account=self.payment_account,
         )
+        self.benefit_card = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("300.00"),
+            balance=Decimal("300.00"),
+        )
 
     def test_card_without_transactions_returns_full_available_limit(self):
         """Cartao sem compras deve manter limite disponivel integral."""
@@ -139,6 +146,28 @@ class CardLimitSelectorTests(TestCase):
             amount=Decimal("125.00"),
             statement=open_statement,
             transaction_date=date(2026, 6, 8),
+        )
+
+        limits = get_card_limits(self.card)
+
+        self.assertEqual(limits["used_limit"], Decimal("125.00"))
+        self.assertEqual(limits["available_limit"], Decimal("4875.00"))
+
+    def test_benefit_purchase_does_not_consume_credit_limit(self):
+        """Compra de beneficio nao deve consumir limite de cartao de credito."""
+
+        statement = self._create_statement(status=CardStatement.StatementStatus.OPEN)
+        self._create_card_purchase(
+            amount=Decimal("125.00"),
+            statement=statement,
+        )
+        Transaction.objects.create(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.benefit_card,
+            date=date(2026, 5, 8),
         )
 
         limits = get_card_limits(self.card)

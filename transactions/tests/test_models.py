@@ -45,6 +45,13 @@ class TransactionModelTests(TestCase):
             statement_due_day=22,
             payment_account=self.account,
         )
+        self.benefit_card = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("300.00"),
+            balance=Decimal("300.00"),
+        )
         self.statement = CardStatement.objects.create(
             card=self.card,
             year=2026,
@@ -124,6 +131,70 @@ class TransactionModelTests(TestCase):
 
         self.assertEqual(transaction.card, self.card)
         self.assertIsNone(transaction.account)
+
+    def test_card_purchase_rejects_benefit_card(self):
+        """Compra no cartao deve permanecer restrita a cartao de credito."""
+
+        transaction = Transaction(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=self.benefit_card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        with self.assertRaises(ValidationError):
+            transaction.full_clean()
+
+    def test_create_benefit_purchase_with_benefit_card(self):
+        """Deve permitir compra de beneficio com cartao de beneficio."""
+
+        transaction = Transaction(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            card=self.benefit_card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+        transaction.full_clean()
+        transaction.save()
+
+        self.assertEqual(transaction.card, self.benefit_card)
+        self.assertIsNone(transaction.account)
+        self.assertIsNone(transaction.statement)
+
+    def test_benefit_purchase_rejects_credit_card(self):
+        """Compra de beneficio deve rejeitar cartao de credito."""
+
+        transaction = Transaction(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            card=self.card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        with self.assertRaises(ValidationError):
+            transaction.full_clean()
+
+    def test_benefit_purchase_cannot_be_linked_to_statement(self):
+        """Compra de beneficio nao deve entrar em fatura de cartao."""
+
+        transaction = Transaction(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            card=self.benefit_card,
+            statement=self.statement,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        with self.assertRaises(ValidationError):
+            transaction.full_clean()
 
     def test_card_purchase_can_be_linked_to_statement_from_same_card(self):
         """Deve permitir compra no cartao vinculada a fatura do mesmo cartao."""

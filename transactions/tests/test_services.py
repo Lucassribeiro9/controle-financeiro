@@ -241,7 +241,7 @@ class TransactionServiceTests(TestCase):
             payment_method="benefit",
             description="Almoco",
             amount=Decimal("35.00"),
-            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
             status=Transaction.PaymentStatus.PENDING,
             card=self.benefit_card,
             category=self.category,
@@ -250,8 +250,9 @@ class TransactionServiceTests(TestCase):
 
         self.benefit_card.refresh_from_db()
 
-        self.assertEqual(transaction.transaction_type, Transaction.TransactionType.CARD_PURCHASE)
+        self.assertEqual(transaction.transaction_type, Transaction.TransactionType.BENEFIT_PURCHASE)
         self.assertEqual(transaction.card, self.benefit_card)
+        self.assertIsNone(transaction.account)
         self.assertEqual(self.benefit_card.balance, Decimal("265.00"))
         self.assertIsNone(transaction.statement)
 
@@ -267,7 +268,7 @@ class TransactionServiceTests(TestCase):
                     payment_method="benefit",
                     description="Almoco",
                     amount=Decimal("35.00"),
-                    transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                    transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
                     status=Transaction.PaymentStatus.PENDING,
                     card=self.benefit_card,
                     category=self.category,
@@ -290,7 +291,7 @@ class TransactionServiceTests(TestCase):
                 payment_method="benefit",
                 description="Compra alta",
                 amount=Decimal("350.00"),
-                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
                 status=Transaction.PaymentStatus.PENDING,
                 card=self.benefit_card,
                 category=self.category,
@@ -607,7 +608,7 @@ class TransactionServiceTests(TestCase):
             payment_method="benefit",
             description="Almoco",
             amount=Decimal("35.00"),
-            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
             status=Transaction.PaymentStatus.PENDING,
             card=self.benefit_card,
             category=self.category,
@@ -618,7 +619,7 @@ class TransactionServiceTests(TestCase):
             transaction_id=transaction.id,
             description="Almoco",
             amount=Decimal("50.00"),
-            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
             card=self.benefit_card,
             category=self.category,
             status=Transaction.PaymentStatus.PENDING,

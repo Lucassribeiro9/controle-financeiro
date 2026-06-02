@@ -13,6 +13,7 @@ class Transaction(models.Model):
         EXPENSE = "expense", "Despesa"
         ADJUSTMENT = "adjustment", "Ajuste"
         CARD_PURCHASE = "card_purchase", "Compra no cartão"
+        BENEFIT_PURCHASE = "benefit_purchase", "Compra no benefício"
         FORECAST = "forecast", "Previsão"
         STATEMENT_PAYMENT = "statement_payment", "Pagamento de fatura"
 
@@ -109,10 +110,22 @@ class Transaction(models.Model):
         if self.amount is not None and self.amount <= Decimal("0"):
             raise ValidationError({"amount": "Valor deve ser maior que zero."})
 
-        if self.transaction_type == self.TransactionType.CARD_PURCHASE and self.card is None:
-            raise ValidationError({"card": "Compra no cartão exige cartão vinculado."})
+        if self.transaction_type == self.TransactionType.CARD_PURCHASE:
+            if self.card is None:
+                raise ValidationError({"card": "Compra no cartão exige cartão vinculado."})
+            if self.card.card_type != "credit":
+                raise ValidationError({"card": "Compra no cartão exige cartão de crédito."})
 
-        if self.transaction_type != self.TransactionType.CARD_PURCHASE and self.account is None:
+        if self.transaction_type == self.TransactionType.BENEFIT_PURCHASE:
+            if self.card is None:
+                raise ValidationError({"card": "Compra no benefício exige cartão vinculado."})
+            if self.card.card_type != "benefit":
+                raise ValidationError({"card": "Compra no benefício exige cartão de benefício."})
+
+        if self.transaction_type not in (
+            self.TransactionType.CARD_PURCHASE,
+            self.TransactionType.BENEFIT_PURCHASE,
+        ) and self.account is None:
             raise ValidationError({"account": "Transação exige conta financeira."})
 
         if self.statement_id and self.transaction_type not in (
