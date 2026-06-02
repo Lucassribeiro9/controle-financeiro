@@ -312,12 +312,14 @@ class StatementViewTests(TestCase):
     def test_statement_list_page_shows_computed_summary_values(self):
         """Lista de faturas deve mostrar valores calculados das compras vinculadas."""
 
+        closing_date = timezone.localdate() + timedelta(days=5)
+        due_date = closing_date + timedelta(days=7)
         statement = CardStatement.objects.create(
             card=self.card,
-            year=2026,
-            month=5,
-            closing_date="2026-05-20",
-            due_date="2026-05-27",
+            year=closing_date.year,
+            month=closing_date.month,
+            closing_date=closing_date,
+            due_date=due_date,
             payment_account=self.payment_account,
         )
         Transaction.objects.create(
@@ -327,7 +329,7 @@ class StatementViewTests(TestCase):
             status=Transaction.PaymentStatus.PENDING,
             card=self.card,
             statement=statement,
-            date="2026-05-08",
+            date=closing_date - timedelta(days=3),
         )
 
         response = self.client.get(reverse("cards:statements"))
@@ -338,6 +340,38 @@ class StatementViewTests(TestCase):
         self.assertEqual(summary["expected_amount"], Decimal("350.00"))
         self.assertEqual(summary["closed_amount"], Decimal("0.00"))
         self.assertEqual(summary["remaining_amount"], Decimal("350.00"))
+
+    def test_statement_list_page_auto_closes_due_statement(self):
+        """Listagem deve fechar automaticamente fatura com fechamento atingido."""
+
+        closing_date = timezone.localdate() - timedelta(days=1)
+        due_date = timezone.localdate() + timedelta(days=5)
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=closing_date.year,
+            month=closing_date.month,
+            closing_date=closing_date,
+            due_date=due_date,
+            payment_account=self.payment_account,
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=closing_date,
+        )
+
+        response = self.client.get(reverse("cards:statements"))
+        statement.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(statement.expected_amount, Decimal("350.00"))
+        self.assertEqual(statement.closed_amount, Decimal("350.00"))
+        self.assertEqual(statement.status, CardStatement.StatementStatus.PENDING)
+        self.assertContains(response, "Pendente")
 
     def test_statement_detail_page_returns_success(self):
         """Deve renderizar detalhe da fatura."""

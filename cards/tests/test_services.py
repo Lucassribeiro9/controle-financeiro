@@ -10,6 +10,7 @@ from django.test import TestCase
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
 from cards.services import (
+    auto_close_due_statements,
     close_statement,
     credit_benefit_card_balance,
     debit_benefit_card_balance,
@@ -136,6 +137,89 @@ class CardStatementServiceTests(TestCase):
         self.payment_account.refresh_from_db()
 
         self.assertEqual(self.payment_account.balance, Decimal("1000.00"))
+
+    def test_auto_close_due_statements_closes_open_statement(self):
+        """Fechamento automatico deve fechar fatura aberta vencida."""
+
+        statement = self._create_open_statement_for_auto_close()
+
+        closed_count = auto_close_due_statements(today=date(2026, 5, 20))
+        statement.refresh_from_db()
+
+        self.assertEqual(closed_count, 1)
+        self.assertEqual(statement.expected_amount, Decimal("350.00"))
+        self.assertEqual(statement.closed_amount, Decimal("350.00"))
+        self.assertEqual(statement.status, CardStatement.StatementStatus.PENDING)
+
+    def test_auto_close_due_statements_closes_forecasted_statement(self):
+        """Fechamento automatico deve considerar faturas previstas."""
+
+        statement = self._create_open_statement_for_auto_close()
+        statement.status = CardStatement.StatementStatus.FORECASTED
+        statement.save(update_fields=["status", "updated_at"])
+
+        closed_count = auto_close_due_statements(today=date(2026, 5, 20))
+        statement.refresh_from_db()
+
+        self.assertEqual(closed_count, 1)
+        self.assertEqual(statement.closed_amount, Decimal("350.00"))
+        self.assertEqual(statement.status, CardStatement.StatementStatus.PENDING)
+
+    def test_auto_close_due_statements_keeps_future_statement_open(self):
+        """Fatura ainda nao fechada nao deve ser alterada."""
+
+        statement = self._create_open_statement_for_auto_close()
+
+        closed_count = auto_close_due_statements(today=date(2026, 5, 19))
+        statement.refresh_from_db()
+
+        self.assertEqual(closed_count, 0)
+        self.assertEqual(statement.closed_amount, Decimal("0.00"))
+        self.assertEqual(statement.status, CardStatement.StatementStatus.OPEN)
+
+    def test_auto_close_due_statements_is_idempotent(self):
+        """Rodar fechamento automatico duas vezes nao deve alterar fatura fechada."""
+
+        statement = self._create_open_statement_for_auto_close()
+
+        first_count = auto_close_due_statements(today=date(2026, 5, 20))
+        second_count = auto_close_due_statements(today=date(2026, 5, 20))
+        statement.refresh_from_db()
+
+        self.assertEqual(first_count, 1)
+        self.assertEqual(second_count, 0)
+        self.assertEqual(statement.closed_amount, Decimal("350.00"))
+        self.assertEqual(statement.status, CardStatement.StatementStatus.PENDING)
+
+    def test_auto_close_due_statements_does_not_change_account_balance(self):
+        """Fechamento automatico nao deve alterar saldo da conta de pagamento."""
+
+        self._create_open_statement_for_auto_close()
+
+        auto_close_due_statements(today=date(2026, 5, 20))
+        self.payment_account.refresh_from_db()
+
+        self.assertEqual(self.payment_account.balance, Decimal("1000.00"))
+
+    def test_auto_close_due_statements_closes_empty_statement_with_zero(self):
+        """Fatura sem compras pode ser fechada com valor zero."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            closing_date=date(2026, 5, 20),
+            due_date=date(2026, 5, 27),
+            payment_account=self.payment_account,
+        )
+
+        closed_count = auto_close_due_statements(today=date(2026, 5, 20))
+        statement.refresh_from_db()
+
+        self.assertEqual(closed_count, 1)
+        self.assertEqual(statement.expected_amount, Decimal("0.00"))
+        self.assertEqual(statement.closed_amount, Decimal("0.00"))
+        self.assertEqual(statement.status, CardStatement.StatementStatus.PENDING)
 
     def test_refresh_statement_amounts_updates_open_statement_expected_amount(self):
         """Recalculo de fatura aberta deve atualizar previsto sem fechar valor."""
@@ -333,6 +417,47 @@ class CardStatementServiceTests(TestCase):
         )
 
         return close_statement(statement=statement)
+
+    def _create_open_statement_for_auto_close(self):
+        """Cria fatura aberta com compras ativas e ignoradas."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            closing_date=date(2026, 5, 20),
+            due_date=date(2026, 5, 27),
+            payment_account=self.payment_account,
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 8),
+        )
+        Transaction.objects.create(
+            description="Internet",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 10),
+        )
+        Transaction.objects.create(
+            description="Compra cancelada",
+            amount=Decimal("75.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.CANCELED,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 5, 12),
+        )
+
+        return statement
 
 
 class BenefitCardBalanceServiceTests(TestCase):

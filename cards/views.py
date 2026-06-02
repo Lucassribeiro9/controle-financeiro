@@ -10,7 +10,12 @@ from core.forms import normalize_decimal
 from .forms import CardForm, StatementPaymentForm
 from .models import Card, CardStatement
 from .selectors import get_card_limits, get_statement_summary
-from .services import close_statement, pay_statement, update_statement_status
+from .services import (
+    auto_close_due_statements,
+    close_statement,
+    pay_statement,
+    update_statement_status,
+)
 from decimal import Decimal, InvalidOperation
 
 
@@ -86,6 +91,7 @@ def card_update_page(request: HttpRequest, card_id: int) -> HttpResponse:
 def statement_list_page(request: HttpRequest) -> HttpResponse:
     """Renderiza a lista de faturas."""
 
+    auto_close_due_statements()
     statements = (
         CardStatement.objects.select_related(
             "card",
