@@ -168,6 +168,26 @@ def refresh_statement_amounts(*, statement):
     return statement
 
 
+def auto_close_due_statements(*, today=None) -> int:
+    """Fecha faturas abertas ou previstas que atingiram a data de fechamento."""
+
+    today = today or timezone.localdate()
+    statements = CardStatement.objects.filter(
+        closing_date__lte=today,
+        status__in=[
+            CardStatement.StatementStatus.OPEN,
+            CardStatement.StatementStatus.FORECASTED,
+        ],
+    ).order_by("closing_date", "card__name")
+
+    closed_count = 0
+    for statement in statements:
+        close_statement(statement=statement)
+        closed_count += 1
+
+    return closed_count
+
+
 def pay_statement(*, statement, amount=None):
     """Paga total ou parcialmente uma fatura e reduz a conta de pagamento."""
 
