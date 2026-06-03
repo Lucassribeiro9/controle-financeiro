@@ -42,6 +42,13 @@ class TransactionViewTests(TestCase):
             statement_due_day=27,
             payment_account=self.account,
         )
+        self.benefit_card = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("300.00"),
+            balance=Decimal("300.00"),
+        )
 
     def test_transaction_list_page_returns_success(self):
         """Deve renderizar a lista de lancamentos."""
@@ -321,6 +328,34 @@ class TransactionViewTests(TestCase):
         self.assertEqual(transaction.card, self.card)
         self.assertIsNone(transaction.account)
         self.assertEqual(self.account.balance, Decimal("1000.00"))
+
+    def test_post_create_benefit_purchase_uses_benefit_type_and_balance(self):
+        """Compra de beneficio deve usar tipo proprio e debitar saldo do cartao."""
+
+        response = self.client.post(
+            reverse("transactions:create"),
+            data={
+                "description": "Almoco",
+                "payment_method": "benefit",
+                "amount": "35.00",
+                "transaction_type": Transaction.TransactionType.BENEFIT_PURCHASE,
+                "status": Transaction.PaymentStatus.PENDING,
+                "card": self.benefit_card.id,
+                "category": self.category.id,
+                "date": "2026-05-08",
+                "notes": "",
+            },
+        )
+
+        self.benefit_card.refresh_from_db()
+        transaction = Transaction.objects.get(description="Almoco")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(transaction.transaction_type, Transaction.TransactionType.BENEFIT_PURCHASE)
+        self.assertEqual(transaction.card, self.benefit_card)
+        self.assertIsNone(transaction.account)
+        self.assertIsNone(transaction.statement)
+        self.assertEqual(self.benefit_card.balance, Decimal("265.00"))
 
     def test_post_create_credit_purchase_with_installments_redirects_to_plan_detail(self):
         """Compra parcelada no credito deve redirecionar para o parcelamento criado."""

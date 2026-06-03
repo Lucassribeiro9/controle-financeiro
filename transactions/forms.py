@@ -17,6 +17,7 @@ ALLOWED_TRANSACTION_TYPES = [
     Transaction.TransactionType.EXPENSE,
     Transaction.TransactionType.ADJUSTMENT,
     Transaction.TransactionType.CARD_PURCHASE,
+    Transaction.TransactionType.BENEFIT_PURCHASE,
 ]
 
 PAYMENT_METHODS = [
@@ -137,12 +138,17 @@ class TransactionForm(forms.Form):
     def from_transaction(cls, transaction):
         """Cria um form inicializado a partir de uma transacao existente."""
 
-        if transaction.transaction_type == Transaction.TransactionType.CARD_PURCHASE:
-            payment_method = (
-                "benefit"
-                if transaction.card and transaction.card.card_type == Card.CardType.BENEFIT
-                else "credit"
+        if (
+            transaction.transaction_type == Transaction.TransactionType.BENEFIT_PURCHASE
+            or (
+                transaction.transaction_type == Transaction.TransactionType.CARD_PURCHASE
+                and transaction.card
+                and transaction.card.card_type == Card.CardType.BENEFIT
             )
+        ):
+            payment_method = "benefit"
+        elif transaction.transaction_type == Transaction.TransactionType.CARD_PURCHASE:
+            payment_method = "credit"
         elif transaction.transaction_type == Transaction.TransactionType.INCOME:
             payment_method = "debit"
         elif transaction.transaction_type == Transaction.TransactionType.EXPENSE:
@@ -155,7 +161,11 @@ class TransactionForm(forms.Form):
                 "description": transaction.description,
                 "payment_method": payment_method,
                 "amount": transaction.amount,
-                "transaction_type": transaction.transaction_type,
+                "transaction_type": (
+                    Transaction.TransactionType.BENEFIT_PURCHASE
+                    if payment_method == "benefit"
+                    else transaction.transaction_type
+                ),
                 "status": transaction.status,
                 "account": transaction.account,
                 "from_account": None,
@@ -226,10 +236,10 @@ class TransactionForm(forms.Form):
                 self.add_error("card", "Benefício exige cartão vinculado.")
             elif card.card_type != Card.CardType.BENEFIT:
                 self.add_error("card", "Benefício exige cartão de benefício.")
-            if transaction_type != Transaction.TransactionType.CARD_PURCHASE:
+            if transaction_type != Transaction.TransactionType.BENEFIT_PURCHASE:
                 self.add_error(
                     "transaction_type",
-                    "Benefício deve ser lançado como compra no cartão.",
+                    "Benefício deve ser lançado como compra no benefício.",
                 )
         else:
             if account is None:

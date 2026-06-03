@@ -150,7 +150,7 @@ class TransactionFormTests(TestCase):
                 "description": "Almoco",
                 "payment_method": "benefit",
                 "amount": "35.00",
-                "transaction_type": Transaction.TransactionType.CARD_PURCHASE,
+                "transaction_type": Transaction.TransactionType.BENEFIT_PURCHASE,
                 "status": Transaction.PaymentStatus.PENDING,
                 "account": self.account.id,
                 "card": self.credit_card.id,
@@ -162,6 +162,45 @@ class TransactionFormTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("card", form.errors)
+
+    def test_benefit_requires_benefit_purchase_type(self):
+        """Beneficio deve usar tipo proprio de compra de beneficio."""
+
+        form = TransactionForm(
+            data={
+                "description": "Almoco",
+                "payment_method": "benefit",
+                "amount": "35.00",
+                "transaction_type": Transaction.TransactionType.CARD_PURCHASE,
+                "status": Transaction.PaymentStatus.PENDING,
+                "card": self.benefit_card.id,
+                "category": self.category.id,
+                "date": "2026-05-08",
+                "notes": "",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("transaction_type", form.errors)
+
+    def test_benefit_allows_benefit_purchase_type(self):
+        """Beneficio deve aceitar compra de beneficio com cartao de beneficio."""
+
+        form = TransactionForm(
+            data={
+                "description": "Almoco",
+                "payment_method": "benefit",
+                "amount": "35.00",
+                "transaction_type": Transaction.TransactionType.BENEFIT_PURCHASE,
+                "status": Transaction.PaymentStatus.PENDING,
+                "card": self.benefit_card.id,
+                "category": self.category.id,
+                "date": "2026-05-08",
+                "notes": "",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_transfer_requires_different_accounts(self):
         """Transferencia deve exigir origem e destino diferentes."""

@@ -20,6 +20,10 @@ EXCLUDED_STATUSES = [
     Transaction.PaymentStatus.CANCELED,
     Transaction.PaymentStatus.FORECASTED,
 ]
+EXPENSE_TRANSACTION_TYPES = [
+    Transaction.TransactionType.EXPENSE,
+    Transaction.TransactionType.BENEFIT_PURCHASE,
+]
 MONTH_LABELS = {
     1: "jan",
     2: "fev",
@@ -60,7 +64,7 @@ def get_monthly_expense_total(*, year: int, month: int):
     """Calcula o total de despesas para um determinado mês e ano."""
     return _to_money(
         Transaction.objects.filter(
-            transaction_type=Transaction.TransactionType.EXPENSE, date__year=year, date__month=month
+            transaction_type__in=EXPENSE_TRANSACTION_TYPES, date__year=year, date__month=month
         )
         .exclude(status__in=EXCLUDED_STATUSES)
         .aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
@@ -71,7 +75,7 @@ def get_category_expense_breakdown(*, year: int, month: int):
     """Obtém o detalhamento das despesas por categoria para um determinado mês e ano."""
     rows = list(
         Transaction.objects.filter(
-            transaction_type=Transaction.TransactionType.EXPENSE, date__year=year, date__month=month
+            transaction_type__in=EXPENSE_TRANSACTION_TYPES, date__year=year, date__month=month
         )
         .exclude(status__in=EXCLUDED_STATUSES)
         .values("category_id", "category__name")
@@ -167,7 +171,7 @@ def get_monthly_cashflow_series(*, year: int, month: int, range_months: int = 12
             date__lte=last_day,
             transaction_type__in=[
                 Transaction.TransactionType.INCOME,
-                Transaction.TransactionType.EXPENSE,
+                *EXPENSE_TRANSACTION_TYPES,
             ],
         )
         .exclude(status__in=EXCLUDED_STATUSES)
@@ -184,8 +188,8 @@ def get_monthly_cashflow_series(*, year: int, month: int, range_months: int = 12
         total = _to_money(row["total"] or Decimal("0.00"))
         if row["transaction_type"] == Transaction.TransactionType.INCOME:
             period_map[period_key]["income_total"] = total
-        if row["transaction_type"] == Transaction.TransactionType.EXPENSE:
-            period_map[period_key]["expense_total"] = total
+        if row["transaction_type"] in EXPENSE_TRANSACTION_TYPES:
+            period_map[period_key]["expense_total"] += total
 
     series = []
     max_visual_amount = Decimal("0.00")

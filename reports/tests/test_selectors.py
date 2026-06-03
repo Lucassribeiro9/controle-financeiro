@@ -61,6 +61,13 @@ class ReportSelectorTests(TestCase):
         )
         self.food_category = Category.objects.create(name="Alimentacao")
         self.transport_category = Category.objects.create(name="Transporte")
+        self.benefit_card = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("300.00"),
+            balance=Decimal("300.00"),
+        )
 
     def test_monthly_income_total_sums_income_for_period(self):
         """Deve somar receitas do mes informado."""
@@ -134,6 +141,32 @@ class ReportSelectorTests(TestCase):
 
         self.assertEqual(total, Decimal("0.00"))
 
+    def test_monthly_expense_total_includes_benefit_purchase(self):
+        """Compra de beneficio deve ser classificada como despesa nos relatorios."""
+
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.food_category,
+            date=date(2026, 5, 10),
+        )
+        Transaction.objects.create(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.benefit_card,
+            category=self.food_category,
+            date=date(2026, 5, 11),
+        )
+
+        total = get_monthly_expense_total(year=2026, month=5)
+
+        self.assertEqual(total, Decimal("285.00"))
+
     def test_category_expense_breakdown_groups_expenses_by_category(self):
         """Deve agrupar despesas por categoria e ordenar por maior valor."""
 
@@ -172,6 +205,33 @@ class ReportSelectorTests(TestCase):
         self.assertEqual(breakdown[0]["total_amount"], Decimal("300.00"))
         self.assertEqual(breakdown[1]["category_id"], self.transport_category.id)
         self.assertEqual(breakdown[1]["total_amount"], Decimal("50.00"))
+
+    def test_category_expense_breakdown_includes_benefit_purchase(self):
+        """Detalhamento por categoria deve incluir compra de beneficio."""
+
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("200.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.food_category,
+            date=date(2026, 5, 10),
+        )
+        Transaction.objects.create(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.benefit_card,
+            category=self.food_category,
+            date=date(2026, 5, 11),
+        )
+
+        breakdown = get_category_expense_breakdown(year=2026, month=5)
+
+        self.assertEqual(breakdown[0]["category_id"], self.food_category.id)
+        self.assertEqual(breakdown[0]["total_amount"], Decimal("235.00"))
 
     def test_category_expense_share_calculates_visual_percentages(self):
         """Deve calcular percentuais por categoria para o painel visual."""
@@ -240,13 +300,22 @@ class ReportSelectorTests(TestCase):
             category=self.food_category,
             date=date(2026, 5, 10),
         )
+        Transaction.objects.create(
+            description="Almoco",
+            amount=Decimal("35.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.benefit_card,
+            category=self.food_category,
+            date=date(2026, 5, 11),
+        )
 
         series = get_monthly_cashflow_series(year=2026, month=5, range_months=6)
 
         self.assertEqual(len(series), 6)
         self.assertEqual(series[0]["label"], "dez/2025")
         self.assertEqual(series[-1]["label"], "mai/2026")
-        self.assertEqual(series[-1]["balance"], Decimal("4700.00"))
+        self.assertEqual(series[-1]["balance"], Decimal("4665.00"))
         self.assertEqual(series[-1]["value_label"], "4,7 mil")
         self.assertEqual(series[-1]["bar_height"], 100)
         self.assertTrue(series[-2]["is_negative"])

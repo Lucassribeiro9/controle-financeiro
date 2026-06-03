@@ -57,7 +57,7 @@ def _get_benefit_card_purchase_amount(transaction):
     """Retorna impacto em saldo proprio de beneficio, quando aplicavel."""
 
     if (
-        transaction.transaction_type == Transaction.TransactionType.CARD_PURCHASE
+        transaction.transaction_type == Transaction.TransactionType.BENEFIT_PURCHASE
         and transaction.card_id
         and transaction.card.card_type == Card.CardType.BENEFIT
     ):
@@ -175,7 +175,7 @@ def _create_benefit_purchase(
         transaction = Transaction(
             description=description,
             amount=amount,
-            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
             date=date,
             card=card,
             category=category,
@@ -347,8 +347,13 @@ def update_transaction(
         for statement in affected_statements:
             _ensure_statement_can_change(statement)
 
-        if transaction_type != Transaction.TransactionType.CARD_PURCHASE:
+        if transaction_type not in (
+            Transaction.TransactionType.CARD_PURCHASE,
+            Transaction.TransactionType.BENEFIT_PURCHASE,
+        ):
             card = None
+            new_statement = None
+        elif transaction_type == Transaction.TransactionType.BENEFIT_PURCHASE:
             new_statement = None
 
         if card and card.card_type in (Card.CardType.CREDIT, Card.CardType.BENEFIT):
