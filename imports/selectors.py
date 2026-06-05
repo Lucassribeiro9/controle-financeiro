@@ -12,6 +12,10 @@ def get_imported_transactions_for_review(
     source_type=None,
     start_date=None,
     end_date=None,
+    account_id=None,
+    category_id=None,
+    transaction_type=None,
+    q=None,
 ):
     """Lista transacoes importadas que precisam de revisao."""
 
@@ -29,6 +33,18 @@ def get_imported_transactions_for_review(
 
     if source_type:
         queryset = queryset.filter(source_type=source_type)
+
+    if account_id:
+        queryset = queryset.filter(suggested_account_id=account_id)
+
+    if category_id:
+        queryset = queryset.filter(suggested_category_id=category_id)
+
+    if transaction_type:
+        queryset = queryset.filter(suggested_transaction_type=transaction_type)
+
+    if q:
+        queryset = queryset.filter(normalized_description__icontains=q.strip())
 
     parsed_start_date = _parse_filter_date(start_date)
     if parsed_start_date:

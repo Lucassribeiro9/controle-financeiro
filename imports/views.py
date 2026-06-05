@@ -16,7 +16,11 @@ from .models import ImportedTransaction
 from .selectors import get_imported_transactions_for_review
 from .selectors import get_import_review_filter_options
 from .services import (
+    apply_account_to_imports,
+    apply_category_to_imports,
     confirm_imported_transaction,
+    confirm_imported_transactions_partially,
+    discard_imported_transactions,
     discard_imported_transaction,
     stage_imported_transactions,
 )
@@ -36,6 +40,10 @@ def _review_filters_from_request(request: HttpRequest) -> dict:
             "source_type": request.GET.get("source_type"),
             "start_date": request.GET.get("start_date"),
             "end_date": request.GET.get("end_date"),
+            "account_id": request.GET.get("account_id"),
+            "category_id": request.GET.get("category_id"),
+            "transaction_type": request.GET.get("transaction_type"),
+            "q": request.GET.get("q"),
         }.items()
         if value
     }
@@ -58,6 +66,7 @@ def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -
         "suggested_transaction_type": imported_transaction.suggested_transaction_type,
         "confirmed_transaction_id": imported_transaction.confirmed_transaction_id,
         "external_id": imported_transaction.external_id,
+        "review_error": imported_transaction.review_error,
     }
 
 
@@ -321,48 +330,45 @@ def bulk_review_imports(request: HttpRequest):
         messages.error(request, "Selecione ao menos uma importação.")
         return _redirect_to_review(request)
 
-    queryset = ImportedTransaction.objects.filter(
-        pk__in=selected_ids,
-        status__in=[
-            ImportedTransaction.Status.PENDING,
-            ImportedTransaction.Status.DUPLICATE,
-        ],
-    ).select_related("suggested_account", "suggested_category")
-
-    processed = 0
-    skipped = 0
-
     if action == "discard":
-        for imported_transaction in queryset:
-            discard_imported_transaction(imported_transaction=imported_transaction)
-            processed += 1
-        messages.success(request, f"{processed} importação(ões) descartada(s).")
+        result = discard_imported_transactions(selected_ids=selected_ids)
+        messages.success(request, f"{result.processed} importação(ões) descartada(s).")
+        return _redirect_to_review(request)
+
+    if action == "apply_account":
+        account_id = request.POST.get("bulk_account_id")
+        if not account_id:
+            messages.error(request, "Selecione uma conta para aplicar em lote.")
+            return _redirect_to_review(request)
+        account = get_object_or_404(FinancialAccount, pk=account_id)
+        result = apply_account_to_imports(selected_ids=selected_ids, account=account)
+        messages.success(request, f"Conta aplicada em {result.processed} importação(ões).")
+        return _redirect_to_review(request)
+
+    if action == "apply_category":
+        category_id = request.POST.get("bulk_category_id")
+        if not category_id:
+            messages.error(request, "Selecione uma categoria para aplicar em lote.")
+            return _redirect_to_review(request)
+        category = get_object_or_404(Category, pk=category_id)
+        result = apply_category_to_imports(selected_ids=selected_ids, category=category)
+        messages.success(
+            request,
+            f"Categoria aplicada em {result.processed} importação(ões).",
+        )
         return _redirect_to_review(request)
 
     if action == "confirm":
-        for imported_transaction in queryset:
-            if not imported_transaction.suggested_account_id:
-                skipped += 1
-                continue
-
-            try:
-                confirm_imported_transaction(
-                    imported_transaction=imported_transaction,
-                    account=imported_transaction.suggested_account,
-                    category=imported_transaction.suggested_category,
-                    transaction_type=imported_transaction.suggested_transaction_type,
-                )
-            except ValueError:
-                skipped += 1
-            else:
-                processed += 1
-
-        if processed:
-            messages.success(request, f"{processed} importação(ões) confirmada(s).")
-        if skipped:
+        result = confirm_imported_transactions_partially(selected_ids=selected_ids)
+        if result.processed:
+            messages.success(
+                request,
+                f"{result.processed} importação(ões) confirmada(s).",
+            )
+        if result.skipped:
             messages.error(
                 request,
-                f"{skipped} importação(ões) precisam de conta e tipo antes de confirmar.",
+                f"{result.skipped} importação(ões) permaneceram em revisão com erro.",
             )
         return _redirect_to_review(request)
 

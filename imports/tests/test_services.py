@@ -10,8 +10,11 @@ from categories.models import Category
 from imports.importers import ImportedTransactionRow
 from imports.models import ImportedTransaction
 from imports.services import (
+    apply_account_to_imports,
+    apply_category_to_imports,
     build_import_hash,
     confirm_imported_transaction,
+    confirm_imported_transactions_partially,
     detect_duplicate_import,
     discard_imported_transaction,
     stage_imported_transactions,
@@ -113,6 +116,27 @@ class ImportServiceTests(TestCase):
 
         self.assertEqual(imported[0].status, ImportedTransaction.Status.DUPLICATE)
 
+    def test_stage_imported_transactions_marks_possible_duplicate_transaction(self):
+        """Deve marcar duplicidade por data, valor, descricao normalizada e conta."""
+
+        Transaction.objects.create(
+            description="Mercado Dia",
+            amount=Decimal("87.45"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 10),
+        )
+
+        imported = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row(description="  mercado   dia  ")],
+            suggested_account=self.account,
+        )
+
+        self.assertEqual(imported[0].status, ImportedTransaction.Status.DUPLICATE)
+
     def test_detect_duplicate_import_uses_external_id(self):
         """Deve detectar duplicidade por identificador externo."""
 
@@ -191,3 +215,77 @@ class ImportServiceTests(TestCase):
 
         self.assertEqual(discarded.status, ImportedTransaction.Status.DISCARDED)
         self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_apply_account_to_imports_updates_selected_items(self):
+        """Deve aplicar conta em lote somente aos itens selecionados."""
+
+        first = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row(description="Mercado")],
+        )[0]
+        second = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row(description="Padaria")],
+        )[0]
+
+        result = apply_account_to_imports(
+            selected_ids=[first.id],
+            account=self.account,
+        )
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+
+        self.assertEqual(result.processed, 1)
+        self.assertEqual(first.suggested_account, self.account)
+        self.assertIsNone(second.suggested_account)
+
+    def test_apply_category_to_imports_updates_selected_items(self):
+        """Deve aplicar categoria em lote aos itens selecionados."""
+
+        imported_transaction = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row()],
+        )[0]
+
+        result = apply_category_to_imports(
+            selected_ids=[imported_transaction.id],
+            category=self.category,
+        )
+
+        imported_transaction.refresh_from_db()
+
+        self.assertEqual(result.processed, 1)
+        self.assertEqual(imported_transaction.suggested_category, self.category)
+
+    def test_confirm_imported_transactions_partially_persists_row_errors(self):
+        """Deve confirmar validas e manter invalidas com erro persistido."""
+
+        valid = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row(description="Mercado")],
+            suggested_account=self.account,
+        )[0]
+        invalid = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row(description="Padaria")],
+        )[0]
+
+        result = confirm_imported_transactions_partially(
+            selected_ids=[valid.id, invalid.id],
+        )
+
+        valid.refresh_from_db()
+        invalid.refresh_from_db()
+
+        self.assertEqual(result.processed, 1)
+        self.assertEqual(result.skipped, 1)
+        self.assertEqual(valid.status, ImportedTransaction.Status.CONFIRMED)
+        self.assertEqual(invalid.status, ImportedTransaction.Status.PENDING)
+        self.assertEqual(invalid.review_error, "Informe uma conta para confirmar.")
+        self.assertEqual(Transaction.objects.count(), 1)

@@ -172,6 +172,8 @@ class ImportViewTests(TestCase):
         self.assertContains(response, 'class="bulk-action-bar"', html=False)
         self.assertContains(response, 'data-bulk-toggle="selected_imports"', html=False)
         self.assertContains(response, "Selecionar todos")
+        self.assertContains(response, "Aplicar conta")
+        self.assertContains(response, "Aplicar categoria")
         self.assertContains(response, "<details", html=False)
 
     def test_review_imports_page_filters_items(self):
@@ -437,3 +439,79 @@ class ImportViewTests(TestCase):
         self.assertEqual(first.status, ImportedTransaction.Status.CONFIRMED)
         self.assertEqual(second.status, ImportedTransaction.Status.CONFIRMED)
         self.assertEqual(Transaction.objects.count(), 2)
+
+    def test_bulk_review_applies_account_category_and_type(self):
+        """Deve aplicar campos de revisao em lote pela tela HTML."""
+
+        imported_transaction = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+        )
+
+        account_response = self.client.post(
+            reverse("imports:bulk-review"),
+            {
+                "bulk_action": "apply_account",
+                "bulk_account_id": self.account.id,
+                "selected_imports": [imported_transaction.id],
+            },
+        )
+        category_response = self.client.post(
+            reverse("imports:bulk-review"),
+            {
+                "bulk_action": "apply_category",
+                "bulk_category_id": self.category.id,
+                "selected_imports": [imported_transaction.id],
+            },
+        )
+        imported_transaction.refresh_from_db()
+
+        self.assertEqual(account_response.status_code, 302)
+        self.assertEqual(category_response.status_code, 302)
+        self.assertEqual(imported_transaction.suggested_account, self.account)
+        self.assertEqual(imported_transaction.suggested_category, self.category)
+
+    def test_bulk_review_confirms_partially_and_persists_row_error(self):
+        """Deve confirmar validas e manter invalidas com erro ao confirmar em lote."""
+
+        valid = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_account=self.account,
+            suggested_category=self.category,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+        invalid = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Padaria",
+            normalized_description="Padaria",
+            amount=Decimal("20.00"),
+            date=date(2026, 5, 11),
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+        response = self.client.post(
+            reverse("imports:bulk-review"),
+            {
+                "bulk_action": "confirm",
+                "selected_imports": [valid.id, invalid.id],
+            },
+        )
+
+        valid.refresh_from_db()
+        invalid.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(valid.status, ImportedTransaction.Status.CONFIRMED)
+        self.assertEqual(invalid.status, ImportedTransaction.Status.PENDING)
+        self.assertEqual(invalid.review_error, "Informe uma conta para confirmar.")
+        self.assertEqual(Transaction.objects.count(), 1)
