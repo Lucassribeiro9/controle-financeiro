@@ -143,6 +143,50 @@ class ImportViewTests(TestCase):
             {"Mercado Dia", "Descartado"},
         )
 
+    def test_review_imports_filters_by_status_and_period(self):
+        """Deve filtrar importacoes por status e periodo no endpoint JSON."""
+
+        expected = ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            status=ImportedTransaction.Status.PENDING,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Descartado",
+            normalized_description="Descartado",
+            amount=Decimal("10.00"),
+            date=date(2026, 5, 11),
+            status=ImportedTransaction.Status.DISCARDED,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Antigo",
+            normalized_description="Antigo",
+            amount=Decimal("20.00"),
+            date=date(2026, 4, 20),
+            status=ImportedTransaction.Status.PENDING,
+        )
+
+        response = self.client.get(
+            reverse("imports:review"),
+            data={
+                "status": ImportedTransaction.Status.PENDING,
+                "start_date": "2026-05-01",
+                "end_date": "2026-05-31",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["count"], 1)
+        self.assertEqual(response.json()["results"][0]["id"], expected.id)
+
     def test_review_imports_page_lists_pending_items(self):
         """Deve renderizar a pagina de revisao com importacoes pendentes."""
 
@@ -213,6 +257,58 @@ class ImportViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Mercado Dia")
         self.assertNotContains(response, "Padaria")
+
+    def test_review_imports_page_filters_by_status_and_period(self):
+        """Deve aplicar e preservar filtros de status e periodo na tela."""
+
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            status=ImportedTransaction.Status.PENDING,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Descartado",
+            normalized_description="Descartado",
+            amount=Decimal("10.00"),
+            date=date(2026, 5, 11),
+            status=ImportedTransaction.Status.DISCARDED,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Antigo",
+            normalized_description="Antigo",
+            amount=Decimal("20.00"),
+            date=date(2026, 4, 20),
+            status=ImportedTransaction.Status.PENDING,
+        )
+
+        response = self.client.get(
+            reverse("imports:review-page"),
+            data={
+                "status": ImportedTransaction.Status.PENDING,
+                "start_date": "2026-05-01",
+                "end_date": "2026-05-31",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mercado Dia")
+        self.assertNotContains(response, "Descartado")
+        self.assertNotContains(response, "Antigo")
+        self.assertContains(
+            response,
+            f'<option value="{ImportedTransaction.Status.PENDING}" selected>',
+            html=False,
+        )
+        self.assertContains(response, 'name="start_date" type="date" value="2026-05-01"', html=False)
+        self.assertContains(response, 'name="end_date" type="date" value="2026-05-31"', html=False)
 
     def test_confirm_import_creates_transaction(self):
         """Deve confirmar importacao e criar transacao real."""
