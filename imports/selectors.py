@@ -1,8 +1,12 @@
 """Seletores para as funcionalidades de importacao."""
 
+from django.core.paginator import Paginator
 from django.utils.dateparse import parse_date
 
 from .models import ImportedTransaction
+
+
+IMPORT_REVIEW_PAGE_SIZE = 25
 
 
 def get_imported_transactions_for_review(
@@ -55,6 +59,18 @@ def get_imported_transactions_for_review(
         queryset = queryset.filter(date__lte=parsed_end_date)
 
     return queryset
+
+
+def paginate_imported_transactions_for_review(
+    *,
+    queryset,
+    page_number=None,
+    per_page=IMPORT_REVIEW_PAGE_SIZE,
+):
+    """Pagina a lista de importacoes em revisao."""
+
+    paginator = Paginator(queryset, per_page)
+    return paginator.get_page(page_number)
 
 
 def get_import_review_filter_options():

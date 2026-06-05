@@ -41,6 +41,24 @@ class ImportViewTests(TestCase):
         file_obj.name = "extrato.csv"
         return file_obj
 
+    def _create_review_imports(self, *, total, status=ImportedTransaction.Status.PENDING):
+        """Cria importacoes sequenciais para testes de listagem."""
+
+        imported_transactions = []
+        for day in range(1, total + 1):
+            imported_transactions.append(
+                ImportedTransaction.objects.create(
+                    source_file_name="extrato.csv",
+                    source_type=ImportedTransaction.SourceType.CSV,
+                    raw_description=f"Lancamento {day:02d}",
+                    normalized_description=f"Lancamento {day:02d}",
+                    amount=Decimal("10.00"),
+                    date=date(2026, 5, day),
+                    status=status,
+                )
+            )
+        return imported_transactions
+
     def test_upload_import_creates_pending_items(self):
         """Deve processar CSV e criar itens para revisao."""
 
@@ -309,6 +327,56 @@ class ImportViewTests(TestCase):
         )
         self.assertContains(response, 'name="start_date" type="date" value="2026-05-01"', html=False)
         self.assertContains(response, 'name="end_date" type="date" value="2026-05-31"', html=False)
+
+    def test_review_imports_page_paginates_review_items(self):
+        """Deve paginar a revisao de importacoes."""
+
+        self._create_review_imports(total=26)
+
+        response = self.client.get(reverse("imports:review-page"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Lancamento 26")
+        self.assertContains(response, "Lancamento 02")
+        self.assertNotContains(response, "Lancamento 01")
+        self.assertContains(response, "Página 1 de 2")
+        self.assertContains(response, "Próxima")
+        self.assertContains(response, "?page=2", html=False)
+
+    def test_review_imports_page_preserves_filters_in_pagination_links(self):
+        """Deve preservar filtros ativos ao navegar entre paginas."""
+
+        self._create_review_imports(total=26)
+        ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Descartado",
+            normalized_description="Descartado",
+            amount=Decimal("10.00"),
+            date=date(2026, 5, 27),
+            status=ImportedTransaction.Status.DISCARDED,
+        )
+
+        response = self.client.get(
+            reverse("imports:review-page"),
+            data={
+                "status": ImportedTransaction.Status.PENDING,
+                "start_date": "2026-05-01",
+                "end_date": "2026-05-31",
+                "page": "2",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Lancamento 01")
+        self.assertNotContains(response, "Descartado")
+        self.assertContains(response, "Página 2 de 2")
+        self.assertContains(response, "Anterior")
+        self.assertContains(
+            response,
+            "?status=pending&amp;start_date=2026-05-01&amp;end_date=2026-05-31&amp;page=1",
+            html=False,
+        )
 
     def test_confirm_import_creates_transaction(self):
         """Deve confirmar importacao e criar transacao real."""
