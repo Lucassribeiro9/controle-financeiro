@@ -136,6 +136,48 @@ class ImportSelectorTests(TestCase):
 
         self.assertEqual(imports, [expected])
 
+    def test_get_imported_transactions_for_review_filters_by_status_and_period(self):
+        """Deve combinar status e periodo na revisao."""
+
+        expected = ImportedTransaction.objects.create(
+            source_file_name="nubank.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            status=ImportedTransaction.Status.PENDING,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="nubank.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Confirmado",
+            normalized_description="Confirmado",
+            amount=Decimal("10.00"),
+            date=date(2026, 5, 12),
+            status=ImportedTransaction.Status.CONFIRMED,
+            confirmed_transaction=None,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="nubank.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Antigo",
+            normalized_description="Antigo",
+            amount=Decimal("20.00"),
+            date=date(2026, 4, 20),
+            status=ImportedTransaction.Status.PENDING,
+        )
+
+        imports = list(
+            get_imported_transactions_for_review(
+                status=ImportedTransaction.Status.PENDING,
+                start_date="2026-05-01",
+                end_date="2026-05-31",
+            )
+        )
+
+        self.assertEqual(imports, [expected])
+
     def test_get_imported_transactions_for_review_filters_by_account_category_type_and_text(self):
         """Deve filtrar por conta, categoria, tipo sugerido e texto."""
 
