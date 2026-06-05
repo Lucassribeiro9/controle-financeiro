@@ -936,6 +936,14 @@ h2 {
     z-index: 8;
 }
 
+.pagination {
+    align-items: center;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    margin-top: 16px;
+}
+
 .import-filter-bar {
     background: var(--surface);
     border: 1px solid var(--line);
@@ -1280,7 +1288,8 @@ h2 {
     .page-header,
     .period-form,
     .filter-bar,
-    .bulk-action-bar {
+    .bulk-action-bar,
+    .pagination {
         display: grid;
         justify-content: stretch;
     }

@@ -243,4 +243,18 @@
             </section>
         {% endfor %}
     </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="pagination" aria-label="Paginação da revisão">
+            <span class="muted">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            <div class="action-row">
+                {% if page_obj.has_previous %}
+                    <a class="button" href="?{% if pagination_query_string %}{{ pagination_query_string }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a class="button" href="?{% if pagination_query_string %}{{ pagination_query_string }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
+                {% endif %}
+            </div>
+        </nav>
+    {% endif %}
 {% endblock %}

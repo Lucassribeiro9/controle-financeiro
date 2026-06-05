@@ -15,6 +15,7 @@ from .importers import get_importer_for_source_type
 from .models import ImportedTransaction
 from .selectors import get_imported_transactions_for_review
 from .selectors import get_import_review_filter_options
+from .selectors import paginate_imported_transactions_for_review
 from .services import (
     apply_account_to_imports,
     apply_category_to_imports,
@@ -47,6 +48,14 @@ def _review_filters_from_request(request: HttpRequest) -> dict:
         }.items()
         if value
     }
+
+
+def _query_string_without_page(request: HttpRequest) -> str:
+    """Monta query string preservando filtros e removendo a pagina atual."""
+
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+    return query_params.urlencode()
 
 
 def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -> dict:
@@ -291,18 +300,24 @@ def upload_import_page(request: HttpRequest):
 def review_imports_page(request: HttpRequest):
     """Renderiza a pagina de revisao de transacoes importadas."""
 
-    imported_transactions = get_imported_transactions_for_review(
+    imported_transactions_queryset = get_imported_transactions_for_review(
         **_review_filters_from_request(request)
+    )
+    page_obj = paginate_imported_transactions_for_review(
+        queryset=imported_transactions_queryset,
+        page_number=request.GET.get("page"),
     )
     filter_options = get_import_review_filter_options()
     return render(
         request,
         "imports/review.html",
         {
-            "imported_transactions": imported_transactions,
+            "imported_transactions": page_obj.object_list,
+            "page_obj": page_obj,
             "filter_options": filter_options,
             "active_filters": request.GET,
             "review_query_string": request.GET.urlencode(),
+            "pagination_query_string": _query_string_without_page(request),
             "accounts": FinancialAccount.objects.filter(is_active=True).order_by("name"),
             "categories": Category.objects.order_by("name"),
             "transaction_types": [

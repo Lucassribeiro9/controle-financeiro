@@ -8,7 +8,9 @@ from django.test import TestCase
 from accounts.models import FinancialAccount
 from categories.models import Category
 from imports.models import ImportedTransaction
+from imports.selectors import IMPORT_REVIEW_PAGE_SIZE
 from imports.selectors import get_imported_transactions_for_review
+from imports.selectors import paginate_imported_transactions_for_review
 from institutions.models import Institution
 from transactions.models import Transaction
 
@@ -213,3 +215,38 @@ class ImportSelectorTests(TestCase):
         )
 
         self.assertEqual(imports, [expected])
+
+    def test_paginate_imported_transactions_for_review_splits_review_items(self):
+        """Deve paginar itens de revisao usando tamanho padrao."""
+
+        oldest = None
+        for day in range(1, IMPORT_REVIEW_PAGE_SIZE + 2):
+            imported_transaction = ImportedTransaction.objects.create(
+                source_file_name="extrato.csv",
+                source_type=ImportedTransaction.SourceType.CSV,
+                raw_description=f"Lancamento {day:02d}",
+                normalized_description=f"Lancamento {day:02d}",
+                amount=Decimal("10.00"),
+                date=date(2026, 5, day),
+                status=ImportedTransaction.Status.PENDING,
+            )
+            if day == 1:
+                oldest = imported_transaction
+
+        queryset = get_imported_transactions_for_review(
+            status=ImportedTransaction.Status.PENDING
+        )
+
+        first_page = paginate_imported_transactions_for_review(
+            queryset=queryset,
+            page_number=1,
+        )
+        second_page = paginate_imported_transactions_for_review(
+            queryset=queryset,
+            page_number=2,
+        )
+
+        self.assertEqual(first_page.paginator.per_page, IMPORT_REVIEW_PAGE_SIZE)
+        self.assertEqual(len(first_page.object_list), IMPORT_REVIEW_PAGE_SIZE)
+        self.assertEqual(len(second_page.object_list), 1)
+        self.assertEqual(second_page.object_list[0], oldest)
