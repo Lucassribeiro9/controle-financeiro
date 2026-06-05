@@ -221,11 +221,38 @@ class XlsxTransactionImporter:
 
         for row in root.findall(".//x:sheetData/x:row", namespace):
             values = []
-            for cell in row.findall("x:c", namespace):
-                values.append(self._read_cell_value(cell, shared_strings, namespace))
+            for fallback_index, cell in enumerate(row.findall("x:c", namespace)):
+                column_index = self._get_cell_column_index(cell, fallback_index)
+                while len(values) <= column_index:
+                    values.append("")
+                values[column_index] = self._read_cell_value(
+                    cell,
+                    shared_strings,
+                    namespace,
+                )
             rows.append(values)
 
         return rows
+
+    def _get_cell_column_index(
+        self,
+        cell: ElementTree.Element,
+        fallback_index: int,
+    ) -> int:
+        """Retorna o indice da coluna preservando celulas vazias omitidas."""
+
+        reference = cell.attrib.get("r")
+        if not reference:
+            return fallback_index
+
+        column_letters = "".join(char for char in reference if char.isalpha())
+        if not column_letters:
+            return fallback_index
+
+        column_index = 0
+        for char in column_letters.upper():
+            column_index = column_index * 26 + (ord(char) - ord("A") + 1)
+        return column_index - 1
 
     def _read_cell_value(
         self,

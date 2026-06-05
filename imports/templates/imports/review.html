@@ -44,6 +44,41 @@
         </label>
 
         <label class="form-field">
+            <span>Conta</span>
+            <select name="account_id">
+                <option value="">Todas</option>
+                {% for account in accounts %}
+                    <option value="{{ account.id }}" {% if active_filters.account_id == account.id|stringformat:"s" %}selected{% endif %}>{{ account.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="form-field">
+            <span>Categoria</span>
+            <select name="category_id">
+                <option value="">Todas</option>
+                {% for category in categories %}
+                    <option value="{{ category.id }}" {% if active_filters.category_id == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="form-field">
+            <span>Tipo transação</span>
+            <select name="transaction_type">
+                <option value="">Todos</option>
+                {% for value, label in transaction_types %}
+                    <option value="{{ value }}" {% if active_filters.transaction_type == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label class="form-field">
+            <span>Texto</span>
+            <input name="q" type="search" value="{{ active_filters.q }}" placeholder="Descrição">
+        </label>
+
+        <label class="form-field">
             <span>Início</span>
             <input name="start_date" type="date" value="{{ active_filters.start_date }}">
         </label>
@@ -64,6 +99,22 @@
             <span>Selecionar todos</span>
         </label>
         <div class="action-row">
+            <select name="bulk_account_id" aria-label="Conta em lote">
+                <option value="">Conta</option>
+                {% for account in accounts %}
+                    <option value="{{ account.id }}">{{ account.name }}</option>
+                {% endfor %}
+            </select>
+            <button class="button" type="submit" name="bulk_action" value="apply_account">Aplicar conta</button>
+
+            <select name="bulk_category_id" aria-label="Categoria em lote">
+                <option value="">Categoria</option>
+                {% for category in categories %}
+                    <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endfor %}
+            </select>
+            <button class="button" type="submit" name="bulk_action" value="apply_category">Aplicar categoria</button>
+
             <button class="button" type="submit" name="bulk_action" value="confirm">Confirmar selecionadas</button>
             <button class="button button-danger" type="submit" name="bulk_action" value="discard">Descartar selecionadas</button>
         </div>
@@ -112,6 +163,12 @@
                             <dd>{{ imported_transaction.suggested_category|default:"Sem categoria" }}</dd>
                         </div>
                     </dl>
+                    {% if imported_transaction.status == "duplicate" %}
+                        <p class="form-error">Possível duplicidade. Revise antes de confirmar.</p>
+                    {% endif %}
+                    {% if imported_transaction.review_error %}
+                        <p class="form-error">{{ imported_transaction.review_error }}</p>
+                    {% endif %}
                 </div>
 
                 <details class="import-edit-details">

@@ -5,12 +5,28 @@ from decimal import Decimal
 
 from django.test import TestCase
 
+from accounts.models import FinancialAccount
+from categories.models import Category
 from imports.models import ImportedTransaction
 from imports.selectors import get_imported_transactions_for_review
+from institutions.models import Institution
+from transactions.models import Transaction
 
 
 class ImportSelectorTests(TestCase):
     """Garante as consultas de apoio para revisao de importacoes."""
+
+    def setUp(self):
+        """Cria dados base para filtros por relacionamento."""
+
+        self.institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.category = Category.objects.create(name="Alimentacao")
 
     def test_get_imported_transactions_for_review_returns_all_statuses_by_default(self):
         """Deve listar todos os status por padrao."""
@@ -115,6 +131,42 @@ class ImportSelectorTests(TestCase):
                 source_type=ImportedTransaction.SourceType.CSV,
                 start_date="2026-05-01",
                 end_date="2026-05-31",
+            )
+        )
+
+        self.assertEqual(imports, [expected])
+
+    def test_get_imported_transactions_for_review_filters_by_account_category_type_and_text(self):
+        """Deve filtrar por conta, categoria, tipo sugerido e texto."""
+
+        expected = ImportedTransaction.objects.create(
+            source_file_name="nubank.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_account=self.account,
+            suggested_category=self.category,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+        ImportedTransaction.objects.create(
+            source_file_name="nubank.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Salario",
+            normalized_description="Salario",
+            amount=Decimal("5000.00"),
+            date=date(2026, 5, 5),
+            suggested_account=self.account,
+            suggested_transaction_type=Transaction.TransactionType.INCOME,
+        )
+
+        imports = list(
+            get_imported_transactions_for_review(
+                account_id=self.account.id,
+                category_id=self.category.id,
+                transaction_type=Transaction.TransactionType.EXPENSE,
+                q="mercado",
             )
         )
 

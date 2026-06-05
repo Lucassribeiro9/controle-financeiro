@@ -66,6 +66,7 @@ class ImportedTransaction(models.Model):
     )
     external_id = models.CharField(max_length=255, blank=True)
     import_hash = models.CharField(max_length=64, blank=True, db_index=True)
+    review_error = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,7 +1,9 @@
 """Regras de negocio para importacoes."""
 
 import hashlib
+from dataclasses import dataclass
 
+from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
 
 from categories.models import Category
@@ -9,6 +11,22 @@ from transactions.models import Transaction
 from transactions.services import create_transaction
 
 from .models import ImportedTransaction
+
+
+REVIEWABLE_IMPORT_STATUSES = [
+    ImportedTransaction.Status.PENDING,
+    ImportedTransaction.Status.DUPLICATE,
+]
+@dataclass(frozen=True)
+class BulkImportActionResult:
+    """Resume o resultado de uma acao em lote na revisao."""
+
+    processed: int = 0
+    skipped: int = 0
+
+
+def _normalize_duplicate_description(description: str) -> str:
+    return " ".join(description.strip().lower().split())
 
 
 def build_import_hash(
@@ -67,11 +85,22 @@ def detect_duplicate_import(*, imported_transaction):
 def detect_duplicate_transaction(*, imported_transaction):
     """Detecta se a linha importada parece uma transacao real ja cadastrada."""
 
-    return Transaction.objects.filter(
+    if not imported_transaction.suggested_account_id:
+        return False
+
+    candidates = Transaction.objects.filter(
         date=imported_transaction.date,
         amount=imported_transaction.amount,
-        description__icontains=imported_transaction.normalized_description[:20],
-    ).exists()
+        account=imported_transaction.suggested_account,
+    ).only("description")
+    expected_description = _normalize_duplicate_description(
+        imported_transaction.normalized_description
+    )
+
+    return any(
+        _normalize_duplicate_description(candidate.description) == expected_description
+        for candidate in candidates
+    )
 
 
 def stage_imported_transactions(*, file_name, source_type, rows, suggested_account=None):
@@ -105,6 +134,8 @@ def stage_imported_transactions(*, file_name, source_type, rows, suggested_accou
             )
 
             if detect_duplicate_import(imported_transaction=imported_transaction):
+                imported_transaction.status = ImportedTransaction.Status.DUPLICATE
+            elif detect_duplicate_transaction(imported_transaction=imported_transaction):
                 imported_transaction.status = ImportedTransaction.Status.DUPLICATE
 
             imported_transaction.full_clean()
@@ -154,6 +185,7 @@ def confirm_imported_transaction(
         imported_transaction.date = date
         imported_transaction.confirmed_transaction = transaction
         imported_transaction.status = ImportedTransaction.Status.CONFIRMED
+        imported_transaction.review_error = ""
         imported_transaction.full_clean()
         imported_transaction.save(
             update_fields=[
@@ -162,6 +194,7 @@ def confirm_imported_transaction(
                 "date",
                 "confirmed_transaction",
                 "status",
+                "review_error",
                 "updated_at",
             ]
         )
@@ -174,8 +207,83 @@ def discard_imported_transaction(*, imported_transaction):
 
     imported_transaction.status = ImportedTransaction.Status.DISCARDED
     imported_transaction.confirmed_transaction = None
+    imported_transaction.review_error = ""
     imported_transaction.full_clean()
     imported_transaction.save(
-        update_fields=["status", "confirmed_transaction", "updated_at"]
+        update_fields=["status", "confirmed_transaction", "review_error", "updated_at"]
     )
     return imported_transaction
+
+
+def _get_reviewable_imports(*, selected_ids):
+    """Retorna somente itens explicitamente selecionados e revisaveis."""
+
+    return ImportedTransaction.objects.filter(
+        pk__in=selected_ids,
+        status__in=REVIEWABLE_IMPORT_STATUSES,
+    ).select_related("suggested_account", "suggested_category")
+
+
+def apply_account_to_imports(*, selected_ids, account):
+    """Aplica conta aos itens importados selecionados."""
+
+    queryset = _get_reviewable_imports(selected_ids=selected_ids)
+    processed = queryset.update(suggested_account=account, review_error="")
+    return BulkImportActionResult(processed=processed)
+
+
+def apply_category_to_imports(*, selected_ids, category):
+    """Aplica categoria aos itens importados selecionados."""
+
+    queryset = _get_reviewable_imports(selected_ids=selected_ids)
+    processed = queryset.update(suggested_category=category, review_error="")
+    return BulkImportActionResult(processed=processed)
+
+
+def confirm_imported_transactions_partially(*, selected_ids):
+    """Confirma itens validos e persiste erro nos invalidos sem abortar o lote."""
+
+    processed = 0
+    skipped = 0
+
+    with db_transaction.atomic():
+        queryset = _get_reviewable_imports(selected_ids=selected_ids).select_for_update()
+        for imported_transaction in queryset:
+            if not imported_transaction.suggested_account_id:
+                imported_transaction.review_error = "Informe uma conta para confirmar."
+                imported_transaction.save(update_fields=["review_error", "updated_at"])
+                skipped += 1
+                continue
+
+            if not imported_transaction.suggested_transaction_type:
+                imported_transaction.review_error = "Informe o tipo antes de confirmar."
+                imported_transaction.save(update_fields=["review_error", "updated_at"])
+                skipped += 1
+                continue
+
+            try:
+                confirm_imported_transaction(
+                    imported_transaction=imported_transaction,
+                    account=imported_transaction.suggested_account,
+                    category=imported_transaction.suggested_category,
+                    transaction_type=imported_transaction.suggested_transaction_type,
+                )
+            except (ValueError, ValidationError) as exc:
+                imported_transaction.review_error = str(exc)
+                imported_transaction.save(update_fields=["review_error", "updated_at"])
+                skipped += 1
+            else:
+                processed += 1
+
+    return BulkImportActionResult(processed=processed, skipped=skipped)
+
+
+def discard_imported_transactions(*, selected_ids):
+    """Descarta itens importados selecionados."""
+
+    processed = 0
+    for imported_transaction in _get_reviewable_imports(selected_ids=selected_ids):
+        discard_imported_transaction(imported_transaction=imported_transaction)
+        processed += 1
+
+    return BulkImportActionResult(processed=processed)

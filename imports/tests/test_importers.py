@@ -250,6 +250,15 @@ class XlsxTransactionImporterTests(SimpleTestCase):
         file_obj.seek(0)
         return file_obj
 
+    def _xlsx_file_from_sheet_xml(self, sheet_xml):
+        """Monta um XLSX minimo a partir do XML da primeira planilha."""
+
+        file_obj = BytesIO()
+        with ZipFile(file_obj, "w", ZIP_DEFLATED) as archive:
+            archive.writestr("xl/worksheets/sheet1.xml", sheet_xml)
+        file_obj.seek(0)
+        return file_obj
+
     def test_parse_valid_xlsx_with_income_and_expense(self):
         """Deve ler XLSX simples preservando o tipo sugerido."""
 
@@ -277,6 +286,36 @@ class XlsxTransactionImporterTests(SimpleTestCase):
 
         with self.assertRaisesMessage(ValueError, "XLSX sem colunas obrigatórias"):
             XlsxTransactionImporter().parse(file_obj)
+
+    def test_parse_xlsx_preserves_empty_cells_by_reference(self):
+        """Deve preservar colunas quando uma celula vazia e omitida no XML."""
+
+        sheet_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            "<sheetData>"
+            '<row r="1">'
+            '<c r="A1" t="inlineStr"><is><t>date</t></is></c>'
+            '<c r="B1" t="inlineStr"><is><t>description</t></is></c>'
+            '<c r="C1" t="inlineStr"><is><t>amount</t></is></c>'
+            '<c r="D1" t="inlineStr"><is><t>external_id</t></is></c>'
+            "</row>"
+            '<row r="2">'
+            '<c r="A2" t="inlineStr"><is><t>2026-05-10</t></is></c>'
+            '<c r="C2" t="inlineStr"><is><t>-87.45</t></is></c>'
+            '<c r="D2" t="inlineStr"><is><t>FIT123</t></is></c>'
+            "</row>"
+            "</sheetData>"
+            "</worksheet>"
+        )
+
+        rows = XlsxTransactionImporter().parse(
+            self._xlsx_file_from_sheet_xml(sheet_xml)
+        )
+
+        self.assertEqual(rows[0].raw_description, "")
+        self.assertEqual(rows[0].amount, Decimal("87.45"))
+        self.assertEqual(rows[0].external_id, "FIT123")
 
 
 class OfxTransactionImporterTests(SimpleTestCase):
