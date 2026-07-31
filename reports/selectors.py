@@ -11,6 +11,7 @@ from django.db.models.functions import ExtractYear
 
 from accounts.models import FinancialAccount
 from cards.models import CardStatement
+from categories.selectors import get_categories_at_risk
 from goals.models import MonthlyGoal
 from transactions.models import Transaction
 
@@ -262,7 +263,7 @@ def get_monthly_dashboard(*, year: int, month: int, range_months: int = 12):
     income_total = get_monthly_income_total(year=year, month=month)
     expense_total = get_monthly_expense_total(year=year, month=month)
     
-    return{
+    return {
         "year": year,
         "month": month,
         "range_months": _normalize_range_months(range_months),
@@ -287,7 +288,8 @@ def get_monthly_dashboard(*, year: int, month: int, range_months: int = 12):
         "category_expense_share": get_category_expense_share(year=year, month=month),
         "net_worth": get_account_net_worth(),
         "card_statements": get_card_statements(year=year, month=month),
-        "goal_summary": get_goal_summary(year=year, month=month)
+        "goal_summary": get_goal_summary(year=year, month=month),
+        "categories_at_risk": list(get_categories_at_risk(date(year, month, 1))),
     }
 
 
