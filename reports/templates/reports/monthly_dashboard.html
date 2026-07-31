@@ -186,6 +186,40 @@
                 <p class="empty">Nenhuma meta mensal no período.</p>
             {% endif %}
         </section>
+
+        <section class="panel">
+            <h2>Limites sob atenção</h2>
+            {% if categories_at_risk %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Categoria</th>
+                                <th class="cell-status">Status</th>
+                                <th class="cell-amount">Progresso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in categories_at_risk %}
+                                <tr>
+                                    <td>{{ category.name }}</td>
+                                    <td class="cell-status">
+                                        {% if category.limit_status == "exceeded" %}
+                                            <span class="badge badge-danger">Excedido</span>
+                                        {% else %}
+                                            <span class="badge badge-warning">Em risco</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="cell-amount">{{ category.monthly_spent|brl }} de {{ category.limit_amount|brl }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="empty">Nenhum limite sob atenção no período.</p>
+            {% endif %}
+        </section>
     </div>
 
     {{ chartjs_payload|json_script:"dashboard-chart-data" }}
