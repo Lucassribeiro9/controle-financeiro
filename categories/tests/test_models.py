@@ -35,3 +35,26 @@ class CategoryModelTests(TestCase):
         child = Category.objects.create(name="Aluguel", parent=parent)
 
         self.assertEqual(child.parent, parent)
+
+    def test_create_category_with_valid_icon_and_color(self):
+        """Deve permitir criar categoria com icone e cor validos."""
+        # Using raw string values that will be valid
+        category = Category.objects.create(
+            name="Alimentacao",
+            icon="home",
+            color="blue"
+        )
+        self.assertEqual(category.icon, "home")
+        self.assertEqual(category.color, "blue")
+
+    def test_category_raises_error_with_invalid_icon(self):
+        """Deve levantar erro de validacao com icone fora dos presets."""
+        category = Category(name="Alimentacao", icon="invalid-icon")
+        with self.assertRaises(Exception):
+            category.full_clean()
+
+    def test_category_raises_error_with_invalid_color(self):
+        """Deve levantar erro de validacao com cor fora dos presets."""
+        category = Category(name="Alimentacao", color="invalid-color")
+        with self.assertRaises(Exception):
+            category.full_clean()
