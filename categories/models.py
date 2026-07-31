@@ -56,3 +56,26 @@ class Category(models.Model):
         """Retorna o nome amigavel da categoria."""
 
         return self.name
+
+    @property
+    def limit_progress_percent(self):
+        """Calcula a porcentagem de uso do limite de gastos."""
+        limit = getattr(self, "limit_amount", None)
+        if limit is None or limit <= 0:
+            return None
+        spent = getattr(self, "monthly_spent", 0) or 0
+        return (spent / limit) * 100
+
+    @property
+    def limit_status(self):
+        """Classifica a tendencia/status de uso do limite."""
+        percent = self.limit_progress_percent
+        if percent is None:
+            return None
+        if percent < 80:
+            return "ok"
+        elif percent < 100:
+            return "at_risk"
+        else:
+            return "exceeded"
+

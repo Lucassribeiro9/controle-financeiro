@@ -35,10 +35,21 @@
                             <td>{{ category.parent|default:"Categoria raiz" }}</td>
                             <td>{{ category.children_count }}</td>
                             <td>
-                                {% if category.monthly_spent %}
-                                    R$ {{ category.monthly_spent|floatformat:2 }}
+                                {% if category.limit_amount %}
+                                    R$ {{ category.monthly_spent|floatformat:2 }} / R$ {{ category.limit_amount|floatformat:2 }}
+                                    {% if category.limit_status == "ok" %}
+                                        <span class="badge badge-success">OK</span>
+                                    {% elif category.limit_status == "at_risk" %}
+                                        <span class="badge badge-warning">Em risco</span>
+                                    {% elif category.limit_status == "exceeded" %}
+                                        <span class="badge badge-danger">Excedido</span>
+                                    {% endif %}
                                 {% else %}
-                                    <span class="muted">R$ 0,00</span>
+                                    {% if category.monthly_spent %}
+                                        R$ {{ category.monthly_spent|floatformat:2 }}
+                                    {% else %}
+                                        <span class="muted">R$ 0,00</span>
+                                    {% endif %}
                                 {% endif %}
                             </td>
                             <td>
