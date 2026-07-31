@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from accounts.models import FinancialAccount
 from categories.models import Category
+from goals.models import Goal, MonthlyGoal
 from institutions.models import Institution
 from transactions.models import Transaction
 
@@ -177,6 +178,49 @@ class CategoryViewTests(TestCase):
         )
         self.assertEqual(cat_in_context.monthly_spent, Decimal("250.00"))
         self.assertContains(response, "Gasto (mês)")
+
+    def test_category_list_renders_limit_badge(self):
+        """Deve renderizar o badge de status do limite correspondente."""
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        category = Category.objects.create(name="Lazer")
+        
+        goal = Goal.objects.create(
+            name="Limite Lazer",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date.today(),
+            category=category,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=date.today().year,
+            month=date.today().month,
+            target_amount=Decimal("500.00"),
+        )
+        
+        # Excedido: 510.00 / 500.00 (>= 100%)
+        Transaction.objects.create(
+            description="Cinema",
+            amount=Decimal("510.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=account,
+            category=category,
+            date=date.today(),
+        )
+
+        response = self.client.get(reverse("categories:list"))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "badge-danger")
+        self.assertContains(response, "Excedido")
+        self.assertContains(response, "R$ 510,00 / R$ 500,00")
 
 
 class CategoryCreateGoalViewTests(TestCase):

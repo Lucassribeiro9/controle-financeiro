@@ -8,6 +8,7 @@ from django.test import TestCase
 from accounts.models import FinancialAccount
 from categories.models import Category
 from categories.selectors import get_categories_with_monthly_spent
+from goals.models import Goal, MonthlyGoal
 from institutions.models import Institution
 from transactions.models import Transaction
 
@@ -177,3 +178,133 @@ class CategoryMonthlySpentSelectorTests(TestCase):
         food = next(c for c in result if c.name == "Alimentacao")
 
         self.assertEqual(food.monthly_spent, Decimal("105.00"))
+
+    def test_selector_annotates_limit_amount(self):
+        """Deve anotar o limit_amount correto vindo do MonthlyGoal."""
+        goal = Goal.objects.create(
+            name="Limite Lazer",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date(2026, 7, 1),
+            category=self.cat_transport,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=2026,
+            month=7,
+            target_amount=Decimal("400.00"),
+        )
+
+        result = get_categories_with_monthly_spent(self.reference_date)
+        transport = next(c for c in result if c.name == "Transporte")
+
+        self.assertEqual(transport.limit_amount, Decimal("400.00"))
+
+    def test_limit_status_calculates_ok(self):
+        """Garante status 'ok' quando o gasto esta abaixo de 80% do limite."""
+        goal = Goal.objects.create(
+            name="Limite Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date(2026, 7, 1),
+            category=self.cat_food,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=2026,
+            month=7,
+            target_amount=Decimal("500.00"),
+        )
+
+        # 399.00 / 500.00 = 79.8% (< 80%)
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("399.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.cat_food,
+            date=date(2026, 7, 10),
+        )
+
+        result = get_categories_with_monthly_spent(self.reference_date)
+        food = next(c for c in result if c.name == "Alimentacao")
+
+        self.assertEqual(food.limit_status, "ok")
+        self.assertEqual(food.limit_progress_percent, Decimal("79.8"))
+
+    def test_limit_status_calculates_at_risk(self):
+        """Garante status 'at_risk' quando o gasto esta entre 80% e < 100% do limite."""
+        goal = Goal.objects.create(
+            name="Limite Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date(2026, 7, 1),
+            category=self.cat_food,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=2026,
+            month=7,
+            target_amount=Decimal("500.00"),
+        )
+
+        # 400.00 / 500.00 = 80.0% (entre 80% e < 100%)
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("400.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.cat_food,
+            date=date(2026, 7, 10),
+        )
+
+        result = get_categories_with_monthly_spent(self.reference_date)
+        food = next(c for c in result if c.name == "Alimentacao")
+
+        self.assertEqual(food.limit_status, "at_risk")
+        self.assertEqual(food.limit_progress_percent, Decimal("80.0"))
+
+    def test_limit_status_calculates_exceeded(self):
+        """Garante status 'exceeded' quando o gasto esta >= 100% do limite."""
+        goal = Goal.objects.create(
+            name="Limite Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date(2026, 7, 1),
+            category=self.cat_food,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=2026,
+            month=7,
+            target_amount=Decimal("500.00"),
+        )
+
+        # 500.00 / 500.00 = 100.0% (>= 100%)
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("500.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.cat_food,
+            date=date(2026, 7, 10),
+        )
+
+        result = get_categories_with_monthly_spent(self.reference_date)
+        food = next(c for c in result if c.name == "Alimentacao")
+
+        self.assertEqual(food.limit_status, "exceeded")
+        self.assertEqual(food.limit_progress_percent, Decimal("100.0"))
+
+    def test_limit_status_is_none_when_no_limit(self):
+        """Garante que limit_amount e limit_status sao None quando nao ha limite cadastrado."""
+        result = get_categories_with_monthly_spent(self.reference_date)
+        transport = next(c for c in result if c.name == "Transporte")
+
+        self.assertIsNone(transport.limit_amount)
+        self.assertIsNone(transport.limit_status)
+        self.assertIsNone(transport.limit_progress_percent)
+
