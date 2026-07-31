@@ -177,3 +177,81 @@ class CategoryViewTests(TestCase):
         )
         self.assertEqual(cat_in_context.monthly_spent, Decimal("250.00"))
         self.assertContains(response, "Gasto (mês)")
+
+
+class CategoryCreateGoalViewTests(TestCase):
+    """Garante o fluxo de criacao de meta mensal a partir de categoria."""
+
+    def setUp(self):
+        """Cria categoria base para os testes de view."""
+
+        self.category = Category.objects.create(name="Alimentacao")
+
+    def test_get_create_goal_form_returns_200(self):
+        """Deve renderizar o formulario de criacao de meta mensal."""
+
+        response = self.client.get(
+            reverse("categories:create_goal", kwargs={"category_id": self.category.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "categories/create_goal.html")
+        self.assertContains(response, "Alimentacao")
+
+    def test_post_create_goal_success_redirects(self):
+        """POST valido deve redirecionar para a lista de categorias."""
+
+        import datetime
+
+        today = datetime.date.today()
+
+        response = self.client.post(
+            reverse("categories:create_goal", kwargs={"category_id": self.category.id}),
+            data={
+                "target_amount": "300.00",
+                "year": today.year,
+                "month": today.month,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("categories:list"))
+
+    def test_post_create_goal_success_shows_message(self):
+        """POST valido deve exibir mensagem de sucesso apos redirect."""
+
+        import datetime
+
+        today = datetime.date.today()
+
+        response = self.client.post(
+            reverse("categories:create_goal", kwargs={"category_id": self.category.id}),
+            data={
+                "target_amount": "300.00",
+                "year": today.year,
+                "month": today.month,
+            },
+            follow=True,
+        )
+
+        messages_list = list(response.context["messages"])
+        self.assertTrue(len(messages_list) > 0)
+
+    def test_post_create_goal_invalid_amount_shows_error(self):
+        """POST com valor zero deve retornar 200 com erro no form."""
+
+        import datetime
+
+        today = datetime.date.today()
+
+        response = self.client.post(
+            reverse("categories:create_goal", kwargs={"category_id": self.category.id}),
+            data={
+                "target_amount": "0.00",
+                "year": today.year,
+                "month": today.month,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "categories/create_goal.html")

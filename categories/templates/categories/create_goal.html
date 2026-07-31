@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Meta Mensal - {{ category.name }} - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Meta mensal de redução</h1>
+            <p class="muted">Defina um limite de gasto mensal para a categoria <strong>{{ category.name }}</strong>.</p>
+        </div>
+    </header>
+
+    <section class="panel page-section">
+        <form class="form-grid" method="post">
+            {% csrf_token %}
+
+            {% if error %}
+                <div class="app-message">
+                    <p>{{ error }}</p>
+                </div>
+            {% endif %}
+
+            <label class="form-field" for="id_target_amount">
+                <span>Valor limite (R$)</span>
+                <input
+                    type="number"
+                    id="id_target_amount"
+                    name="target_amount"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="Ex: 500.00"
+                    required
+                >
+            </label>
+
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+
+            <div class="action-row">
+                <button class="button" type="submit">Criar meta</button>
+                <a class="button button-secondary" href="{% url 'categories:list' %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

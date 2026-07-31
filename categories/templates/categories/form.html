@@ -36,4 +36,15 @@
             </div>
         </form>
     </section>
+
+    {% if category %}
+        <section class="panel page-section">
+            <div class="action-row">
+                <a class="button button-secondary" href="{% url 'categories:create_goal' category.id %}">
+                    Criar meta mensal
+                </a>
+            </div>
+        </section>
+    {% endif %}
 {% endblock %}
+

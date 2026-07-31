@@ -1,10 +1,16 @@
 """Views do app categories."""
 
+import datetime
+from decimal import Decimal
+
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+
+from goals.services import create_reduction_goal_for_category
 
 from .forms import CategoryForm
 from .models import Category
@@ -75,5 +81,45 @@ def category_update_page(request: HttpRequest, category_id: int) -> HttpResponse
             "category": category,
             "form_title": "Editar categoria",
             "submit_label": "Salvar alterações",
+        },
+    )
+
+
+def category_create_goal_page(request: HttpRequest, category_id: int) -> HttpResponse:
+    """Renderiza e processa o formulario de criacao de meta mensal por categoria."""
+
+    category = get_object_or_404(Category, pk=category_id)
+    today = datetime.date.today()
+    error = None
+
+    if request.method == "POST":
+        raw_amount = request.POST.get("target_amount", "").strip()
+        year = int(request.POST.get("year", today.year))
+        month = int(request.POST.get("month", today.month))
+
+        try:
+            target_amount = Decimal(raw_amount)
+            create_reduction_goal_for_category(
+                category=category,
+                year=year,
+                month=month,
+                target_amount=target_amount,
+            )
+            messages.success(
+                request,
+                f"Meta mensal de R$ {target_amount:.2f} criada para '{category.name}'.",
+            )
+            return redirect("categories:list")
+        except (ValidationError, Exception) as exc:
+            error = exc
+
+    return render(
+        request,
+        "categories/create_goal.html",
+        {
+            "category": category,
+            "year": today.year,
+            "month": today.month,
+            "error": error,
         },
     )

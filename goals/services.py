@@ -1,8 +1,11 @@
+from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Sum
 
+from categories.models import Category
 from transactions.models import Transaction
 
 from .models import Goal, MonthlyGoal
@@ -154,3 +157,43 @@ def update_monthly_goal_status(monthly_goal: MonthlyGoal) -> MonthlyGoal:
     monthly_goal.save(update_fields=["current_amount", "status"])
 
     return monthly_goal
+
+
+@transaction.atomic
+def create_reduction_goal_for_category(
+    *,
+    category: Category,
+    year: int,
+    month: int,
+    target_amount: Decimal,
+) -> MonthlyGoal:
+    """Cria ou reutiliza Goal de reducao para categoria e gera MonthlyGoal.
+
+    Regras:
+    - Um unico Goal de reducao por categoria (get_or_create).
+    - Um MonthlyGoal por ano/mes (unique_together no model).
+    - Valor negativo ou zero e invalido.
+    - Transacao atomica: se MonthlyGoal falhar, Goal nao e persistido.
+    """
+
+    if target_amount <= Decimal("0.00"):
+        raise ValidationError(
+            {"target_amount": "O valor da meta deve ser positivo."}
+        )
+
+    goal, _ = Goal.objects.get_or_create(
+        goal_type=Goal.GoalType.REDUCTION,
+        category=category,
+        defaults={
+            "name": f"Limite - {category.name}",
+            "target_amount": target_amount,
+            "start_date": date.today(),
+        },
+    )
+
+    return create_monthly_goal_from_goal(
+        goal=goal,
+        year=year,
+        month=month,
+        target_amount=target_amount,
+    )

@@ -14,4 +14,9 @@ urlpatterns = [
         views.category_update_page,
         name="update",
     ),
+    path(
+        "categories/<int:category_id>/create-goal/",
+        views.category_create_goal_page,
+        name="create_goal",
+    ),
 ]
