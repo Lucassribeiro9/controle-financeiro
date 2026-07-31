@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.db import models
-from django.db.models import Q, QuerySet, Sum, Subquery, OuterRef
+from django.db.models import Q, QuerySet, Sum, Subquery, OuterRef, ExpressionWrapper, F
 from django.db.models.functions import Coalesce
 
 from categories.models import Category
@@ -62,4 +62,17 @@ def get_categories_with_monthly_spent(
             ),
         )
     )
+
+
+def get_categories_at_risk(reference_date: date) -> QuerySet[Category]:
+    """Retorna categorias que estao em risco (>=80% do limite) ou excedidas."""
+    limit_at_risk_expression = ExpressionWrapper(
+        F("limit_amount") * Decimal("0.80"),
+        output_field=models.DecimalField(max_digits=14, decimal_places=2),
+    )
+    return get_categories_with_monthly_spent(reference_date).filter(
+        limit_amount__isnull=False,
+        monthly_spent__gte=limit_at_risk_expression,
+    )
+
 

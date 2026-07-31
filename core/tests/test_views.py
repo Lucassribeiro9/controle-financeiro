@@ -9,10 +9,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import FinancialAccount
-from cards.models import Card
-from cards.models import CardStatement
-from goals.models import Goal
-from goals.models import MonthlyGoal
+from cards.models import Card, CardStatement
+from categories.models import Category
+from goals.models import Goal, MonthlyGoal
 from imports.models import ImportedTransaction
 from insights.models import Insight
 from institutions.models import Institution
@@ -336,3 +335,56 @@ class HomeViewTests(TestCase):
         self.assertContains(response, reverse("imports:review-page"))
         self.assertContains(response, "Ver faturas")
         self.assertContains(response, reverse("cards:statements"))
+
+    def test_home_shows_categories_at_risk(self):
+        """A home deve listar categorias em risco no mes atual."""
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        category = Category.objects.create(name="Lazer")
+        
+        goal = Goal.objects.create(
+            name="Limite Lazer",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date.today(),
+            category=category,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=date.today().year,
+            month=date.today().month,
+            target_amount=Decimal("500.00"),
+        )
+        
+        # Gasto de 410.00 (82% -> em risco)
+        Transaction.objects.create(
+            description="Cinema",
+            amount=Decimal("410.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=account,
+            category=category,
+            date=date.today(),
+        )
+
+        response = self.client.get(reverse("core:home"))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Limites de gastos")
+        self.assertContains(response, "Lazer")
+        self.assertContains(response, "Em risco")
+        self.assertContains(response, "R$ 410,00 de R$ 500,00")
+
+    def test_home_shows_empty_categories_at_risk_state(self):
+        """A home deve exibir mensagem de sucesso quando nao ha limites em risco."""
+        response = self.client.get(reverse("core:home"))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Excelente! Todos os limites sob controle.")
+        self.assertContains(response, reverse("categories:list"))
+

@@ -7,7 +7,10 @@ from django.test import TestCase
 
 from accounts.models import FinancialAccount
 from categories.models import Category
-from categories.selectors import get_categories_with_monthly_spent
+from categories.selectors import (
+    get_categories_with_monthly_spent,
+    get_categories_at_risk,
+)
 from goals.models import Goal, MonthlyGoal
 from institutions.models import Institution
 from transactions.models import Transaction
@@ -307,4 +310,63 @@ class CategoryMonthlySpentSelectorTests(TestCase):
         self.assertIsNone(transport.limit_amount)
         self.assertIsNone(transport.limit_status)
         self.assertIsNone(transport.limit_progress_percent)
+
+    def test_get_categories_at_risk_returns_only_above_80_percent(self):
+        """get_categories_at_risk deve retornar apenas categorias >= 80% do limite."""
+        goal_food = Goal.objects.create(
+            name="Limite Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date(2026, 7, 1),
+            category=self.cat_food,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal_food,
+            year=2026,
+            month=7,
+            target_amount=Decimal("500.00"),
+        )
+        
+        goal_transport = Goal.objects.create(
+            name="Limite Transporte",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("200.00"),
+            start_date=date(2026, 7, 1),
+            category=self.cat_transport,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal_transport,
+            year=2026,
+            month=7,
+            target_amount=Decimal("200.00"),
+        )
+
+        # Alimentacao gastou 400.00 (80% - at_risk) -> deve retornar
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("400.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.cat_food,
+            date=date(2026, 7, 10),
+        )
+
+        # Transporte gastou 100.00 (50% - ok) -> nao deve retornar
+        Transaction.objects.create(
+            description="Combustivel",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.cat_transport,
+            date=date(2026, 7, 10),
+        )
+
+        result = get_categories_at_risk(self.reference_date)
+        result_list = list(result)
+
+        self.assertEqual(len(result_list), 1)
+        self.assertEqual(result_list[0].name, "Alimentacao")
+
 
