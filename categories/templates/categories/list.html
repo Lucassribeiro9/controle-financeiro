@@ -20,6 +20,7 @@
                         <th>Categoria</th>
                         <th>Categoria pai</th>
                         <th>Subcategorias</th>
+                        <th>Gasto (mês)</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -33,6 +34,13 @@
                             </td>
                             <td>{{ category.parent|default:"Categoria raiz" }}</td>
                             <td>{{ category.children_count }}</td>
+                            <td>
+                                {% if category.monthly_spent %}
+                                    R$ {{ category.monthly_spent|floatformat:2 }}
+                                {% else %}
+                                    <span class="muted">R$ 0,00</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 <span class="status">
                                     {% if category.is_active %}Ativa{% else %}Inativa{% endif %}

@@ -1,9 +1,15 @@
 """Tests das views do app categories."""
 
+from datetime import date
+from decimal import Decimal
+
 from django.test import TestCase
 from django.urls import reverse
 
+from accounts.models import FinancialAccount
 from categories.models import Category
+from institutions.models import Institution
+from transactions.models import Transaction
 
 
 class CategoryViewTests(TestCase):
@@ -140,3 +146,34 @@ class CategoryViewTests(TestCase):
         # Deve mostrar o erro do choice
         self.assertContains(response, "Faça uma escolha válida.")
         self.assertEqual(Category.objects.filter(name="Lazer").count(), 0)
+
+    def test_category_list_shows_monthly_spent(self):
+        """Deve exibir o gasto mensal por categoria na listagem."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        category = Category.objects.create(name="Alimentacao")
+
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=account,
+            category=category,
+            date=date.today(),
+        )
+
+        response = self.client.get(reverse("categories:list"))
+
+        self.assertEqual(response.status_code, 200)
+        cat_in_context = next(
+            c for c in response.context["categories"] if c.name == "Alimentacao"
+        )
+        self.assertEqual(cat_in_context.monthly_spent, Decimal("250.00"))
+        self.assertContains(response, "Gasto (mês)")

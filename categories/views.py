@@ -4,16 +4,18 @@ from django.contrib import messages
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from .forms import CategoryForm
 from .models import Category
+from .selectors import get_categories_with_monthly_spent
 
 
 def category_list_page(request: HttpRequest) -> HttpResponse:
     """Renderiza a lista de categorias e subcategorias."""
 
     categories = (
-        Category.objects.select_related("parent")
+        get_categories_with_monthly_spent(timezone.localdate())
         .annotate(children_count=Count("children"))
         .order_by("parent__name", "name")
     )
