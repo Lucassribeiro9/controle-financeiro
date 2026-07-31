@@ -122,3 +122,21 @@ class CategoryViewTests(TestCase):
         self.assertTemplateUsed(response, "categories/form.html")
         self.assertContains(response, "Já existe uma categoria com este nome.")
         self.assertEqual(Category.objects.count(), 1)
+
+    def test_post_invalid_icon_color_shows_form_error(self):
+        """Deve impedir a criacao com icone ou cor invalidos."""
+        response = self.client.post(
+            reverse("categories:create"),
+            data={
+                "name": "Lazer",
+                "parent": "",
+                "icon": "invalid-icon",
+                "color": "invalid-color",
+                "is_active": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "categories/form.html")
+        # Deve mostrar o erro do choice
+        self.assertContains(response, "Faça uma escolha válida.")
+        self.assertEqual(Category.objects.filter(name="Lazer").count(), 0)

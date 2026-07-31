@@ -10,10 +10,12 @@ class CategoryForm(forms.ModelForm):
 
     class Meta:
         model = Category
-        fields = ["name", "parent", "is_active"]
+        fields = ["name", "parent", "icon", "color", "is_active"]
         labels = {
             "name": "Nome",
             "parent": "Categoria pai",
+            "icon": "Ícone",
+            "color": "Cor",
             "is_active": "Ativa",
         }
 
