@@ -118,6 +118,37 @@
         {% endif %}
     </section>
 
+    <section class="home-limits" aria-labelledby="home-limits-title">
+        <div class="home-section-header">
+            <div>
+                <h2 id="home-limits-title">Limites de gastos</h2>
+                <p class="muted">Categorias que exigem atenção ou excederam o limite no mês atual.</p>
+            </div>
+        </div>
+
+        {% if categories_at_risk %}
+            <div class="home-alert-list">
+                {% for category in categories_at_risk %}
+                    <a class="home-alert-card {% if category.limit_status == 'exceeded' %}home-alert-card-high{% else %}home-alert-card-medium{% endif %}" href="{% url 'categories:list' %}">
+                        <div>
+                            {% if category.limit_status == "exceeded" %}
+                                {% include "partials/status_badge.html" with status="late" label="Excedido" %}
+                            {% else %}
+                                {% include "partials/status_badge.html" with status="pending" label="Em risco" %}
+                            {% endif %}
+                            <strong>{{ category.name }}</strong>
+                        </div>
+                        <span class="home-alert-value">
+                            {{ category.monthly_spent|brl }} de {{ category.limit_amount|brl }}
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            {% include "partials/empty_state.html" with title=empty_states.categories_at_risk.title description="Nada exige atenção imediata agora." cta_label=empty_states.categories_at_risk.cta_label cta_url=empty_states.categories_at_risk.cta_url %}
+        {% endif %}
+    </section>
+
     <section class="home-pending" aria-labelledby="home-pending-title">
         <div class="home-section-header">
             <div>

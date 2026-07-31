@@ -44,7 +44,14 @@ class OperationalHomeSelectorTests(TestCase):
 
         self.assertEqual(
             set(context.keys()),
-            {"summary", "alerts", "pending_items", "quick_actions", "empty_states"},
+            {
+                "summary",
+                "alerts",
+                "pending_items",
+                "quick_actions",
+                "empty_states",
+                "categories_at_risk",
+            },
         )
         self.assertEqual(context["summary"]["period"], {"year": 2026, "month": 5})
         self.assertEqual(context["summary"]["realized"]["income"], Decimal("0.00"))
@@ -54,9 +61,12 @@ class OperationalHomeSelectorTests(TestCase):
         self.assertEqual(context["summary"]["transfers"], Decimal("0.00"))
         self.assertEqual(context["alerts"], [])
         self.assertEqual(context["pending_items"], [])
+        self.assertEqual(context["categories_at_risk"], [])
         self.assertTrue(context["empty_states"]["summary"]["is_empty"])
         self.assertTrue(context["empty_states"]["alerts"]["is_empty"])
         self.assertTrue(context["empty_states"]["pending_items"]["is_empty"])
+        self.assertTrue(context["empty_states"]["categories_at_risk"]["is_empty"])
+
 
     def test_month_summary_separates_realized_pending_and_forecasted_values(self):
         """Deve separar realizados, pendentes e previstos no resumo mensal."""

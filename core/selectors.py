@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from cards.models import CardStatement
+from categories.selectors import get_categories_at_risk
 from goals.models import MonthlyGoal
 from imports.models import ImportedTransaction
 from insights.models import Insight
@@ -35,10 +36,12 @@ def get_operational_home_context(*, today=None) -> dict:
     alerts = _build_alerts(today=reference_date, year=year, month=month)
     pending_items = _build_pending_items(year=year, month=month)
     quick_actions = _build_quick_actions()
+    categories_at_risk = list(get_categories_at_risk(reference_date))
     empty_states = _build_empty_states(
         summary=summary,
         alerts=alerts,
         pending_items=pending_items,
+        categories_at_risk=categories_at_risk,
     )
 
     return {
@@ -46,6 +49,7 @@ def get_operational_home_context(*, today=None) -> dict:
         "alerts": alerts,
         "pending_items": pending_items,
         "quick_actions": quick_actions,
+        "categories_at_risk": categories_at_risk,
         "empty_states": empty_states,
     }
 
@@ -394,6 +398,7 @@ def _build_empty_states(
     summary: dict,
     alerts: list[dict],
     pending_items: list[dict],
+    categories_at_risk: list,
 ) -> dict:
     """Monta estados vazios com CTAs para os blocos da home."""
 
@@ -416,7 +421,14 @@ def _build_empty_states(
             "cta_label": "Ver recorrencias",
             "cta_url": reverse("recurrences:forecasts-filter-page"),
         },
+        "categories_at_risk": {
+            "is_empty": len(categories_at_risk) == 0,
+            "title": "Excelente! Todos os limites sob controle.",
+            "cta_label": "Ver categorias",
+            "cta_url": reverse("categories:list"),
+        },
     }
+
 
 
 def _is_summary_empty(summary: dict) -> bool:
