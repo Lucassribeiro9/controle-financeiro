@@ -59,6 +59,36 @@ Este arquivo roteia os agentes do repositorio e define quando usar cada um.
   - `.agents/mermaid/skills/mermaid-diagrams/SKILL.md`
   - `.agents/mermaid/skills/pretty-mermaid/SKILL.md`
 
+### django-developer (django)
+- Path: *(Sem AGENT.md - Orientado por Skills)*
+- Quando usar:
+  - Implementar features no projeto Controle Financeiro (models, views, forms, templates).
+  - Revisar código, PRs, diffs e regras de negócio com foco financeiro e na arquitetura Django local.
+- Skills associadas:
+  - `.agents/controle-financeiro-python-django/SKILL.md`
+  - `.agents/controle-financeiro-code-review/SKILL.md`
+
+### software-engineer-workflow (global)
+- Path: *(Skills globais)*
+- Quando usar:
+  - Levantar requisitos e explorar intenção do usuário (`brainstorming`).
+  - Refinar e estressar o design e plano arquitetural (`grill-me`).
+  - Criar especificações de software antes do código (`spec-driven-development`).
+  - Desenvolver testes orientados a comportamento (red-green-refactor) (`tdd`).
+  - Adotar direção estética opinativa e design visual autêntico para UIs (`frontend-design`).
+- Skills associadas:
+  - `.agents/brainstorming/SKILL.md`
+  - `.agents/grill-me/SKILL.md`
+  - `.agents/spec-driven-development/SKILL.md`
+  - `.agents/tdd/SKILL.md`
+  - `.agents/frontend-design/SKILL.md`
+
+## Fluxo recomendado (django e core development)
+1. Rodar `spec-driven-development` se os requisitos estiverem vagos (ou `brainstorming`).
+2. Estressar e validar o plano/design inicial utilizando `grill-me`.
+3. Escrever o código guiado por `tdd`, focando nas interfaces e regras de negócios via services.
+4. Antes de abrir PR, realizar uma checagem local invocando `controle-financeiro-code-review`.
+
 ## Fluxo recomendado (github)
 1. Abrir issue no template correto em `.github/ISSUE_TEMPLATE/`.
 2. Criar branch conforme `.github/BRANCHING.md`.
