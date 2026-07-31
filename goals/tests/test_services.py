@@ -12,6 +12,7 @@ from goals.models import Goal, MonthlyGoal
 from goals.services import (
     calculate_goal_progress,
     create_monthly_goal_from_goal,
+    create_reduction_goal_for_category,
     update_monthly_goal_status,
 )
 from institutions.models import Institution
@@ -243,3 +244,93 @@ class GoalServiceTests(TestCase):
 
         self.assertEqual(updated.current_amount, Decimal("260.00"))
         self.assertEqual(updated.status, MonthlyGoal.Status.MISSED)
+
+
+class CreateReductionGoalForCategoryTests(TestCase):
+    """Garante o service de criacao de meta de reducao por categoria."""
+
+    def setUp(self):
+        """Cria categoria base."""
+
+        self.category = Category.objects.create(name="Alimentacao")
+
+    def test_creates_goal_and_monthly_goal(self):
+        """Deve criar Goal de reducao e MonthlyGoal vinculados a categoria."""
+
+        monthly_goal = create_reduction_goal_for_category(
+            category=self.category,
+            year=2026,
+            month=7,
+            target_amount=Decimal("500.00"),
+        )
+
+        self.assertIsInstance(monthly_goal, MonthlyGoal)
+        self.assertEqual(monthly_goal.goal.goal_type, Goal.GoalType.REDUCTION)
+        self.assertEqual(monthly_goal.goal.category, self.category)
+        self.assertEqual(monthly_goal.year, 2026)
+        self.assertEqual(monthly_goal.month, 7)
+        self.assertEqual(monthly_goal.target_amount, Decimal("500.00"))
+
+    def test_reuses_existing_goal_for_same_category(self):
+        """Segunda chamada nao deve criar novo Goal para a mesma categoria."""
+
+        create_reduction_goal_for_category(
+            category=self.category,
+            year=2026,
+            month=6,
+            target_amount=Decimal("400.00"),
+        )
+        create_reduction_goal_for_category(
+            category=self.category,
+            year=2026,
+            month=7,
+            target_amount=Decimal("500.00"),
+        )
+
+        self.assertEqual(
+            Goal.objects.filter(
+                goal_type=Goal.GoalType.REDUCTION, category=self.category
+            ).count(),
+            1,
+        )
+        self.assertEqual(MonthlyGoal.objects.count(), 2)
+
+    def test_rejects_zero_amount(self):
+        """Deve levantar ValidationError para valor zero."""
+
+        with self.assertRaises(ValidationError):
+            create_reduction_goal_for_category(
+                category=self.category,
+                year=2026,
+                month=7,
+                target_amount=Decimal("0.00"),
+            )
+
+    def test_rejects_negative_amount(self):
+        """Deve levantar ValidationError para valor negativo."""
+
+        with self.assertRaises(ValidationError):
+            create_reduction_goal_for_category(
+                category=self.category,
+                year=2026,
+                month=7,
+                target_amount=Decimal("-100.00"),
+            )
+
+    def test_rejects_duplicate_monthly_goal(self):
+        """Deve levantar erro ao criar MonthlyGoal duplicada para o mesmo mes."""
+
+        create_reduction_goal_for_category(
+            category=self.category,
+            year=2026,
+            month=7,
+            target_amount=Decimal("400.00"),
+        )
+
+        with self.assertRaises(Exception):
+            create_reduction_goal_for_category(
+                category=self.category,
+                year=2026,
+                month=7,
+                target_amount=Decimal("500.00"),
+            )
