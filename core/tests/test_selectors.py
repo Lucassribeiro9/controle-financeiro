@@ -147,6 +147,55 @@ class OperationalHomeSelectorTests(TestCase):
         self.assertEqual(summary["forecasted"]["expenses"], Decimal("120.00"))
         self.assertEqual(summary["forecasted"]["net"], Decimal("1380.00"))
 
+    def test_month_summary_includes_card_purchases_in_expenses(self):
+        """Compras no cartao de credito devem aparecer como despesa no resumo."""
+
+        credit_card = Card.objects.create(
+            name="Visa Gold",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=10,
+            payment_account=self.account,
+        )
+        Transaction.objects.create(
+            description="Compra cartao",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PAID,
+            card=credit_card,
+            date=date(2026, 5, 10),
+        )
+
+        summary = get_operational_home_context(today=self.today)["summary"]
+
+        self.assertEqual(summary["realized"]["expenses"], Decimal("350.00"))
+        self.assertEqual(summary["realized"]["net"], Decimal("-350.00"))
+
+    def test_month_summary_includes_benefit_purchases_in_expenses(self):
+        """Compras no cartao de beneficio devem aparecer como despesa no resumo."""
+
+        benefit_card = Card.objects.create(
+            name="Alelo",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("1000.00"),
+        )
+        Transaction.objects.create(
+            description="Compra beneficio",
+            amount=Decimal("150.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=benefit_card,
+            date=date(2026, 5, 12),
+        )
+
+        summary = get_operational_home_context(today=self.today)["summary"]
+
+        self.assertEqual(summary["pending"]["expenses"], Decimal("150.00"))
+        self.assertEqual(summary["pending"]["net"], Decimal("-150.00"))
+
     def test_month_summary_keeps_transfers_out_of_income_and_expenses(self):
         """Transferencias nao devem virar receita ou despesa no resumo."""
 

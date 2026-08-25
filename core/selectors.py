@@ -89,11 +89,24 @@ def _build_transaction_totals(*, year: int, month: int, statuses: list[str]) -> 
         transaction_type=Transaction.TransactionType.EXPENSE,
         statuses=statuses,
     )
+    card_purchases = _sum_transactions(
+        year=year,
+        month=month,
+        transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+        statuses=statuses,
+    )
+    benefit_purchases = _sum_transactions(
+        year=year,
+        month=month,
+        transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+        statuses=statuses,
+    )
+    total_expenses = expenses + card_purchases + benefit_purchases
 
     return {
         "income": income,
-        "expenses": expenses,
-        "net": income - expenses,
+        "expenses": total_expenses,
+        "net": income - total_expenses,
     }
 
 
