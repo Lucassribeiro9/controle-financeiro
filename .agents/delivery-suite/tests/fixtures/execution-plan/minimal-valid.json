@@ -1,0 +1,16 @@
+{
+  "execution_plan": {"schema_version": "1.0", "plan_id": "issue-1", "revision": 1},
+  "issue": {"id": 1, "executable": true},
+  "classification": {"primary": "behavior", "concerns": ["backend"], "executable_unit": true},
+  "execution": {"allowed": true},
+  "workspace": {
+    "branch": {"decision": "required", "base_branch": "main", "suggested_name": "feat/1-example"},
+    "worktree": {"decision": "recommended", "reuse_existing": true}
+  },
+  "capabilities": {"standard": {"domain": ["backend"], "technology": [], "methodology": [], "artifacts": [], "validation": []}, "custom": []},
+  "stages": [
+    {"id": "prepare_workspace", "type": "workspace", "decision": "required", "depends_on": []}
+  ],
+  "approval": {"required": true, "status": "approved", "approved_revision": 1},
+  "next_action": {"type": "execute"}
+}

@@ -1,0 +1,17 @@
+name: capability-resolution
+cases:
+  - capability: tdd
+    available_skills: [tdd]
+    expected:
+      status: resolved
+      provider: {type: skill, name: tdd}
+  - capability: regression-testing
+    available_skills: []
+    expected:
+      status: resolved
+      provider: {type: native}
+  - capability: spec-authoring
+    available_skills: []
+    expected:
+      status: blocked
+      reason: no_provider_available

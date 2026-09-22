@@ -1,0 +1,34 @@
+schema_version: "1.0"
+capabilities:
+  tdd:
+    category: methodology
+    preferred_skills: [tdd]
+    fallback:
+      mode: native
+    required_behavior:
+      - red_before_green
+      - regression_after_green
+  spec-authoring:
+    category: artifact
+    preferred_skills: [spec-driven-development]
+    fallback:
+      mode: block
+    required_behavior: []
+  architecture-diagram:
+    category: artifact
+    preferred_skills: [mermaid-diagrams]
+    fallback:
+      mode: native
+    required_behavior: []
+  readme-maintenance:
+    category: artifact
+    preferred_skills: [documentation-maintenance]
+    fallback:
+      mode: native
+    required_behavior: []
+  regression-testing:
+    category: validation
+    preferred_skills: []
+    fallback:
+      mode: native
+    required_behavior: []

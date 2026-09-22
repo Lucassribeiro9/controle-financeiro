@@ -1,0 +1,12 @@
+name: pr-states
+cases:
+  - input: {state: none, audit: passed}
+    expected: {action: created, state: draft}
+  - input: {state: draft, audit: passed}
+    expected: {action: updated, state: draft}
+  - input: {state: ready}
+    expected: {action: unchanged, demote: false}
+  - input: {state: merged}
+    expected: {action: blocked}
+  - input: {state: closed}
+    expected: {action: blocked}

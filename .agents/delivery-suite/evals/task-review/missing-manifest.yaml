@@ -1,0 +1,11 @@
+name: missing-manifest
+input:
+  manifest: null
+  issue:
+    id: 12
+    title: Fix selector regression
+expected:
+  invariants:
+    - project_context.mode == discovery
+    - review continues with reduced confidence
+    - manifest_suggestions may be emitted

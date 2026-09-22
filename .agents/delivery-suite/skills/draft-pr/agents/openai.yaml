@@ -1,0 +1,3 @@
+interface:
+  display_name: "Draft PR"
+  short_description: "Audit a published branch and create or update its Draft PR"

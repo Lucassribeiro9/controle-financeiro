@@ -1,0 +1,331 @@
+# ============================================================
+# PROJECT MANIFEST - CONTROLE FINANCEIRO
+# ============================================================
+# Contexto estável do projeto para que agents e skills compartilhem
+# as mesmas convenções, fontes canônicas, comandos e regras.
+#
+# Skills sabem COMO executar um processo.
+# Agents sabem QUAL contexto do projeto aplicar.
+# Este manifesto fornece o contexto compartilhado.
+# ============================================================
+
+schema_version: "1.0"
+
+project:
+  name: "controle-financeiro"
+  description: >
+    Aplicativo web local para controle financeiro pessoal com Django.
+    Domínio: finanças pessoais (contas, cartões, faturas, transações,
+    recorrências, objetivos, relatórios, importações, insights, CDI/rendimentos).
+  domain: "financas-pessoais"
+
+repository:
+  provider: "github"
+  default_branch: "main"
+  slug: "lucas/controle-financeiro"
+
+branching:
+  source: ".github/BRANCHING.md"
+  executable_issue_requires_branch: true
+  examples:
+    - "feat/123-nova-funcionalidade"
+    - "fix/456-corrigir-validacao"
+    - "spec/789-atualizar-contrato"
+    - "refactor/111-reorganizar-agentes"
+    - "docs/222-atualizar-readme"
+
+workspace:
+  worktree:
+    default_decision: "recommended"
+    require_when:
+      - "behavioral_change"
+      - "tdd"
+      - "frontend_and_backend"
+      - "database_migration"
+      - "multi_subsystem"
+      - "parallel_execution"
+    root: "../worktrees"
+
+stack:
+  backend:
+    - "python"
+    - "django"
+  frontend:
+    - "html"
+    - "css"
+    - "javascript"
+  infrastructure:
+    - "docker"
+    - "docker-compose"
+    - "github-actions"
+  database:
+    - "sqlite"
+  testing:
+    - "pytest"
+    - "pytest-django"
+
+commands:
+  tests:
+    focused: "python manage.py test {path}"
+    full: "python manage.py test"
+  lint: null
+  typecheck: null
+  build: "docker compose build"
+  run: "docker compose up"
+  migrate: "python manage.py migrate"
+  makemigrations: "python manage.py makemigrations"
+  check: "python manage.py check"
+
+documentation:
+  prd:
+    paths:
+      - "docs/phases/"
+  specs:
+    paths:
+      - "docs/specs/"
+  adr:
+    paths:
+      - "docs/adr/"
+  readme:
+    paths:
+      - "README.md"
+  runbooks:
+    paths: []
+  plans:
+    paths:
+      - "docs/plans/"
+
+canonical_sources:
+  product:
+    - "docs/phases/"
+    - "docs/plans/scope.md"
+    - "docs/plans/controle-financeiro-implementation-plan.md"
+  technical_contracts:
+    - "docs/specs/"
+  workflow:
+    # agent_protocol ainda não existe; mantemos como referência futura
+    agent_protocol: ".github/agent-protocol.json"
+    branching: ".github/BRANCHING.md"
+    pull_request_template: ".github/PULL_REQUEST_TEMPLATE.md"
+    ci: ".github/workflows/ci.yml"
+
+source_precedence:
+  - "prd"
+  - "applicable_spec"
+  - "issue_and_approved_task_review"
+  - "specialized_skill"
+  - "documented_human_fallback"
+
+delivery:
+  task_review:
+    human_approval_required: true
+  execution:
+    autonomy: "controlled"
+    local_deviation_action: "record_and_continue"
+    material_deviation_action: "pause_and_re_review"
+    material_deviation_triggers:
+      - "scope_change"
+      - "public_contract_change"
+      - "unplanned_migration"
+      - "new_security_risk"
+      - "new_blocking_requirement"
+      - "new_subsystem"
+      - "capability_not_planned"
+  draft_pr:
+    audit_plan_vs_execution: true
+    inspect_real_diff: true
+    allow_local_safe_fixes: true
+    material_findings_return_to_execution: true
+
+decision_model:
+  allowed:
+    - "required"
+    - "recommended"
+    - "deferred"
+    - "not_needed"
+  deferred_requires_target: true
+
+capabilities:
+  standard:
+    domain:
+      - "backend"
+      - "frontend"
+      - "api"
+      - "database"
+      - "infrastructure"
+    technology:
+      - "python"
+      - "django"
+      - "html"
+      - "css"
+      - "javascript"
+      - "docker"
+    methodology:
+      - "tdd"
+      - "spec-driven-development"
+    artifacts:
+      - "spec-authoring"
+      - "prd-authoring"
+      - "adr-authoring"
+      - "documentation-maintenance"
+      - "readme-maintenance"
+      - "architecture-diagram"
+    validation:
+      - "unit-testing"
+      - "integration-testing"
+      - "regression-testing"
+      - "e2e-testing"
+      - "visual-validation"
+  custom:
+    - name: "django-financeiro"
+      description: >
+        Conhecimento específico do domínio financeiro implementado no Django:
+        contas, cartões, faturas, transferências, recorrências, objetivos,
+        metas, relatórios, importações (CSV/XLSX/OFX), insights, CDI/rendimentos,
+        parcelamentos.
+      references:
+        - "docs/phases/"
+        - "docs/specs/"
+    - name: "delivery-suite"
+      description: >
+        Protocolo de entrega com 4 skills independentes:
+        task-review, execute-issue, draft-pr, close-delivery.
+        Inclui contratos JSON Schema, scripts de validação e evals.
+      references:
+        - ".agents/delivery-suite/contracts/"
+        - ".agents/delivery-suite/skills/"
+        - ".agents/delivery-suite/shared/default-capabilities.yaml"
+
+agents:
+  task_reviewer:
+    description: >
+      Revisa issues executáveis, faz descoberta de stack observada vs declarada,
+      valida specs aplicáveis, identifica drift, executa brainstorming + grill-me
+      quando escopo vago, e produz Execution Plan com matriz de skills recomendadas.
+    uses:
+      - "task-review"
+      - "brainstorming"
+      - "grill-me"
+      - "spec-driven-development"
+  issue_executor:
+    description: >
+      Implementa a issue seguindo o Execution Plan aprovado.
+      Seleciona dinamicamente a combinação de skills baseada no tipo de entrega:
+      - Documental: documentation-writer + mermaid-diagrams/excalidraw
+      - Backend/Django: tdd + controle-financeiro-python-django + spec-driven-development
+      - Automação: n8n-workflow-patterns + n8n-node-configuration + n8n-code-*
+      - Diagramas: mermaid-diagrams / excalidraw-diagram-generator
+      - Governança: controle-financeiro-code-review + pattern-assistant(github)
+    uses:
+      - "execute-issue"
+      - "tdd"
+      - "spec-driven-development"
+      - "controle-financeiro-python-django"
+      - "documentation-writer"
+      - "mermaid-diagrams"
+      - "excalidraw-diagram-generator"
+      - "n8n-workflow-patterns"
+      - "controle-financeiro-code-review"
+      - "pattern-assistant"
+  pr_reviewer:
+    description: >
+      Auditoria final do PR (draft-pr): verifica plano vs execução, inspeciona diff real,
+      permite correções locais seguras, valida critérios de aceite e homologação manual.
+    uses:
+      - "draft-pr"
+      - "close-delivery"
+      - "controle-financeiro-code-review"
+      - "pattern-assistant"
+
+rules:
+  - "Uma issue executável deve possuir branch própria."
+  - "Não ampliar escopo silenciosamente."
+  - "Decisões canônicas prevalecem sobre inferências do agente."
+  - "Stack observada prevalece sobre stack declarada quando houver drift."
+  - "Toda mudança comportamental exige TDD (Red-Green-Refactor)."
+  - "Valores financeiros sempre em Decimal."
+  - "Migrações versionadas para toda alteração de modelo."
+  - "Testes cobrindo models, services, selectors e views."
+  - "Não commitar segredos, tokens ou dados de produção."
+
+security:
+  never_expose:
+    - "secrets"
+    - "tokens"
+    - "api_keys"
+    - "private_logs"
+    - "production_data"
+
+# ============================================================
+# REGISTRO DE DRIFTS OBSERVADOS (para futura correção)
+# ============================================================
+context_drift:
+  - type: "missing_file"
+    expected: ".github/BRANCHING.md"
+    actual: "não existe; regras de branch inferidas do CI e PR template"
+    severity: "low"
+    action: "create_or_update_manifest"
+  - type: "missing_file"
+    expected: ".github/agent-protocol.json"
+    actual: "não existe; protocolo definido em delivery-suite e AGENTS.md"
+    severity: "low"
+    action: "create_or_update_manifest"
+  - type: "stack_drift"
+    expected: "PostgreSQL em produção (implícito)"
+    actual: "SQLite local apenas; Docker usa SQLite"
+    severity: "medium"
+    action: "document_in_manifest"
+  - type: "skill_not_in_manifest"
+    skill: "controle-financeiro-code-review"
+    location: ".agents/controle-financeiro-code-review/SKILL.md"
+    action: "add_to_capabilities_custom"
+  - type: "skill_not_in_manifest"
+    skill: "controle-financeiro-python-django"
+    location: ".agents/controle-financeiro-python-django/SKILL.md"
+    action: "add_to_capabilities_custom"
+  - type: "skill_not_in_manifest"
+    skill: "brainstorming"
+    location: ".agents/brainstorming/SKILL.md"
+    action: "add_to_capabilities_standard"
+  - type: "skill_not_in_manifest"
+    skill: "grill-me"
+    location: ".agents/grill-me/SKILL.md"
+    action: "add_to_capabilities_standard"
+  - type: "skill_not_in_manifest"
+    skill: "frontend-design"
+    location: ".agents/frontend-design/SKILL.md"
+    action: "add_to_capabilities_standard"
+  - type: "skill_not_in_manifest"
+    skill: "mermaid-diagrams"
+    location: ".agents/mermaid/skills/mermaid-diagrams/SKILL.md"
+    action: "add_to_capabilities_standard"
+  - type: "skill_not_in_manifest"
+    skill: "excalidraw-diagram-generator"
+    location: ".agents/excalidraw/skills/excalidraw-diagram-generator/SKILL.md"
+    action: "add_to_capabilities_standard"
+  - type: "skill_not_in_manifest"
+    skill: "n8n-workflow-patterns"
+    location: ".agents/n8n/skills/n8n-workflow-patterns/SKILL.md"
+    action: "add_to_capabilities_standard"
+  - type: "skill_not_in_manifest"
+    skill: "documentation-writer"
+    location: ".agents/github/skills/documentation-writer/SKILL.md"
+    action: "add_to_capabilities_standard"
+  - type: "skill_not_in_manifest"
+    skill: "create-readme"
+    location: ".agents/github/skills/create-readme/SKILL.md"
+    action: "add_to_capabilities_standard"
+  - type: "skill_not_in_manifest"
+    skill: "pattern-assistant"
+    location: ".agents/github/AGENT.md"
+    action: "add_to_agents"
+
+# ============================================================
+# OBSERVAÇÕES PARA FUTURA EVOLUÇÃO
+# ============================================================
+notes:
+  - "O arquivo .github/BRANCHING.md não existe; considerar criá-lo baseado no CI e PR template."
+  - "O arquivo .github/agent-protocol.json não existe; delivery-suite define o protocolo."
+  - "Stack declarada no README menciona SQLite inicial; produção pode exigir PostgreSQL."
+  - "Skills do delivery-suite (task-review, execute-issue, draft-pr, close-delivery) são o core do novo fluxo."
+  - "Agentes legados em .kilo/agent/ podem ser migrados para o novo modelo de agents do manifesto."

@@ -1,0 +1,6 @@
+name: findings
+cases:
+  - input: {type: readme_stale, within_plan: true}
+    expected: {severity: blocking, classification: local, return_to: execute}
+  - input: {type: unplanned_public_api_change, within_plan: false}
+    expected: {severity: blocking, classification: material, return_to: re_review}

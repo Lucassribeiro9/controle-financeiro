@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://delivery.local/contracts/capability-registry.schema.json",
+  "title": "Capability Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "extends", "overrides", "custom_capabilities"],
+  "$defs": {
+    "category": {"enum": ["domain", "technology", "methodology", "artifact", "validation"]},
+    "fallbackMode": {"enum": ["native", "block"]},
+    "definition": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "category": {"$ref": "#/$defs/category"},
+        "preferred_skills": {"type": "array", "items": {"type": "string"}},
+        "fallback": {
+          "type": "object", "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {"mode": {"$ref": "#/$defs/fallbackMode"}}
+        },
+        "required_behavior": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "extends": {"const": "default"},
+    "overrides": {"type": "object", "additionalProperties": {"$ref": "#/$defs/definition"}},
+    "custom_capabilities": {"type": "object", "additionalProperties": {"$ref": "#/$defs/definition"}}
+  }
+}

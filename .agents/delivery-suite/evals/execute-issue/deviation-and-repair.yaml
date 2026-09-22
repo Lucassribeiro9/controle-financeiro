@@ -1,0 +1,10 @@
+name: deviation-and-repair
+cases:
+  - input: {change: reused_existing_helper, scope_changed: false}
+    expected: {classification: local, action: continue}
+  - input: {change: unplanned_migration}
+    expected: {classification: material, action: re_review}
+  - input: {failure: implementation_bug, useful_attempts: 1}
+    expected: {repair_allowed: true, max_attempts: 2}
+  - input: {failure: push_failed}
+    expected: {execution_completed: false, publication: blocked}

@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "issue-484",
+  "plan_revision": 1,
+  "stages": [{"id": "implement", "status": "completed"}],
+  "deviations": [],
+  "completion": {"required_stages_completed": true, "blocking_gates_passed": true}
+}

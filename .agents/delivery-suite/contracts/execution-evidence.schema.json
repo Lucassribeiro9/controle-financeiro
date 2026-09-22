@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://delivery.local/contracts/execution-evidence.schema.json",
+  "title": "Execution Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "plan_revision", "stages", "deviations", "completion"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "plan_id": {"type": "string", "minLength": 1},
+    "plan_revision": {"type": "integer", "minimum": 1},
+    "stages": {"type": "array", "items": {"type": "object"}},
+    "deviations": {"type": "array", "items": {"type": "object"}},
+    "capability_resolution": {"type": "array", "items": {"type": "object"}},
+    "publication": {"type": "object"},
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_stages_completed", "blocking_gates_passed"],
+      "properties": {
+        "required_stages_completed": {"type": "boolean"},
+        "blocking_gates_passed": {"type": "boolean"}
+      }
+    }
+  }
+}

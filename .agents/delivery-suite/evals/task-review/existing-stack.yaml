@@ -1,0 +1,13 @@
+name: existing-stack
+input:
+  manifest:
+    stack: [python, django]
+  repository_evidence:
+    pyproject: django
+    imports: django
+    docker: python
+expected:
+  invariants:
+    - stack.observed is preserved
+    - no stack replacement proposed
+    - declared_vs_observed drift is reported when applicable
