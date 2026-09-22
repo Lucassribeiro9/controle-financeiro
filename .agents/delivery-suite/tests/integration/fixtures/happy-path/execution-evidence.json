@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "issue-484",
+  "plan_revision": 1,
+  "stages": [
+    {"id": "prepare_workspace", "status": "completed"},
+    {"id": "implement_behavior", "status": "completed", "evidence": {"tests": ["test_dynamic_limits"]}},
+    {"id": "regression", "status": "completed", "evidence": {"result": "passed"}}
+  ],
+  "deviations": [
+    {"type": "local", "description": "Reused existing selector helper", "impact": "none"}
+  ],
+  "capability_resolution": [
+    {"capability": "tdd", "status": "resolved", "provider": {"type": "skill", "name": "tdd"}}
+  ],
+  "publication": {"branch": "feat/484-card-limits", "remote": "origin", "pushed": true, "head": "abc123"},
+  "completion": {"required_stages_completed": true, "blocking_gates_passed": true}
+}

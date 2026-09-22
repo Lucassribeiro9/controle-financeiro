@@ -1,0 +1,7 @@
+{
+  "plan_id": "issue-484",
+  "from_revision": 1,
+  "trigger": {"type": "unplanned_migration"},
+  "deviation": {"type": "material", "affects": ["database", "migration"]},
+  "execution_paused": true
+}

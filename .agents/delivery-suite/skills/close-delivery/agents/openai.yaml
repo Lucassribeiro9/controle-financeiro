@@ -1,0 +1,3 @@
+interface:
+  display_name: "Close Delivery"
+  short_description: "Safely clean worktrees and branches after a verified merge"

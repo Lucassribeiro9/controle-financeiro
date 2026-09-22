@@ -1,0 +1,28 @@
+{
+  "execution_plan": {"schema_version": "1.0", "plan_id": "issue-484", "revision": 1},
+  "issue": {"id": 484, "executable": true},
+  "classification": {"primary": "behavior", "concerns": ["backend"], "executable_unit": true},
+  "execution": {"allowed": true},
+  "workspace": {
+    "branch": {"decision": "required", "base_branch": "main", "suggested_name": "feat/484-card-limits"},
+    "worktree": {"decision": "required", "reuse_existing": true, "suggested_name": "484-card-limits", "suggested_path": "../worktrees/484-card-limits"}
+  },
+  "testing": {"tdd": {"decision": "required"}},
+  "capabilities": {
+    "standard": {
+      "domain": ["backend"],
+      "technology": ["python", "django"],
+      "methodology": ["tdd"],
+      "artifacts": [],
+      "validation": ["regression-testing"]
+    },
+    "custom": []
+  },
+  "stages": [
+    {"id": "prepare_workspace", "type": "workspace", "decision": "required", "depends_on": []},
+    {"id": "implement_behavior", "type": "implementation", "decision": "required", "depends_on": ["prepare_workspace"], "capabilities": ["backend", "django", "tdd"]},
+    {"id": "regression", "type": "validation", "decision": "required", "depends_on": ["implement_behavior"], "capability": "regression-testing", "blocking": true}
+  ],
+  "approval": {"required": true, "status": "approved", "approved_revision": 1},
+  "next_action": {"type": "execute"}
+}

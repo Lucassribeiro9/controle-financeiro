@@ -1,0 +1,3 @@
+interface:
+  display_name: "Execute Issue"
+  short_description: "Execute an approved issue plan with controlled autonomy"

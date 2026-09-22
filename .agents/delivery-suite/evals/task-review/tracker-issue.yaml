@@ -1,0 +1,11 @@
+name: tracker-issue
+input:
+  issue:
+    id: 360
+    title: Delivery cycle tracker
+    body: Coordinates multiple independent implementation issues.
+expected:
+  invariants:
+    - execution.allowed == false
+    - classification.executable_unit == false
+    - next_action.type == decompose

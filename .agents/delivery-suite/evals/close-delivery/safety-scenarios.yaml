@@ -1,0 +1,29 @@
+name: close-delivery-safety
+cases:
+  - name: pr-not-merged
+    input: {pr_merged: false}
+    expected: {destructive_cleanup_allowed: false}
+  - name: merge-absent-from-base
+    input: {pr_merged: true, merge_commit_present_in_base: false}
+    expected: {destructive_cleanup_allowed: false}
+  - name: dirty-worktree
+    input: {pr_merged: true, merge_commit_present_in_base: true, head_branch_matches_pr: true, worktree_clean: false}
+    expected: {remove_worktree: false, delete_local_branch: false}
+  - name: unpublished-local-commits
+    input: {local_branch_has_unpublished_commits: true}
+    expected: {delete_local_branch: false}
+  - name: ambiguous-target
+    input: {matching_merged_prs: 2}
+    expected: {status: blocked, reason: ambiguous_delivery_target}
+  - name: other-pr-reuses-head
+    input: {other_open_pr_uses_head: true}
+    expected: {delete_remote_branch: false}
+  - name: remote-already-absent
+    input: {remote_branch_exists: false}
+    expected: {remote_branch_action: unchanged}
+  - name: worktree-already-removed
+    input: {worktree_exists: false}
+    expected: {worktree_action: unchanged}
+  - name: verified-squash-needs-force-delete
+    input: {branch_d_rejected_for_squash_semantics: true, all_safety_predicates: true}
+    expected: {branch_D_allowed: true}

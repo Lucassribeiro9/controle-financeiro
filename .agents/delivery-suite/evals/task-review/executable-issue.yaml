@@ -1,0 +1,10 @@
+name: executable-issue
+input:
+  issue:
+    id: 484
+    title: Calculate card limits dynamically
+expected:
+  invariants:
+    - execution.allowed == true
+    - workspace.branch.decision == required
+    - next_action.type == await_approval

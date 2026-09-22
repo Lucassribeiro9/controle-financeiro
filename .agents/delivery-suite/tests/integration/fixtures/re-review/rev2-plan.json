@@ -1,0 +1,15 @@
+{
+  "execution_plan": {"schema_version": "1.0", "plan_id": "issue-484", "revision": 2},
+  "issue": {"id": 484, "executable": true},
+  "classification": {"primary": "behavior", "concerns": ["backend", "database"], "executable_unit": true},
+  "execution": {"allowed": true},
+  "workspace": {"branch": {"decision": "required", "base_branch": "main", "suggested_name": "feat/484-card-limits"}, "worktree": {"decision": "required", "reuse_existing": true}},
+  "requirements": {"database_migration": {"decision": "required"}},
+  "capabilities": {"standard": {"domain": ["backend", "database"], "technology": [], "methodology": [], "artifacts": [], "validation": []}, "custom": ["migration-management"]},
+  "stages": [
+    {"id": "migration", "type": "implementation", "decision": "required", "depends_on": [], "capability": "migration-management"},
+    {"id": "implement", "type": "implementation", "decision": "required", "depends_on": ["migration"]}
+  ],
+  "approval": {"required": true, "status": "approved", "approved_revision": 2},
+  "next_action": {"type": "execute"}
+}

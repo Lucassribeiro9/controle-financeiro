@@ -1,0 +1,14 @@
+name: blocking-ambiguity
+input:
+  issue:
+    id: 13
+    title: Change public API behavior
+  conflicting_sources:
+    - source: spec-a
+      behavior: A
+    - source: spec-b
+      behavior: B
+expected:
+  invariants:
+    - grill-me is invoked only after source investigation
+    - no executable approved plan is emitted until ambiguity resolves

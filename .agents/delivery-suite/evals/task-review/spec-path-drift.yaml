@@ -1,0 +1,15 @@
+name: spec-path-drift
+input:
+  manifest:
+    spec_paths: [docs/specs/005-feature.md]
+  repository_files:
+    - product/specifications/005-feature.md
+  issue:
+    id: 21
+    title: Implement feature 005
+expected:
+  invariants:
+    - applicable spec is discovered
+    - actual path is recorded
+    - drift is reported
+    - review does not block solely because the declared path was stale

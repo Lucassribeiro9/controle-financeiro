@@ -1,0 +1,383 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://delivery.local/contracts/execution-plan.schema.json",
+  "title": "Execution Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "execution_plan",
+    "issue",
+    "classification",
+    "execution",
+    "workspace",
+    "capabilities",
+    "stages",
+    "approval",
+    "next_action"
+  ],
+  "$defs": {
+    "decision": {
+      "enum": [
+        "required",
+        "recommended",
+        "deferred",
+        "not_needed"
+      ]
+    },
+    "stageState": {
+      "enum": [
+        "pending",
+        "ready",
+        "running",
+        "completed",
+        "blocked",
+        "failed",
+        "skipped"
+      ]
+    },
+    "nextAction": {
+      "enum": [
+        "await_approval",
+        "execute",
+        "decompose",
+        "generate_spec",
+        "task_review",
+        "re_review"
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "role",
+        "required"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "properties": {
+    "execution_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "plan_id",
+        "revision"
+      ],
+      "properties": {
+        "schema_version": {
+          "enum": [
+            "1.0",
+            "1.1"
+          ]
+        },
+        "plan_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "executable"
+      ],
+      "properties": {
+        "id": {},
+        "executable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "primary",
+        "concerns",
+        "executable_unit"
+      ],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "concerns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "executable_unit": {
+          "type": "boolean"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "allowed"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "branch",
+        "worktree"
+      ],
+      "properties": {
+        "branch": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "decision"
+          ],
+          "properties": {
+            "decision": {
+              "$ref": "#/$defs/decision"
+            },
+            "base_branch": {
+              "type": "string"
+            },
+            "suggested_name": {
+              "type": "string"
+            }
+          }
+        },
+        "worktree": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "decision"
+          ],
+          "properties": {
+            "decision": {
+              "$ref": "#/$defs/decision"
+            },
+            "reuse_existing": {
+              "type": "boolean"
+            },
+            "suggested_name": {
+              "type": "string"
+            },
+            "suggested_path": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "factors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "requirements": {
+      "type": "object"
+    },
+    "testing": {
+      "type": "object"
+    },
+    "documentation": {
+      "type": "object"
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "standard",
+        "custom"
+      ],
+      "properties": {
+        "standard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "domain",
+            "technology",
+            "methodology",
+            "artifacts",
+            "validation"
+          ],
+          "properties": {
+            "domain": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "technology": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "methodology": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "validation": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "custom": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "derived_issues": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "id",
+          "type",
+          "decision",
+          "depends_on"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "decision": {
+            "$ref": "#/$defs/decision"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "$ref": "#/$defs/stageState"
+          },
+          "blocking": {
+            "type": "boolean"
+          },
+          "capability": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "status"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "approved"
+          ]
+        },
+        "approved_revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "next_action": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/nextAction"
+        }
+      }
+    },
+    "delivery": {
+      "type": "object"
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    }
+  }
+}
