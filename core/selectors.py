@@ -23,6 +23,22 @@ PENDING_STATUSES = [
     Transaction.PaymentStatus.LATE,
 ]
 FORECAST_STATUSES = [Transaction.PaymentStatus.FORECASTED]
+INCOME_TYPES = [Transaction.TransactionType.INCOME]
+EXPENSE_TYPES = [
+    Transaction.TransactionType.EXPENSE,
+    Transaction.TransactionType.CARD_PURCHASE,
+    Transaction.TransactionType.BENEFIT_PURCHASE,
+]
+SUMMARY_CARD_STATUSES = {
+    "realized": REALIZED_STATUSES,
+    "pending": PENDING_STATUSES,
+    "forecasted": FORECAST_STATUSES,
+}
+SUMMARY_CARD_LABELS = {
+    "realized": "Realizado",
+    "pending": "Pendente",
+    "forecasted": "Previsto",
+}
 
 
 def get_operational_home_context(*, today=None) -> dict:
@@ -54,6 +70,70 @@ def get_operational_home_context(*, today=None) -> dict:
     }
 
 
+def get_summary_card_detail(*, card: str, today=None) -> dict:
+    """Lista os lancamentos que compoem um card do resumo financeiro.
+
+    Usa os mesmos filtros das somas da home, entao os subtotais retornados
+    sempre coincidem com os valores exibidos no card.
+    """
+
+    if card not in SUMMARY_CARD_LABELS:
+        raise ValueError(f"Card de resumo desconhecido: {card}")
+
+    reference_date = today or timezone.localdate()
+    year = reference_date.year
+    month = reference_date.month
+
+    income = _list_card_transactions(
+        card=card, year=year, month=month, transaction_types=INCOME_TYPES
+    )
+    expenses = _list_card_transactions(
+        card=card, year=year, month=month, transaction_types=EXPENSE_TYPES
+    )
+    if card == "forecasted":
+        income_forecasts, expense_forecasts = _classify_recurring_forecasts(
+            year=year, month=month
+        )
+        income = _sort_transactions([*income, *income_forecasts])
+        expenses = _sort_transactions([*expenses, *expense_forecasts])
+
+    income_total = sum((item.amount for item in income), Decimal("0.00"))
+    expenses_total = sum((item.amount for item in expenses), Decimal("0.00"))
+
+    return {
+        "card": card,
+        "label": SUMMARY_CARD_LABELS[card],
+        "period": {"year": year, "month": month},
+        "income": {"transactions": income, "total": income_total},
+        "expenses": {"transactions": expenses, "total": expenses_total},
+        "net": income_total - expenses_total,
+    }
+
+
+def _list_card_transactions(
+    *, card: str, year: int, month: int, transaction_types: list[str]
+) -> list[Transaction]:
+    """Lista transacoes de um card para os tipos informados."""
+
+    queryset = _filter_transactions(
+        year=year,
+        month=month,
+        transaction_types=transaction_types,
+        statuses=SUMMARY_CARD_STATUSES[card],
+    ).select_related("account", "category", "card", "statement")
+    return _sort_transactions(list(queryset))
+
+
+def _sort_transactions(transactions: list[Transaction]) -> list[Transaction]:
+    """Ordena por data e criacao, do mais recente ao mais antigo."""
+
+    return sorted(
+        transactions,
+        key=lambda transaction: (transaction.date, transaction.created_at),
+        reverse=True,
+    )
+
+
 def _build_month_summary(*, year: int, month: int) -> dict:
     """Monta o resumo financeiro do mes por status operacional."""
 
@@ -80,54 +160,59 @@ def _build_transaction_totals(*, year: int, month: int, statuses: list[str]) -> 
     income = _sum_transactions(
         year=year,
         month=month,
-        transaction_type=Transaction.TransactionType.INCOME,
+        transaction_types=INCOME_TYPES,
         statuses=statuses,
     )
     expenses = _sum_transactions(
         year=year,
         month=month,
-        transaction_type=Transaction.TransactionType.EXPENSE,
+        transaction_types=EXPENSE_TYPES,
         statuses=statuses,
     )
-    card_purchases = _sum_transactions(
-        year=year,
-        month=month,
-        transaction_type=Transaction.TransactionType.CARD_PURCHASE,
-        statuses=statuses,
-    )
-    benefit_purchases = _sum_transactions(
-        year=year,
-        month=month,
-        transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
-        statuses=statuses,
-    )
-    total_expenses = expenses + card_purchases + benefit_purchases
 
     return {
         "income": income,
-        "expenses": total_expenses,
-        "net": income - total_expenses,
+        "expenses": expenses,
+        "net": income - expenses,
     }
+
+
+def _filter_transactions(
+    *,
+    year: int,
+    month: int,
+    transaction_types: list[str],
+    statuses: list[str],
+):
+    """Filtra transacoes por periodo, tipos e status.
+
+    Esta e a unica query que define o que entra em cada card do resumo; as
+    somas da home e a listagem do detalhe partem dela.
+    """
+
+    return Transaction.objects.filter(
+        date__year=year,
+        date__month=month,
+        transaction_type__in=transaction_types,
+        status__in=statuses,
+    )
 
 
 def _sum_transactions(
     *,
     year: int,
     month: int,
-    transaction_type: str,
+    transaction_types: list[str],
     statuses: list[str],
 ) -> Decimal:
-    """Soma transacoes filtradas por periodo, tipo e status."""
+    """Soma transacoes filtradas por periodo, tipos e status."""
 
-    return (
-        Transaction.objects.filter(
-            date__year=year,
-            date__month=month,
-            transaction_type=transaction_type,
-            status__in=statuses,
-        ).aggregate(total=Sum("amount"))["total"]
-        or Decimal("0.00")
-    )
+    return _filter_transactions(
+        year=year,
+        month=month,
+        transaction_types=transaction_types,
+        statuses=statuses,
+    ).aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
 
 
 def _sum_transfers(*, year: int, month: int) -> Decimal:
@@ -163,6 +248,24 @@ def _build_forecasted_totals(*, year: int, month: int) -> dict:
 def _sum_recurring_forecasts(*, year: int, month: int) -> dict:
     """Soma previsoes recorrentes geradas e classificadas pela recorrencia."""
 
+    income_forecasts, expense_forecasts = _classify_recurring_forecasts(
+        year=year,
+        month=month,
+    )
+
+    return {
+        "income": sum((forecast.amount for forecast in income_forecasts), Decimal("0.00")),
+        "expenses": sum(
+            (forecast.amount for forecast in expense_forecasts), Decimal("0.00")
+        ),
+    }
+
+
+def _classify_recurring_forecasts(
+    *, year: int, month: int
+) -> tuple[list[Transaction], list[Transaction]]:
+    """Separa previsoes recorrentes em receitas e despesas pela recorrencia."""
+
     forecasts = _get_generated_recurring_forecasts(year=year, month=month)
     recurrence_names = [
         recurrence_name
@@ -174,8 +277,8 @@ def _sum_recurring_forecasts(*, year: int, month: int) -> dict:
         for recurrence in Recurrence.objects.filter(name__in=recurrence_names)
     }
 
-    income = Decimal("0.00")
-    expenses = Decimal("0.00")
+    income_forecasts = []
+    expense_forecasts = []
     for forecast in forecasts:
         recurrence = recurrences_by_name.get(
             _extract_generated_recurrence_name(forecast.description)
@@ -184,14 +287,11 @@ def _sum_recurring_forecasts(*, year: int, month: int) -> dict:
             continue
 
         if recurrence.recurrence_type == Recurrence.RecurrenceType.INCOME:
-            income += forecast.amount
+            income_forecasts.append(forecast)
         else:
-            expenses += forecast.amount
+            expense_forecasts.append(forecast)
 
-    return {
-        "income": income,
-        "expenses": expenses,
-    }
+    return income_forecasts, expense_forecasts
 
 
 def _get_generated_recurring_forecasts(*, year: int, month: int) -> list[Transaction]:

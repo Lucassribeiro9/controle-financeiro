@@ -403,6 +403,37 @@ h2 {
     text-align: right;
 }
 
+.home-summary-card-link {
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-summary-card-link:hover,
+.home-summary-card-link:focus-visible {
+    border-color: rgba(15, 118, 110, 0.45);
+    box-shadow: var(--shadow-subtle);
+}
+
+.home-summary-card .home-summary-cta {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.summary-detail-balance {
+    margin-bottom: 16px;
+}
+
+.summary-detail-section .panel-title-row {
+    align-items: center;
+}
+
+.summary-detail-section .panel-title-row h2 {
+    margin: 0;
+}
+
 .home-alerts {
     display: grid;
     gap: 14px;
