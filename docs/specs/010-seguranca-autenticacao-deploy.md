@@ -93,8 +93,8 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 ## Open Questions
 
-- Login deve entrar mesmo para uso local ou apenas antes de deploy?
-- O app tera usuario unico configurado por admin ou cadastro livre?
+- ~~Login deve entrar mesmo para uso local ou apenas antes de deploy?~~ Resolvida na issue #199: sempre.
+- ~~O app tera usuario unico configurado por admin ou cadastro livre?~~ Resolvida na issue #199: usuario criado por admin, sem cadastro (por enquanto).
 - Dados ja existentes precisarao de owner quando/ se multiusuario for aprovado?
 - Producao usara SQLite inicialmente ou PostgreSQL?
 
@@ -109,13 +109,31 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
   `security.W005` e `security.W021` silenciados ate haver deploy HTTPS validado.
 - CI roda `check --deploy --fail-level WARNING` e um job que sobe a imagem de producao.
 
+## Decisoes da Issue #199
+
+- `core.auth.ApiAwareLoginRequiredMiddleware` (baseado no `LoginRequiredMiddleware` do
+  Django) protege todas as rotas por padrao; fica depois do `AuthenticationMiddleware`.
+- Rotas publicas, marcadas com `@login_not_required` ou nativas do Django: `/health/`
+  (usado pelo CI) e `/login/`. `/admin/` mantem o login proprio.
+- HTML anonimo: 302 para `/login/?next=...`. Views JSON marcadas com
+  `@api_login_required` (decorator mais externo): 401 em JSON.
+- `login/` e `logout/` ficam em `project/urls.py`, fora do prefixo `accounts/`.
+  Logout somente via POST.
+- Usuarios sao criados por `createsuperuser`/admin; nao ha cadastro. Outros modos de
+  login serao analisados no futuro, em issues proprias desta spec.
+- Login obrigatorio tambem em dev.
+- Sem isolamento por usuario (issue #200): todo usuario autenticado ve todos os dados.
+- Testes de views usam `core.testing.AuthenticatedTestCase` (client ja autenticado).
+- Follow-ups: forms HTML que postam em endpoints JSON (previsoes e revisao de imports)
+  exibem 401 cru com sessao expirada; limite de tentativas de login.
+
 ## Task Breakdown Inicial
 
 - [x] Task: Criar settings dev/prod (issue #201).
   - Acceptance: producao nao usa `DEBUG=True` nem `SECRET_KEY` fallback.
   - Verify: `python manage.py check --deploy` com settings de producao.
   - Files: `project/settings.py` ou pacote `project/settings/`.
-- [ ] Task: Adicionar autenticacao basica.
+- [x] Task: Adicionar autenticacao basica (issue #199).
   - Acceptance: views financeiras sensiveis exigem login.
   - Verify: testes de acesso anonimo/autenticado.
   - Files: views/urls afetadas, `templates/registration/`, testes.

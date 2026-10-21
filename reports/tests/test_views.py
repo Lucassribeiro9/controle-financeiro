@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.utils import timezone
 from django.urls import reverse
 
@@ -14,7 +14,7 @@ from institutions.models import Institution
 from transactions.models import Transaction
 
 
-class MonthlyDashboardViewTests(TestCase):
+class MonthlyDashboardViewTests(AuthenticatedTestCase):
     """Garante o carregamento do dashboard mensal."""
 
     def setUp(self):

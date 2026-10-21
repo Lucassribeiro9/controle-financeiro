@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
@@ -13,7 +13,7 @@ from institutions.models import Institution
 from transactions.models import Transaction
 
 
-class CategoryViewTests(TestCase):
+class CategoryViewTests(AuthenticatedTestCase):
     """Garante telas de listagem, criacao e edicao de categorias."""
 
     def test_category_list_page_returns_success(self):
@@ -223,7 +223,7 @@ class CategoryViewTests(TestCase):
         self.assertContains(response, "R$ 510,00 / R$ 500,00")
 
 
-class CategoryCreateGoalViewTests(TestCase):
+class CategoryCreateGoalViewTests(AuthenticatedTestCase):
     """Garante o fluxo de criacao de meta mensal a partir de categoria."""
 
     def setUp(self):

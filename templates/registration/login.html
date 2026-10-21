@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Entrar - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Entrar</h1>
+            <p class="muted">Informe suas credenciais para acessar o Controle Financeiro.</p>
+        </div>
+    </header>
+
+    <section class="panel">
+        <form class="form-grid" method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+
+            {% if form.non_field_errors %}
+                <div class="app-message">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% for field in form %}
+                <label class="form-field" for="{{ field.id_for_label }}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="field-error">{{ field.errors|join:", " }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+
+            <div class="action-row">
+                <button class="button" type="submit">Entrar</button>
+            </div>
+        </form>
+    </section>
+{% endblock %}

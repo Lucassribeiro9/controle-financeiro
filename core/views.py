@@ -1,5 +1,6 @@
 """Views do app core."""
 
+from django.contrib.auth.decorators import login_not_required
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 
@@ -10,6 +11,7 @@ from core.selectors import (
 )
 
 
+@login_not_required
 def health_check(request):
     return HttpResponse("OK")
 

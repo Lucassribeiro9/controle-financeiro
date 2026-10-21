@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
@@ -11,7 +11,7 @@ from institutions.models import Institution
 from rates.models import AccountYieldConfig, ReferenceRate
 
 
-class RateViewTests(TestCase):
+class RateViewTests(AuthenticatedTestCase):
     """Garante telas de taxas e simulacoes de rendimento."""
 
     def setUp(self):

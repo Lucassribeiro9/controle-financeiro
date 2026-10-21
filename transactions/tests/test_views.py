@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -15,7 +15,7 @@ from transactions.models import Transaction, Transfer
 from transactions.services import create_transaction
 
 
-class TransactionViewTests(TestCase):
+class TransactionViewTests(AuthenticatedTestCase):
     """Garante telas de listagem, criacao e detalhe de lancamentos."""
 
     def setUp(self):
@@ -497,7 +497,7 @@ class TransactionViewTests(TestCase):
         self.assertContains(response, "Editar lançamento")
 
 
-class TransferViewTests(TestCase):
+class TransferViewTests(AuthenticatedTestCase):
     """Garante telas de listagem e criacao de transferencias."""
 
     def setUp(self):

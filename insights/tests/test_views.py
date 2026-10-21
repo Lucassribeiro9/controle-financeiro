@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 
 from categories.models import Category
@@ -10,7 +10,7 @@ from goals.models import Goal, MonthlyGoal
 from insights.models import IgnoredPattern, Insight
 
 
-class InsightViewTests(TestCase):
+class InsightViewTests(AuthenticatedTestCase):
     """Garante endpoints iniciais de revisao e decisao de insights."""
 
     def setUp(self):

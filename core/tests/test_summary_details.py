@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
@@ -168,7 +168,7 @@ def _descriptions(section):
     return {transaction.description for transaction in section["transactions"]}
 
 
-class SummaryCardDetailSelectorTests(SummaryDetailFixtureMixin, TestCase):
+class SummaryCardDetailSelectorTests(SummaryDetailFixtureMixin, AuthenticatedTestCase):
     """Garante que o detalhe usa os mesmos criterios dos totais do card."""
 
     def setUp(self):
@@ -280,7 +280,7 @@ class SummaryCardDetailSelectorTests(SummaryDetailFixtureMixin, TestCase):
             get_summary_card_detail(card="invalid", today=self.today)
 
 
-class SummaryDetailViewTests(SummaryDetailFixtureMixin, TestCase):
+class SummaryDetailViewTests(SummaryDetailFixtureMixin, AuthenticatedTestCase):
     """Garante o fluxo HTTP e o template do detalhe dos cards."""
 
     def setUp(self):
@@ -351,7 +351,7 @@ class SummaryDetailViewTests(SummaryDetailFixtureMixin, TestCase):
         self.assertContains(response, reverse("core:home"))
 
 
-class HomeSummaryCardTemplateTests(SummaryDetailFixtureMixin, TestCase):
+class HomeSummaryCardTemplateTests(SummaryDetailFixtureMixin, AuthenticatedTestCase):
     """Garante que os cards da home sao links para o detalhe."""
 
     def test_home_cards_link_to_summary_detail(self):

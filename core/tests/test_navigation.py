@@ -1,10 +1,10 @@
 """Testes da navegação principal."""
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 
 
-class NavigationTests(TestCase):
+class NavigationTests(AuthenticatedTestCase):
     """Garante estados ativos e estrutura mobile da navegação."""
 
     def test_home_navigation_marks_current_item(self):
