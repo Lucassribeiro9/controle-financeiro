@@ -98,9 +98,20 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - Dados ja existentes precisarao de owner quando/ se multiusuario for aprovado?
 - Producao usara SQLite inicialmente ou PostgreSQL?
 
+## Decisoes da Issue #201
+
+- Settings em pacote `project/settings/` (`base`, `dev`, `prod`, `validation`).
+- `manage.py` usa `dev`; `wsgi.py` e `asgi.py` usam `prod` por padrao.
+- Producao exige `DJANGO_SECRET_KEY` (50+ caracteres, 5+ distintos, nao padrao),
+  `DJANGO_ALLOWED_HOSTS` e recusa `DJANGO_DEBUG` verdadeiro.
+- Estaticos via WhiteNoise; Nginx fica como evolucao futura se necessario.
+- Cookies seguros, redirect HTTPS e HSTS de 1 hora por padrao (configuravel);
+  `security.W005` e `security.W021` silenciados ate haver deploy HTTPS validado.
+- CI roda `check --deploy --fail-level WARNING` e um job que sobe a imagem de producao.
+
 ## Task Breakdown Inicial
 
-- [ ] Task: Criar settings dev/prod.
+- [x] Task: Criar settings dev/prod (issue #201).
   - Acceptance: producao nao usa `DEBUG=True` nem `SECRET_KEY` fallback.
   - Verify: `python manage.py check --deploy` com settings de producao.
   - Files: `project/settings.py` ou pacote `project/settings/`.

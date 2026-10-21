@@ -40,3 +40,50 @@ jobs:
 
       - name: Run tests
         run: python manage.py test
+
+      - name: Django deploy check (producao)
+        env:
+          DJANGO_SETTINGS_MODULE: project.settings.prod
+          DJANGO_ALLOWED_HOSTS: app.example.com
+        run: |
+          export DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')"
+          python manage.py check --deploy --fail-level WARNING
+
+  container:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build production image
+        run: docker build -f DOCKERFILE -t controle-financeiro:ci .
+
+      - name: Start container with production settings
+        run: |
+          SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')"
+          docker run -d --name web -p 8000:8000 \
+            -e DJANGO_SECRET_KEY="$SECRET_KEY" \
+            -e DJANGO_ALLOWED_HOSTS=localhost \
+            -e DJANGO_SECURE_PROXY_SSL_HEADER=true \
+            controle-financeiro:ci
+
+      - name: Wait for health check
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS -H "X-Forwarded-Proto: https" http://localhost:8000/health/; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs web
+          exit 1
+
+      - name: Validate gunicorn and static files
+        run: |
+          docker logs web 2>&1 | grep -q "Starting gunicorn"
+          curl -fsS -o /dev/null -H "X-Forwarded-Proto: https" http://localhost:8000/static/css/app.css
+
+      - name: Container logs
+        if: failure()
+        run: docker logs web
