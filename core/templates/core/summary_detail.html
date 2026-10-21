@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}{{ detail.label }} - Resumo financeiro - Controle Financeiro{% endblock %}
+
+{% block content %}
+    {% url 'transactions:create' as create_url %}
+    <header class="page-header">
+        <div>
+            <h1>{{ detail.label }}</h1>
+            <p class="muted">
+                Lançamentos de {{ detail.period.month|month_name }}/{{ detail.period.year }}
+                que compõem o card do resumo financeiro.
+            </p>
+        </div>
+
+        <div class="action-row">
+            <a class="button button-secondary" href="{% url 'core:home' %}">Voltar para o início</a>
+        </div>
+    </header>
+
+    <section class="metric-card summary-detail-balance" aria-label="Saldo do card">
+        <span>Saldo do card</span>
+        <strong>{{ detail.net|brl }}</strong>
+    </section>
+
+    {% if not detail.income.transactions and not detail.expenses.transactions %}
+        <section class="panel page-section">
+            {% include "partials/empty_state.html" with title="Nenhum lançamento neste card" description="Não há lançamentos para este status no mês atual." cta_label="Novo lançamento" cta_url=create_url %}
+        </section>
+    {% else %}
+        <section class="panel page-section summary-detail-section" aria-labelledby="summary-income-title">
+            <div class="panel-title-row">
+                <h2 id="summary-income-title">Receitas</h2>
+                <strong class="income">{{ detail.income.total|brl }}</strong>
+            </div>
+            {% if detail.income.transactions %}
+                {% include "partials/transaction_table.html" with transactions=detail.income.transactions %}
+            {% else %}
+                <p class="muted">Nenhuma receita neste card.</p>
+            {% endif %}
+        </section>
+
+        <section class="panel page-section summary-detail-section" aria-labelledby="summary-expenses-title">
+            <div class="panel-title-row">
+                <h2 id="summary-expenses-title">Despesas</h2>
+                <strong class="expense">{{ detail.expenses.total|brl }}</strong>
+            </div>
+            {% if detail.expenses.transactions %}
+                {% include "partials/transaction_table.html" with transactions=detail.expenses.transactions %}
+            {% else %}
+                <p class="muted">Nenhuma despesa neste card.</p>
+            {% endif %}
+        </section>
+    {% endif %}
+{% endblock %}

@@ -6,6 +6,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import urlencode
 
 from core.utils import map_service_errors_to_view
 from .forms import TransactionForm, TransferForm
@@ -47,6 +48,13 @@ def transaction_list_page(request: HttpRequest) -> HttpResponse:
         transaction_type=transaction_type,
     )
 
+    query_params = {
+        "year": year,
+        "month": month,
+        "status": status or "",
+        "transaction_type": transaction_type or "",
+    }
+
     return render(
         request,
         "transactions/list.html",
@@ -58,12 +66,8 @@ def transaction_list_page(request: HttpRequest) -> HttpResponse:
             "status_choices": Transaction.PaymentStatus.choices,
             "transaction_type_choices": Transaction.TransactionType.choices,
             "transactions": transactions,
-            "query_params": {
-                "year": year,
-                "month": month,
-                "status": status or "",
-                "transaction_type": transaction_type or "",
-            },
+            "query_params": query_params,
+            "detail_query": urlencode(query_params),
         },
     )
 

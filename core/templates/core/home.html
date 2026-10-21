@@ -32,7 +32,7 @@
         {% endif %}
 
         <div class="home-summary-grid">
-            <article class="metric-card home-summary-card">
+            <a class="metric-card home-summary-card home-summary-card-link" href="{% url 'core:summary_detail' 'realized' %}">
                 <span>Realizado</span>
                 <strong>{{ summary.realized.net|brl }}</strong>
                 <dl>
@@ -45,9 +45,10 @@
                         <dd class="expense">{{ summary.realized.expenses|brl }}</dd>
                     </div>
                 </dl>
-            </article>
+                <span class="home-summary-cta">Ver lançamentos →</span>
+            </a>
 
-            <article class="metric-card home-summary-card">
+            <a class="metric-card home-summary-card home-summary-card-link" href="{% url 'core:summary_detail' 'pending' %}">
                 <span>Pendente</span>
                 <strong>{{ summary.pending.net|brl }}</strong>
                 <dl>
@@ -60,9 +61,10 @@
                         <dd class="expense">{{ summary.pending.expenses|brl }}</dd>
                     </div>
                 </dl>
-            </article>
+                <span class="home-summary-cta">Ver lançamentos →</span>
+            </a>
 
-            <article class="metric-card home-summary-card">
+            <a class="metric-card home-summary-card home-summary-card-link" href="{% url 'core:summary_detail' 'forecasted' %}">
                 <span>Previsto</span>
                 <strong>{{ summary.forecasted.net|brl }}</strong>
                 <dl>
@@ -75,7 +77,8 @@
                         <dd class="expense">{{ summary.forecasted.expenses|brl }}</dd>
                     </div>
                 </dl>
-            </article>
+                <span class="home-summary-cta">Ver lançamentos →</span>
+            </a>
         </div>
     </section>
 

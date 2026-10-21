@@ -71,6 +71,33 @@ class TransactionViewTests(TestCase):
         self.assertTemplateUsed(response, "transactions/list.html")
         self.assertContains(response, "Mercado")
 
+    def test_transaction_list_page_renders_table_columns_and_detail_links(self):
+        """Deve manter colunas e links de detalhe apos extrair a tabela."""
+
+        transaction = Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        response = self.client.get(
+            reverse("transactions:list"),
+            data={"year": 2026, "month": 5, "status": "", "transaction_type": ""},
+        )
+
+        self.assertTemplateUsed(response, "partials/transaction_table.html")
+        for column in ["Descrição", "Data", "Tipo", "Status", "Conta/Cartão", "Valor"]:
+            self.assertContains(response, f">{column}</th>")
+        self.assertContains(
+            response,
+            reverse("transactions:detail", args=[transaction.id])
+            + "?year=2026&amp;month=5&amp;status=&amp;transaction_type=",
+        )
+        self.assertContains(response, "R$ 250,00")
+
     def test_transaction_list_page_preserves_filters_in_context(self):
         """Deve manter filtros ativos na query string/contexto."""
 
