@@ -36,15 +36,54 @@ O projeto segue como referencia:
 - Ambiente local: Docker Compose
 - CI: GitHub Actions
 
-Comandos base:
+### Desenvolvimento local
+
+Usa `project.settings.dev` (`DEBUG` ligado e chave insegura de desenvolvimento).
+Nenhuma variavel de ambiente e necessaria.
 
 ```bash
-docker compose up --build
+docker compose up --build   # http://localhost:8001
 ```
 
 ```bash
+python3 manage.py runserver
 python3 manage.py test
 ```
+
+### Deploy (producao)
+
+Usa `project.settings.prod` (padrao de `wsgi.py` e `asgi.py`), que **falha no
+startup** quando a configuracao e insegura: sem `DJANGO_SECRET_KEY`, com chave
+curta/padrao, com `DJANGO_DEBUG` verdadeiro ou sem `DJANGO_ALLOWED_HOSTS`.
+
+1. Gere uma chave e defina as variaveis (veja `.env.example`; nunca versione o `.env`):
+
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(50))"
+   ```
+
+   | Variavel | Obrigatoria | Descricao |
+   | --- | --- | --- |
+   | `DJANGO_SECRET_KEY` | sim | Chave com 50+ caracteres, nao padrao |
+   | `DJANGO_ALLOWED_HOSTS` | sim | Hosts separados por virgula |
+   | `DJANGO_CSRF_TRUSTED_ORIGINS` | nao | Origens HTTPS confiaveis, separadas por virgula |
+   | `DJANGO_SECURE_HSTS_SECONDS` | nao | Padrao 3600; suba so depois de validar o HTTPS |
+   | `DJANGO_SECURE_PROXY_SSL_HEADER` | nao | `true` se um proxy termina o TLS e envia `X-Forwarded-Proto` |
+
+2. Suba com o compose de producao (gunicorn, estaticos via WhiteNoise, usuario sem privilegios):
+
+   ```bash
+   docker compose -f docker-compose.prod.yml up --build -d
+   ```
+
+3. Valide a configuracao: `DJANGO_SETTINGS_MODULE=project.settings.prod python manage.py check --deploy --fail-level WARNING`.
+
+Observacoes:
+
+- O banco continua SQLite dentro do container: sem volume, os dados se perdem ao recriar o container.
+- A producao exige HTTPS (cookies seguros e redirect). Atras de um proxy, defina `DJANGO_SECURE_PROXY_SSL_HEADER=true`.
+- HSTS comeca em 1 hora; `includeSubDomains`/`preload` (W005/W021) ficam silenciados ate haver um deploy HTTPS validado.
+- Se for necessario, o Nginx pode assumir `/static/` no futuro; hoje o WhiteNoise serve os estaticos.
 
 ## Fase 1 - Fundação
 

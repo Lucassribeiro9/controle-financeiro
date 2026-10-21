@@ -1,3 +1,4 @@
+# Ambiente de DESENVOLVIMENTO local. Para producao use docker-compose.prod.yml.
 services:
   web:
     build:
@@ -10,5 +11,5 @@ services:
     volumes:
       - .:/app
     environment:
-      DJANGO_SETTINGS_MODULE: project.settings
+      DJANGO_SETTINGS_MODULE: project.settings.dev
     restart: unless-stopped

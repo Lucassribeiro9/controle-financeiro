@@ -1,6 +1,7 @@
 .git
 .gitignore
 .venv
+venv
 __pycache__
 *.pyc
 *.pyo
@@ -8,8 +9,10 @@ __pycache__
 .pytest_cache
 .mypy_cache
 .coverage
-db.sqlite3
+**/db.sqlite3
 .env
 .env.*
+!.env.example
+staticfiles
 .vscode
 .idea
