@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from io import BytesIO
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
@@ -14,7 +14,7 @@ from institutions.models import Institution
 from transactions.models import Transaction
 
 
-class ImportViewTests(TestCase):
+class ImportViewTests(AuthenticatedTestCase):
     """Garante os endpoints iniciais de importacao."""
 
     def setUp(self):

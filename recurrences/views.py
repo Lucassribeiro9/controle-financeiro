@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from core.auth import api_login_required
 from core.forms import normalize_decimal
 
 from .models import Recurrence
@@ -57,6 +58,7 @@ def _get_forecasts_for_period(*, year: int, month: int):
     ).order_by("date", "description")
 
 
+@api_login_required
 @require_GET
 def monthly_forecasts(request: HttpRequest, year: int, month: int) -> JsonResponse:
     """Lista previsoes do mes para conferencia do usuario."""
@@ -102,6 +104,7 @@ def forecasts_filter_page(request: HttpRequest):
     return forecasts_page(request, year=year, month=month)
 
 
+@api_login_required
 @require_POST
 def confirm_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
     """Confirma previsao para virar transacao real pendente."""
@@ -124,6 +127,7 @@ def confirm_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
     )
 
 
+@api_login_required
 @require_POST
 def ignore_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
     """Ignora previsao selecionada no mes."""
@@ -141,6 +145,7 @@ def ignore_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
     )
 
 
+@api_login_required
 @require_POST
 def adjust_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
     """Ajusta valor previsto antes da confirmacao."""

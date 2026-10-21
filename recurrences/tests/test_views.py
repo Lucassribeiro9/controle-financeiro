@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.utils import timezone
 from django.urls import reverse
 
@@ -13,7 +13,7 @@ from recurrences.models import Recurrence
 from transactions.models import Transaction
 
 
-class RecurrenceViewsTests(TestCase):
+class RecurrenceViewsTests(AuthenticatedTestCase):
     """Garante fluxo de confirmar, ignorar e ajustar previsoes."""
 
     def setUp(self):

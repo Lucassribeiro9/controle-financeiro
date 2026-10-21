@@ -6,6 +6,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
+from core.auth import api_login_required
 from core.utils import map_service_errors_to_view
 from .models import Insight
 from .selectors import get_insights_by_status, get_pending_insights, get_recent_insights
@@ -34,6 +35,7 @@ def _serialize_insight(insight: Insight) -> dict:
     }
 
 
+@api_login_required
 @require_GET
 def insight_list(request: HttpRequest) -> JsonResponse:
     """Lista insights para revisao do usuario."""
@@ -48,6 +50,7 @@ def insight_list(request: HttpRequest) -> JsonResponse:
     return JsonResponse({"count": len(results), "results": results})
 
 
+@api_login_required
 @require_GET
 def recent_insights(request: HttpRequest) -> JsonResponse:
     """Lista insights recentes para historico curto."""

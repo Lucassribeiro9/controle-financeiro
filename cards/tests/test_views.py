@@ -3,7 +3,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -15,7 +15,7 @@ from institutions.models import Institution
 from transactions.models import Transaction
 
 
-class CardViewTests(TestCase):
+class CardViewTests(AuthenticatedTestCase):
     """Garante telas de listagem, criacao e edicao de cartoes."""
 
     def setUp(self):
@@ -272,7 +272,7 @@ class CardViewTests(TestCase):
         self.assertEqual(card.balance, Decimal("90.00"))
 
 
-class StatementViewTests(TestCase):
+class StatementViewTests(AuthenticatedTestCase):
     """Garante telas de faturas e pagamento via service."""
 
     def setUp(self):

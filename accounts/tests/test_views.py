@@ -2,14 +2,14 @@
 
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
 from institutions.models import Institution
 
 
-class AccountViewTests(TestCase):
+class AccountViewTests(AuthenticatedTestCase):
     """Garante telas de listagem, criacao, edicao e detalhe de contas."""
 
     def setUp(self):

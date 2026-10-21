@@ -4,7 +4,7 @@ from datetime import date
 from datetime import timedelta
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -20,7 +20,7 @@ from recurrences.services import generate_monthly_recurrences_forecasts
 from transactions.models import Transaction
 
 
-class HomeViewTests(TestCase):
+class HomeViewTests(AuthenticatedTestCase):
     """Garante que a home consome o contexto operacional."""
 
     def test_home_renders_with_empty_database(self):

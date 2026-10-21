@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
@@ -10,7 +10,7 @@ from cards.models import Card
 from institutions.models import Institution
 
 
-class InstitutionViewTests(TestCase):
+class InstitutionViewTests(AuthenticatedTestCase):
     """Garante telas de listagem, criacao e edicao de instituicoes."""
 
     def test_institution_list_page_returns_success(self):

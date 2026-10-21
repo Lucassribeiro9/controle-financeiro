@@ -22,6 +22,7 @@
             </span>
         </a>
 
+        {% if user.is_authenticated %}
         <details class="mobile-menu">
             <summary>
                 <span class="menu-icon" aria-hidden="true">
@@ -38,6 +39,7 @@
                 {% include "partials/nav_links.html" with nav_id="mobile" %}
             </nav>
         </details>
+        {% endif %}
     </header>
 
     <div class="app-shell">

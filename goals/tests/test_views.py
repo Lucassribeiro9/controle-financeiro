@@ -3,7 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from core.testing import AuthenticatedTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -14,7 +14,7 @@ from institutions.models import Institution
 from transactions.models import Transaction
 
 
-class GoalViewTests(TestCase):
+class GoalViewTests(AuthenticatedTestCase):
     """Garante paginas de acompanhamento de objetivos e metas."""
 
     def setUp(self):

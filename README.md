@@ -50,6 +50,16 @@ python3 manage.py runserver
 python3 manage.py test
 ```
 
+### Acesso e usuario
+
+Todas as rotas financeiras exigem login (`/login/`); so `/health/` e o login sao publicos.
+Nao ha tela de cadastro: crie o usuario uma vez (em dev e em producao) com:
+
+```bash
+python3 manage.py createsuperuser
+# docker: docker compose run --rm web python manage.py createsuperuser
+```
+
 ### Deploy (producao)
 
 Usa `project.settings.prod` (padrao de `wsgi.py` e `asgi.py`), que **falha no

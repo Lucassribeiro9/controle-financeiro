@@ -7,6 +7,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 
 from accounts.models import FinancialAccount
 from categories.models import Category
+from core.auth import api_login_required
 from core.forms import normalize_decimal
 from core.forms import parse_br_date
 from transactions.models import Transaction
@@ -149,6 +150,7 @@ def _parse_transaction_date(value):
         raise ValueError("Data informada é inválida.") from exc
 
 
+@api_login_required
 @require_POST
 def upload_import(request: HttpRequest) -> JsonResponse:
     """Recebe arquivo suportado e cria transacoes importadas para revisao."""
@@ -170,6 +172,7 @@ def upload_import(request: HttpRequest) -> JsonResponse:
     )
 
 
+@api_login_required
 @require_GET
 def review_imports(request: HttpRequest) -> JsonResponse:
     """Lista transacoes importadas para revisao."""
@@ -182,6 +185,7 @@ def review_imports(request: HttpRequest) -> JsonResponse:
     return JsonResponse({"count": len(results), "results": results})
 
 
+@api_login_required
 @require_POST
 def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonResponse:
     """Confirma uma transacao importada e cria a transacao real."""
@@ -246,6 +250,7 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
     )
 
 
+@api_login_required
 @require_POST
 def discard_import(request: HttpRequest, imported_transaction_id: int) -> JsonResponse:
     """Descarta uma transacao importada sem criar transacao real."""

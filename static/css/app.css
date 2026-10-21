@@ -191,6 +191,19 @@ h2 {
     padding: 10px 12px;
 }
 
+.nav-logout-form {
+    margin: 0;
+}
+
+.nav-logout-button {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    width: 100%;
+}
+
 .app-nav-link:hover,
 .app-nav-link.active {
     background: rgba(255, 255, 255, 0.08);
