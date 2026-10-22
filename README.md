@@ -346,7 +346,7 @@ Regras importantes:
 
 Status: descontinuado em #196
 
-> O módulo de Rendimentos (app `rates`: CDI manual, configuração de rendimento por conta e simulação) foi descontinuado na issue #196. O código e as tabelas foram removidos; o shell do app (`apps.py` e migrations) permanece até a issue #208. O conteúdo abaixo é mantido apenas como histórico.
+> O módulo de Rendimentos (app `rates`: CDI manual, configuração de rendimento por conta e simulação) foi descontinuado na issue #196. O código e as tabelas foram removidos; o shell do app foi removido na issue #208. O conteúdo abaixo é mantido apenas como histórico.
 
 Implementado:
 

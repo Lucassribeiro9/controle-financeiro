@@ -97,7 +97,6 @@ goals/          -> objetivos e metas mensais
 reports/        -> dashboards e relatorios
 imports/        -> importacao e revisao de arquivos
 insights/       -> sugestoes automaticas
-rates/          -> descontinuado em #196 (shell ate a #208)
 templates/      -> base e partials compartilhados
 static/         -> CSS e assets estaticos
 docs/plans/     -> planos e roadmap
@@ -119,7 +118,6 @@ goals
 reports
 imports
 insights
-rates (descontinuado em #196; shell removido na #208)
 ```
 
 Diretorios compartilhados relevantes:
@@ -131,6 +129,8 @@ static/
 docs/plans/
 docs/specs/
 ```
+
+O app `rates` (Rendimentos) foi descontinuado na #196 e removido por completo na #208.
 
 Nao ha apps planejados listados como se ja existissem nesta baseline. Quando um app novo entrar no roadmap, ele deve ser identificado como planejado ate ser criado e registrado em `INSTALLED_APPS`.
 
