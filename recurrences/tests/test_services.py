@@ -87,6 +87,85 @@ class RecurrenceServiceTests(TestCase):
         self.assertEqual(updated_count, 1)
         self.assertEqual(forecast.status, Transaction.PaymentStatus.IGNORED)
 
+    def _create_homonym(self, *, recurrence_type=Recurrence.RecurrenceType.INCOME):
+        """Cria segunda recorrencia com o mesmo nome, data, conta e cartao."""
+
+        return Recurrence.objects.create(
+            name=self.recurrence.name,
+            expected_day=self.recurrence.expected_day,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=recurrence_type,
+            expected_amount=self.recurrence.expected_amount,
+            account=self.account,
+            is_active=True,
+        )
+
+    def test_generated_forecast_is_linked_to_recurrence(self):
+        """Previsao gerada deve guardar a recorrencia de origem."""
+
+        generate_monthly_recurrences_forecasts(year=2026, month=6)
+
+        forecast = Transaction.objects.get(date=date(2026, 6, 10))
+
+        self.assertEqual(forecast.recurrence, self.recurrence)
+
+    def test_generate_with_homonym_recurrences_links_each_forecast(self):
+        """Recorrencias homonimas geram uma previsao cada, com vinculo proprio."""
+
+        other = self._create_homonym()
+
+        created_count = generate_monthly_recurrences_forecasts(year=2026, month=6)
+
+        self.assertEqual(created_count, 2)
+        self.assertEqual(
+            set(Transaction.objects.values_list("recurrence_id", flat=True)),
+            {self.recurrence.id, other.id},
+        )
+
+    def test_generate_twice_with_homonyms_does_not_duplicate(self):
+        """Gerar de novo nao duplica previsoes de recorrencias homonimas."""
+
+        self._create_homonym()
+        generate_monthly_recurrences_forecasts(year=2026, month=6)
+
+        created_count = generate_monthly_recurrences_forecasts(year=2026, month=6)
+
+        self.assertEqual(created_count, 0)
+        self.assertEqual(Transaction.objects.count(), 2)
+
+    def test_skip_recurrence_for_month_affects_only_chosen_recurrence(self):
+        """Pular o mes nao deve ignorar a previsao de recorrencia homonima."""
+
+        other = self._create_homonym()
+        generate_monthly_recurrences_forecasts(year=2026, month=6)
+
+        updated_count = skip_recurrence_for_month(
+            recurrence_id=other.id, year=2026, month=6
+        )
+
+        self.assertEqual(updated_count, 1)
+        self.assertEqual(
+            Transaction.objects.get(recurrence=other).status,
+            Transaction.PaymentStatus.IGNORED,
+        )
+        self.assertEqual(
+            Transaction.objects.get(recurrence=self.recurrence).status,
+            Transaction.PaymentStatus.FORECASTED,
+        )
+
+    def test_skip_recurrence_for_month_works_after_rename(self):
+        """Renomear a recorrencia nao impede pular a previsao ja gerada."""
+
+        generate_monthly_recurrences_forecasts(year=2026, month=6)
+        self.recurrence.name = "Internet fibra"
+        self.recurrence.save()
+
+        updated_count = skip_recurrence_for_month(
+            recurrence_id=self.recurrence.id, year=2026, month=6
+        )
+
+        self.assertEqual(updated_count, 1)
+
     def test_match_recurrence_with_real_transaction_adds_match_note(self):
         """Reconciliar recorrencia deve anotar vinculacao na transacao real."""
 

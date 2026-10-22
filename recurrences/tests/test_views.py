@@ -41,6 +41,7 @@ class RecurrenceViewsTests(AuthenticatedTestCase):
             status=Transaction.PaymentStatus.FORECASTED,
             account=self.account,
             date=date(2026, 6, 10),
+            recurrence=self.recurrence,
         )
 
     def test_monthly_forecasts_returns_month_items(self):
@@ -94,6 +95,64 @@ class RecurrenceViewsTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.forecast.status, Transaction.PaymentStatus.PENDING)
         self.assertEqual(self.forecast.transaction_type, Transaction.TransactionType.EXPENSE)
+
+    def test_confirm_forecast_with_homonym_recurrences_uses_linked_recurrence(self):
+        """Homonimas de tipos diferentes confirmam cada uma com o tipo correto."""
+
+        income = Recurrence.objects.create(
+            name=self.recurrence.name,
+            expected_day=10,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.INCOME,
+            expected_amount=Decimal("300.00"),
+            account=self.account,
+        )
+        income_forecast = Transaction.objects.create(
+            description=f"[REC] {income.name}",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 6, 10),
+            recurrence=income,
+        )
+
+        for forecast in (self.forecast, income_forecast):
+            response = self.client.post(
+                reverse("recurrences:confirm-forecast", kwargs={"transaction_id": forecast.id})
+            )
+            self.assertEqual(response.status_code, 200)
+            forecast.refresh_from_db()
+
+        self.assertEqual(self.forecast.transaction_type, Transaction.TransactionType.EXPENSE)
+        self.assertEqual(income_forecast.transaction_type, Transaction.TransactionType.INCOME)
+
+    def test_confirm_forecast_works_after_recurrence_rename(self):
+        """Renomear a recorrencia nao deixa a previsao orfa."""
+
+        self.recurrence.name = "Internet fibra"
+        self.recurrence.save()
+
+        response = self.client.post(
+            reverse("recurrences:confirm-forecast", kwargs={"transaction_id": self.forecast.id})
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_confirm_forecast_without_recurrence_returns_json_404(self):
+        """Previsao sem vinculo (ex.: anterior ao campo) responde 404 JSON."""
+
+        self.forecast.recurrence = None
+        self.forecast.save(update_fields=["recurrence"])
+
+        response = self.client.post(
+            reverse("recurrences:confirm-forecast", kwargs={"transaction_id": self.forecast.id})
+        )
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("error", response.json())
+        self.assertEqual(self.forecast.status, Transaction.PaymentStatus.FORECASTED)
 
     def test_ignore_forecast_sets_ignored_status(self):
         response = self.client.post(

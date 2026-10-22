@@ -266,27 +266,10 @@ def _classify_recurring_forecasts(
 ) -> tuple[list[Transaction], list[Transaction]]:
     """Separa previsoes recorrentes em receitas e despesas pela recorrencia."""
 
-    forecasts = _get_generated_recurring_forecasts(year=year, month=month)
-    recurrence_names = [
-        recurrence_name
-        for forecast in forecasts
-        if (recurrence_name := _extract_generated_recurrence_name(forecast.description))
-    ]
-    recurrences_by_name = {
-        recurrence.name: recurrence
-        for recurrence in Recurrence.objects.filter(name__in=recurrence_names)
-    }
-
     income_forecasts = []
     expense_forecasts = []
-    for forecast in forecasts:
-        recurrence = recurrences_by_name.get(
-            _extract_generated_recurrence_name(forecast.description)
-        )
-        if recurrence is None:
-            continue
-
-        if recurrence.recurrence_type == Recurrence.RecurrenceType.INCOME:
+    for forecast in _get_generated_recurring_forecasts(year=year, month=month):
+        if forecast.recurrence.recurrence_type == Recurrence.RecurrenceType.INCOME:
             income_forecasts.append(forecast)
         else:
             expense_forecasts.append(forecast)
@@ -295,41 +278,17 @@ def _classify_recurring_forecasts(
 
 
 def _get_generated_recurring_forecasts(*, year: int, month: int) -> list[Transaction]:
-    """Lista previsoes recorrentes geradas pelo fluxo de recorrencias."""
+    """Lista previsoes vinculadas a uma recorrencia existente."""
 
-    forecasts = list(
+    return list(
         Transaction.objects.filter(
             date__year=year,
             date__month=month,
             transaction_type=Transaction.TransactionType.FORECAST,
             status=Transaction.PaymentStatus.FORECASTED,
-        )
+            recurrence__isnull=False,
+        ).select_related("recurrence")
     )
-    recurrence_names = [
-        recurrence_name
-        for forecast in forecasts
-        if (recurrence_name := _extract_generated_recurrence_name(forecast.description))
-    ]
-    existing_names = set(
-        Recurrence.objects.filter(name__in=recurrence_names).values_list(
-            "name",
-            flat=True,
-        )
-    )
-    return [
-        forecast
-        for forecast in forecasts
-        if _extract_generated_recurrence_name(forecast.description) in existing_names
-    ]
-
-
-def _extract_generated_recurrence_name(description: str) -> str | None:
-    """Extrai o nome da recorrencia do padrao gerado pelo service."""
-
-    prefix = "[REC] "
-    if description.startswith(prefix):
-        return description[len(prefix) :]
-    return None
 
 
 def _build_alerts(*, today, year: int, month: int) -> list[dict]:

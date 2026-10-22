@@ -94,6 +94,14 @@ class Transaction(models.Model):
         null=True,
         blank=True,
     )
+    recurrence = models.ForeignKey(
+        "recurrences.Recurrence",
+        verbose_name="Recorrência de origem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="forecasts",
+    )
 
     class Meta:
         """Define metadados de exibicao, ordenacao e unicidade."""
