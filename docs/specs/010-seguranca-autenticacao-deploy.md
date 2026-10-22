@@ -95,7 +95,7 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 - ~~Login deve entrar mesmo para uso local ou apenas antes de deploy?~~ Resolvida na issue #199: sempre.
 - ~~O app tera usuario unico configurado por admin ou cadastro livre?~~ Resolvida na issue #199: usuario criado por admin, sem cadastro (por enquanto).
-- Dados ja existentes precisarao de owner quando/ se multiusuario for aprovado?
+- ~~Dados ja existentes precisarao de owner quando/ se multiusuario for aprovado?~~ Movida para a futura spec de ownership (issue #200).
 - Producao usara SQLite inicialmente ou PostgreSQL?
 
 ## Decisoes da Issue #201
@@ -127,6 +127,25 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - Follow-ups: forms HTML que postam em endpoints JSON (previsoes e revisao de imports)
   exibem 401 cru com sessao expirada; limite de tentativas de login.
 
+## Decisoes da Issue #200
+
+- O app e **single-user formal**, garantido em codigo; nao ha `owner`/`workspace`,
+  migration nem backfill. O isolamento por usuario (IDOR entre usuarios) deixa de ser
+  explotavel porque nao existe segundo principal.
+- Invariante: exatamente um usuario ativo. `core.auth.SingleUserBackend` so autentica
+  nessa condicao (fail-closed, inclusive no `/admin/`); com mais de um ativo, ninguem
+  entra. Um `pre_save` em `User` (`enforce_single_active_user`) impede criar ou ativar
+  um segundo usuario ativo, inclusive via `createsuperuser`. Sem variavel de ambiente
+  nova e sem checagem por request.
+- Bancos que ja tenham mais de um usuario ativo precisam desativar ou remover os extras
+  antes de logar.
+- Objeto inexistente responde 404; views `@api_login_required` respondem 404 em JSON
+  (via `process_exception` do middleware), views HTML mantem o 404 padrao.
+- Gatilho para multiusuario: necessidade real de um segundo usuario; exige nova spec de
+  ownership (ver `docs/plans/scope.md`). A open question sobre owner para dados
+  existentes passa para essa spec.
+- Follow-up: lookup de `Recurrence` por nome nao unico (issue #206).
+
 ## Task Breakdown Inicial
 
 - [x] Task: Criar settings dev/prod (issue #201).
@@ -137,7 +156,7 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
   - Acceptance: views financeiras sensiveis exigem login.
   - Verify: testes de acesso anonimo/autenticado.
   - Files: views/urls afetadas, `templates/registration/`, testes.
-- [ ] Task: Documentar decisao single-user vs multiusuario.
+- [x] Task: Documentar decisao single-user vs multiusuario (issue #200).
   - Acceptance: scope deixa claro o limite atual e o gatilho para nova spec.
   - Verify: revisao manual.
   - Files: `docs/plans/scope.md`, esta spec.

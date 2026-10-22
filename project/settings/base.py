@@ -55,6 +55,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "project.urls"
 
+AUTHENTICATION_BACKENDS = ["core.auth.SingleUserBackend"]
+
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "core:home"
 LOGOUT_REDIRECT_URL = "login"
