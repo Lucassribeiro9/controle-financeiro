@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     "reports",
     "imports",
     "insights",
-    "rates",
 ]
 
 MIDDLEWARE = [
