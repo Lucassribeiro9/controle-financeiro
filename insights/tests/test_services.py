@@ -169,18 +169,30 @@ class GenerateMonthlyInsightsTests(TestCase):
         mercado = self.categories["Mercado"].id
         transporte = self.categories["Transporte"].id
         self.assertEqual(
-            by_type[Insight.InsightType.CATEGORY_LIMIT], {mercado, transporte}
+            by_type[Insight.InsightType.CATEGORY_LIMIT],
+            {
+                mercado,
+                transporte,
+                self.categories["Lazer"].id,
+                self.categories["Saude"].id,
+            },
         )
         self.assertEqual(by_type[Insight.InsightType.RECURRING_EXPENSE], {mercado})
-        self.assertEqual(len(created), 3)
+        self.assertEqual(len(created), 5)
 
-    def test_ignores_non_paid_card_and_uncategorized_spending(self):
+    def test_counts_pending_and_card_spending_but_not_excluded_or_uncategorized(self):
         created = generate_monthly_insights(year=2026, month=5)
 
-        categories = {insight.category_id for insight in created}
-        self.assertNotIn(self.categories["Lazer"].id, categories)
-        self.assertNotIn(self.categories["Saude"].id, categories)
-        self.assertNotIn(None, categories)
+        limits = {
+            insight.category_id: insight.suggested_amount
+            for insight in created
+            if insight.insight_type == Insight.InsightType.CATEGORY_LIMIT
+        }
+        # Lazer: so o bar pendente; previsto e cancelado ficam fora.
+        self.assertEqual(limits[self.categories["Lazer"].id], Decimal("90.00"))
+        # Saude: compra pendente no cartao conta como gasto.
+        self.assertEqual(limits[self.categories["Saude"].id], Decimal("120.00"))
+        self.assertNotIn(None, {insight.category_id for insight in created})
         for insight in created:
             self.assertNotIn("None", insight.title)
             self.assertNotIn("None", insight.message)
@@ -198,7 +210,7 @@ class GenerateMonthlyInsightsTests(TestCase):
         generate_monthly_insights(year=2026, month=5)
 
         self.assertEqual(generate_monthly_insights(year=2026, month=5), [])
-        self.assertEqual(Insight.objects.count(), 3)
+        self.assertEqual(Insight.objects.count(), 5)
 
     def test_silenced_limit_pattern_blocks_only_category_limit(self):
         mercado = self.categories["Mercado"]
@@ -218,7 +230,7 @@ class GenerateMonthlyInsightsTests(TestCase):
         self.assertNotIn(
             Insight.InsightType.RECURRING_EXPENSE, {i.insight_type for i in created}
         )
-        self.assertEqual(len(created), 2)
+        self.assertEqual(len(created), 4)
 
     def test_empty_database_returns_empty_list(self):
         Transaction.objects.all().delete()

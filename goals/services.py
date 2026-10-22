@@ -6,16 +6,13 @@ from django.db import transaction
 from django.db.models import Sum
 
 from categories.models import Category
+from transactions.constants import (
+    EXCLUDED_SPENDING_STATUSES,
+    SPENDING_TRANSACTION_TYPES,
+)
 from transactions.models import Transaction
 
 from .models import Goal, MonthlyGoal
-
-
-EXCLUDED_TRANSACTION_STATUSES = [
-    Transaction.PaymentStatus.IGNORED,
-    Transaction.PaymentStatus.CANCELED,
-    Transaction.PaymentStatus.FORECASTED,
-]
 
 
 def _zero() -> Decimal:
@@ -52,12 +49,12 @@ def _get_reduction_current_amount(*, goal: Goal, year: int, month: int) -> Decim
 
     total = (
         Transaction.objects.filter(
-            transaction_type=Transaction.TransactionType.EXPENSE,
+            transaction_type__in=SPENDING_TRANSACTION_TYPES,
             category=goal.category,
             date__year=year,
             date__month=month,
         )
-        .exclude(status__in=EXCLUDED_TRANSACTION_STATUSES)
+        .exclude(status__in=EXCLUDED_SPENDING_STATUSES)
         .aggregate(total=Sum("amount"))["total"]
     )
     return total or _zero()

@@ -6,18 +6,11 @@ from django.db.models import Sum
 
 from accounts.models import FinancialAccount
 
+from .constants import (
+    EXCLUDED_SPENDING_STATUSES as EXCLUDED_STATUSES,
+    SPENDING_TRANSACTION_TYPES as EXPENSE_TRANSACTION_TYPES,
+)
 from .models import Transaction, Transfer
-
-# Status excluídos para não serem considerados nos cálculos
-EXCLUDED_STATUSES = [
-    Transaction.PaymentStatus.IGNORED,
-    Transaction.PaymentStatus.CANCELED,
-    Transaction.PaymentStatus.FORECASTED,
-]
-EXPENSE_TRANSACTION_TYPES = [
-    Transaction.TransactionType.EXPENSE,
-    Transaction.TransactionType.BENEFIT_PURCHASE,
-]
 
 
 def get_account_balance(*, account=None, account_id=None):

@@ -13,18 +13,12 @@ from accounts.models import FinancialAccount
 from cards.models import CardStatement
 from categories.selectors import get_categories_at_risk
 from goals.models import MonthlyGoal
+from transactions.constants import (
+    EXCLUDED_SPENDING_STATUSES as EXCLUDED_STATUSES,
+    SPENDING_TRANSACTION_TYPES as EXPENSE_TRANSACTION_TYPES,
+)
 from transactions.models import Transaction
 
-
-EXCLUDED_STATUSES = [
-    Transaction.PaymentStatus.IGNORED,
-    Transaction.PaymentStatus.CANCELED,
-    Transaction.PaymentStatus.FORECASTED,
-]
-EXPENSE_TRANSACTION_TYPES = [
-    Transaction.TransactionType.EXPENSE,
-    Transaction.TransactionType.BENEFIT_PURCHASE,
-]
 MONTH_LABELS = {
     1: "jan",
     2: "fev",

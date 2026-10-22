@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from accounts.models import FinancialAccount
+from cards.models import Card
 from categories.models import Category
 from goals.models import Goal, MonthlyGoal
 from goals.services import (
@@ -127,6 +128,86 @@ class GoalServiceTests(TestCase):
         progress = calculate_goal_progress(goal=goal, year=2026, month=5)
 
         self.assertEqual(progress["current_amount"], Decimal("0.00"))
+
+    def test_reduction_goal_counts_card_and_benefit_purchases_not_statement_payment(self):
+        """Deve contar compra no cartao e no beneficio, mas nunca o pagamento da fatura."""
+
+        goal = Goal.objects.create(
+            name="Reduzir delivery",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("250.00"),
+            start_date=date(2026, 5, 1),
+            category=self.category,
+        )
+        credit = Card.objects.create(
+            name="Cartao Inter",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("3000.00"),
+            statement_closing_day=10,
+            statement_due_day=17,
+            payment_account=self.spending_account,
+        )
+        benefit = Card.objects.create(
+            name="Vale",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            balance=Decimal("500.00"),
+        )
+        for transaction_type, amount, status, card in (
+            (Transaction.TransactionType.CARD_PURCHASE, "100.00", Transaction.PaymentStatus.PENDING, credit),
+            (Transaction.TransactionType.BENEFIT_PURCHASE, "40.00", Transaction.PaymentStatus.PENDING, benefit),
+            (Transaction.TransactionType.STATEMENT_PAYMENT, "100.00", Transaction.PaymentStatus.PAID, credit),
+        ):
+            Transaction.objects.create(
+                description=transaction_type,
+                amount=Decimal(amount),
+                transaction_type=transaction_type,
+                status=status,
+                account=self.spending_account if card is credit and transaction_type == Transaction.TransactionType.STATEMENT_PAYMENT else None,
+                card=card,
+                category=self.category,
+                date=date(2026, 5, 10),
+            )
+
+        progress = calculate_goal_progress(goal=goal, year=2026, month=5)
+
+        self.assertEqual(progress["current_amount"], Decimal("140.00"))
+
+    def test_update_monthly_goal_status_flags_risk_with_card_purchase(self):
+        """Compra no cartao deve levar a meta de reducao para em risco."""
+
+        goal = Goal.objects.create(
+            name="Reduzir delivery",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("100.00"),
+            start_date=date(2026, 5, 1),
+            category=self.category,
+        )
+        monthly_goal = create_monthly_goal_from_goal(goal=goal, year=2026, month=5)
+        credit = Card.objects.create(
+            name="Cartao Inter",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("3000.00"),
+            statement_closing_day=10,
+            statement_due_day=17,
+            payment_account=self.spending_account,
+        )
+        Transaction.objects.create(
+            description="Compra no cartao",
+            amount=Decimal("90.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=credit,
+            category=self.category,
+            date=date(2026, 5, 10),
+        )
+
+        updated = update_monthly_goal_status(monthly_goal)
+
+        self.assertEqual(updated.current_amount, Decimal("90.00"))
+        self.assertEqual(updated.status, MonthlyGoal.Status.AT_RISK)
 
     def test_reduction_goal_requires_year_and_month_for_progress(self):
         """Objetivo de reducao deve exigir periodo para calcular progresso."""

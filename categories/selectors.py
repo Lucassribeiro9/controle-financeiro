@@ -9,7 +9,10 @@ from django.db.models.functions import Coalesce
 
 from categories.models import Category
 from goals.models import Goal, MonthlyGoal
-from transactions.models import Transaction
+from transactions.constants import (
+    EXCLUDED_SPENDING_STATUSES,
+    SPENDING_TRANSACTION_TYPES,
+)
 
 
 def get_categories_with_monthly_spent(
@@ -24,23 +27,11 @@ def get_categories_with_monthly_spent(
     Tambem recebe ``limit_amount`` caso haja meta de reducao ativa.
     """
 
-    expense_types = [
-        Transaction.TransactionType.EXPENSE,
-        Transaction.TransactionType.CARD_PURCHASE,
-        Transaction.TransactionType.BENEFIT_PURCHASE,
-    ]
-
-    excluded_statuses = [
-        Transaction.PaymentStatus.CANCELED,
-        Transaction.PaymentStatus.IGNORED,
-        Transaction.PaymentStatus.FORECASTED,
-    ]
-
     expense_filter = Q(
-        transactions__transaction_type__in=expense_types,
+        transactions__transaction_type__in=SPENDING_TRANSACTION_TYPES,
         transactions__date__year=reference_date.year,
         transactions__date__month=reference_date.month,
-    ) & ~Q(transactions__status__in=excluded_statuses)
+    ) & ~Q(transactions__status__in=EXCLUDED_SPENDING_STATUSES)
 
     monthly_goals_subquery = MonthlyGoal.objects.filter(
         goal__goal_type=Goal.GoalType.REDUCTION,

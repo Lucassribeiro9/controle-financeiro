@@ -113,7 +113,7 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 ## Task Breakdown Inicial
 
-- [ ] Task: Centralizar constantes de status.
+- [x] Task: Centralizar constantes de status (#211).
   - Acceptance: relatorios, goals e insights usam fonte unica para status excluidos.
   - Verify: testes existentes continuam passando.
   - Files: `transactions/constants.py`, selectors afetados, testes.
