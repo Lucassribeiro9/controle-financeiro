@@ -205,3 +205,33 @@ def _fill(route: str) -> str:
     route = re.sub(r"<int:[^>]+>", "1", route)
     route = re.sub(r"<slug:[^>]+>", "x", route)
     return re.sub(r"<[^>]+>", "x", route)
+
+
+class ApiNotFoundTests(TestCase):
+    """Views JSON respondem 404 em JSON; views HTML mantem o 404 padrao."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="lucas", password="senha-de-teste-123"
+        )
+        self.client.force_login(self.user)
+
+    def test_json_routes_with_missing_id_return_json_404(self):
+        routes = [
+            ("post", "imports:confirm", {"imported_transaction_id": 999999}),
+            ("post", "imports:discard", {"imported_transaction_id": 999999}),
+            ("post", "recurrences:confirm-forecast", {"transaction_id": 999999}),
+            ("post", "recurrences:ignore-forecast", {"transaction_id": 999999}),
+            ("post", "recurrences:adjust-forecast", {"transaction_id": 999999}),
+        ]
+        for method, name, kwargs in routes:
+            with self.subTest(route=name):
+                response = getattr(self.client, method)(reverse(name, kwargs=kwargs))
+                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response["Content-Type"], "application/json")
+                self.assertIn("error", response.json())
+
+    def test_html_route_with_missing_id_keeps_default_404(self):
+        response = self.client.get(reverse("accounts:update", kwargs={"account_id": 999999}))
+        self.assertEqual(response.status_code, 404)
+        self.assertNotEqual(response["Content-Type"], "application/json")

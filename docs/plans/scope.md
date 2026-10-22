@@ -370,6 +370,12 @@ O “banco do Django” será o SQLite inicialmente, gerenciado pelas migrations
 
 Se no futuro o app for hospedado ou multiusuário, será possível migrar para PostgreSQL.
 
+### **6.3 Single-user e Gatilho Para Multiusuário**
+
+O app é **single-user formal**: o código só permite autenticar quando existe exatamente um usuário ativo. Com isso não há segundo principal capaz de acessar dados de outro, e os dados não têm `owner`/`workspace`.
+
+O gatilho para abrir uma nova spec de ownership (owner por usuário, escopo em selectors, forms e bulk, migrations e backfill) é a necessidade real de um segundo usuário. Até lá, multiusuário continua fora do escopo.
+
 ## **7. Integrações e Importações**
 
 ### **7.1 Planilha Atual**
