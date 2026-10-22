@@ -97,7 +97,7 @@ goals/          -> objetivos e metas mensais
 reports/        -> dashboards e relatorios
 imports/        -> importacao e revisao de arquivos
 insights/       -> sugestoes automaticas
-rates/          -> taxas, rendimentos e simulacoes
+rates/          -> descontinuado em #196 (shell ate a #208)
 templates/      -> base e partials compartilhados
 static/         -> CSS e assets estaticos
 docs/plans/     -> planos e roadmap
@@ -119,7 +119,7 @@ goals
 reports
 imports
 insights
-rates
+rates (descontinuado em #196; shell removido na #208)
 ```
 
 Diretorios compartilhados relevantes:

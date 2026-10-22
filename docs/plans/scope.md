@@ -1,5 +1,7 @@
 # **Aplicativo de Controle Financeiro Pessoal**
 
+> **Rendimentos descontinuado em #196.** O módulo de Rendimentos (app `rates`: `ReferenceRate`, CDI manual, `AccountYieldConfig` e simulação) foi removido do produto. Menções a CDI, taxas e rendimento neste documento são histórico.
+
 ## **1. Objetivo**
 
 Criar um aplicativo web local em Python, usando Django, para controle financeiro pessoal, com foco em organização visual, aprendizado financeiro e planejamento.

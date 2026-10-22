@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class RatesConfig(AppConfig):
-    """Configura o app de taxas e rendimentos."""
+    """Shell do app descontinuado; mantido para aplicar migrations (#196)."""
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "rates"
