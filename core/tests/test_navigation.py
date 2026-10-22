@@ -54,3 +54,19 @@ class NavigationTests(AuthenticatedTestCase):
         )
         self.assertContains(response, "Faturas")
         self.assertNotContains(response, 'href="/cards/" aria-current="page"')
+
+
+class RatesModuleRemovedTests(AuthenticatedTestCase):
+    """Garante que o módulo de Rendimentos (#196) foi descontinuado."""
+
+    def test_rates_route_returns_404(self):
+        response = self.client.get("/rates/")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_navigation_does_not_link_to_rates(self):
+        response = self.client.get(reverse("core:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Rendimentos")
+        self.assertNotContains(response, 'href="/rates/"')
