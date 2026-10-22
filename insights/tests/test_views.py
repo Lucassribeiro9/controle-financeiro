@@ -135,3 +135,18 @@ class InsightViewTests(AuthenticatedTestCase):
         messages = list(response.context["messages"])
         self.assertEqual(len(messages), 1)
         self.assertEqual(str(messages[0]), "Insight silenciado.")
+
+    def test_approve_insight_with_removed_category_shows_error_message(self):
+        self.category.delete()
+
+        response = self.client.post(
+            reverse("insights:approve", kwargs={"insight_id": self.insight.id}),
+            follow=True,
+        )
+
+        self.insight.refresh_from_db()
+        self.assertRedirects(response, reverse("insights:page"))
+        self.assertEqual(self.insight.status, Insight.Status.PENDING)
+        self.assertEqual(Goal.objects.count(), 0)
+        messages = [str(message) for message in response.context["messages"]]
+        self.assertEqual(messages, ["A categoria deste insight não existe mais."])

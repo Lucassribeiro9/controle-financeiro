@@ -12,6 +12,7 @@ Referencias:
 
 - `docs/plans/scope.md`
 - `docs/plans/controle-financeiro-implementation-plan.md`
+- `docs/specs/011-insights-criterios.md` (geracao por command e criterios de aceite por tipo)
 
 ## O que foi criado
 
