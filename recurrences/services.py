@@ -33,7 +33,7 @@ def generate_monthly_recurrences_forecasts(*, year: int, month: int) -> int:
         forecast_date = _build_forecast_date(year, month, recurrence.expected_day)
         tx_type = Transaction.TransactionType.FORECAST
         already_exists = Transaction.objects.filter(
-            description=f"[REC] {recurrence.name}",
+            recurrence=recurrence,
             transaction_type=tx_type,
             status=Transaction.PaymentStatus.FORECASTED,
             date=forecast_date,
@@ -46,6 +46,7 @@ def generate_monthly_recurrences_forecasts(*, year: int, month: int) -> int:
             continue
 
         Transaction.objects.create(
+            recurrence=recurrence,
             description=f"[REC] {recurrence.name}",
             amount=recurrence.expected_amount,
             transaction_type=tx_type,
@@ -70,11 +71,9 @@ def skip_recurrence_for_month(*, recurrence_id: int, year: int, month: int) -> i
     forecast_date = _build_forecast_date(year, month, recurrence.expected_day)
 
     updated = Transaction.objects.filter(
-        description=f"[REC] {recurrence.name}",
+        recurrence=recurrence,
         status=Transaction.PaymentStatus.FORECASTED,
         date=forecast_date,
-        account=recurrence.account,
-        card=recurrence.card,
     ).update(status=Transaction.PaymentStatus.IGNORED)
     return updated
 

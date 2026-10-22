@@ -229,6 +229,62 @@ class SummaryCardDetailSelectorTests(SummaryDetailFixtureMixin, AuthenticatedTes
         self.assertNotIn("[REC] Recorrencia removida", _descriptions(detail["income"]))
         self.assertNotIn("[REC] Recorrencia removida", _descriptions(detail["expenses"]))
 
+    def test_forecasted_classifies_homonym_recurrences_by_linked_recurrence(self):
+        """Recorrencias homonimas de tipos diferentes caem cada uma no seu lado."""
+
+        for recurrence_type, amount in (
+            (Recurrence.RecurrenceType.INCOME, "700.00"),
+            (Recurrence.RecurrenceType.FIXED_BILL, "90.00"),
+        ):
+            recurrence = Recurrence.objects.create(
+                name="Internet",
+                expected_day=10,
+                frequency=Recurrence.Frequency.MONTHLY,
+                recurrence_type=recurrence_type,
+                expected_amount=Decimal(amount),
+                account=self.account,
+            )
+            Transaction.objects.create(
+                description="[REC] Internet",
+                amount=Decimal(amount),
+                transaction_type=Transaction.TransactionType.FORECAST,
+                status=Transaction.PaymentStatus.FORECASTED,
+                account=self.account,
+                date=date(2026, 5, 10),
+                recurrence=recurrence,
+            )
+
+        detail = get_summary_card_detail(card="forecasted", today=self.today)
+
+        self.assertEqual(
+            [t.amount for t in detail["income"]["transactions"] if t.recurrence_id],
+            [Decimal("700.00")],
+        )
+        self.assertEqual(
+            [t.amount for t in detail["expenses"]["transactions"] if t.recurrence_id],
+            [Decimal("90.00")],
+        )
+
+    def test_forecasted_keeps_recurring_forecast_after_recurrence_rename(self):
+        """Renomear a recorrencia nao tira a previsao do detalhe."""
+
+        self.create_recurrences()
+        Recurrence.objects.filter(name="Aluguel recebido").update(name="Aluguel novo")
+
+        detail = get_summary_card_detail(card="forecasted", today=self.today)
+
+        self.assertIn("[REC] Aluguel recebido", _descriptions(detail["income"]))
+
+    def test_forecasted_excludes_recurring_forecast_after_recurrence_deleted(self):
+        """Apagar a recorrencia deixa a previsao sem vinculo, fora do detalhe."""
+
+        self.create_recurrences()
+        Recurrence.objects.filter(name="Aluguel recebido").delete()
+
+        detail = get_summary_card_detail(card="forecasted", today=self.today)
+
+        self.assertNotIn("[REC] Aluguel recebido", _descriptions(detail["income"]))
+
     def test_excludes_other_months_canceled_and_transfers(self):
         """Outros meses, cancelados e transferencias nao entram em nenhum card."""
 

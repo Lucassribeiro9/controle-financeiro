@@ -1,6 +1,6 @@
 """Views do app recurrences."""
 
-from django.http import HttpRequest, JsonResponse
+from django.http import Http404, HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -16,19 +16,10 @@ def _get_forecast_or_404(transaction_id: int) -> Transaction:
     """Retorna transacao prevista para acao do usuario."""
 
     return get_object_or_404(
-        Transaction,
+        Transaction.objects.select_related("recurrence"),
         pk=transaction_id,
         transaction_type=Transaction.TransactionType.FORECAST,
     )
-
-
-def _extract_recurrence_name(description: str) -> str:
-    """Extrai nome da recorrencia da descricao padrao [REC] Nome."""
-
-    prefix = "[REC] "
-    if description.startswith(prefix):
-        return description[len(prefix) :]
-    return description
 
 
 def _get_transaction_type_from_recurrence(recurrence: Recurrence) -> str:
@@ -110,8 +101,9 @@ def confirm_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
     """Confirma previsao para virar transacao real pendente."""
 
     forecast = _get_forecast_or_404(transaction_id)
-    recurrence_name = _extract_recurrence_name(forecast.description)
-    recurrence = get_object_or_404(Recurrence, name=recurrence_name)
+    recurrence = forecast.recurrence
+    if recurrence is None:
+        raise Http404("Previsao sem recorrencia de origem.")
 
     forecast.transaction_type = _get_transaction_type_from_recurrence(recurrence)
     forecast.status = Transaction.PaymentStatus.PENDING

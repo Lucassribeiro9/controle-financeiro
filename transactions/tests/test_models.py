@@ -10,6 +10,7 @@ from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
 from categories.models import Category
 from institutions.models import Institution
+from recurrences.models import Recurrence
 from transactions.models import Transaction, Transfer
 
 
@@ -66,6 +67,32 @@ class TransactionModelTests(TestCase):
             closing_date=date(2026, 5, 15),
             due_date=date(2026, 5, 22),
         )
+
+    def test_deleting_recurrence_keeps_transaction_with_null_link(self):
+        """Apagar a recorrencia preserva a transacao e zera o vinculo."""
+
+        recurrence = Recurrence.objects.create(
+            name="Internet",
+            expected_day=10,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.FIXED_BILL,
+            expected_amount=Decimal("120.00"),
+            account=self.account,
+        )
+        transaction = Transaction.objects.create(
+            description="[REC] Internet",
+            amount=Decimal("120.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 6, 10),
+            recurrence=recurrence,
+        )
+
+        recurrence.delete()
+        transaction.refresh_from_db()
+
+        self.assertIsNone(transaction.recurrence)
 
     def test_create_income_transaction_linked_to_account(self):
         """Deve criar receita vinculada a uma conta financeira."""
