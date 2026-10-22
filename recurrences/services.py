@@ -25,7 +25,10 @@ def _build_forecast_date(year: int, month: int, day: int) -> date:
 
 
 def generate_monthly_recurrences_forecasts(*, year: int, month: int) -> int:
-    """Gera transações previstas para as recorrências ativas no início de cada mês."""
+    """Gera transações previstas para as recorrências ativas no início de cada mês.
+
+    Cada recorrência tem no máximo uma transação por mês, em qualquer status ou tipo.
+    """
     created = 0
     recurrences = Recurrence.objects.filter(is_active=True)
 
@@ -34,12 +37,8 @@ def generate_monthly_recurrences_forecasts(*, year: int, month: int) -> int:
         tx_type = Transaction.TransactionType.FORECAST
         already_exists = Transaction.objects.filter(
             recurrence=recurrence,
-            transaction_type=tx_type,
-            status=Transaction.PaymentStatus.FORECASTED,
-            date=forecast_date,
-            account=recurrence.account,
-            card=recurrence.card,
-            amount=recurrence.expected_amount,
+            date__year=year,
+            date__month=month,
         ).exists()
 
         if already_exists:
@@ -68,12 +67,11 @@ def skip_recurrence_for_month(*, recurrence_id: int, year: int, month: int) -> i
     except Recurrence.DoesNotExist:
         raise ValidationError({"recurrence_id": "Recorrencia nao encontrada."})
 
-    forecast_date = _build_forecast_date(year, month, recurrence.expected_day)
-
     updated = Transaction.objects.filter(
         recurrence=recurrence,
         status=Transaction.PaymentStatus.FORECASTED,
-        date=forecast_date,
+        date__year=year,
+        date__month=month,
     ).update(status=Transaction.PaymentStatus.IGNORED)
     return updated
 
