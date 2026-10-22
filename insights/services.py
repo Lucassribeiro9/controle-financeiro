@@ -1,10 +1,13 @@
 """Regras de negocio para os insights."""
 
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Sum
 
+from categories.models import Category
+from core.templatetags.money import brl, month_name
 from goals.models import Goal
 from goals.services import create_monthly_goal_from_goal
 from insights.models import IgnoredPattern, Insight
@@ -36,22 +39,31 @@ def _get_pattern_key_from_source_key(source_key):
     return source_key
 
 
-def get_category_expense_total(*, category, year, month):
-    """Calcula o total gasto em uma categoria."""
-    total = Transaction.objects.filter(
+def _qualifying_expenses(*, year, month):
+    """Despesas pagas e categorizadas do mes que contam para os insights."""
+
+    return Transaction.objects.filter(
         transaction_type=Transaction.TransactionType.EXPENSE,
         status=Transaction.PaymentStatus.PAID,
-        category=category,
+        category__isnull=False,
         date__year=year,
         date__month=month,
-    ).exclude(
-        status__in=[
-            Transaction.PaymentStatus.CANCELED,
-            Transaction.PaymentStatus.IGNORED,
-            Transaction.PaymentStatus.FORECASTED,
-        ]
-    ).aggregate(total_amount=Sum("amount"))["total_amount"] or Decimal("0.00")
-    return total
+    )
+
+
+def _month_label(*, year, month):
+    """Formata o mes para mensagens, por exemplo Maio/2026."""
+
+    return f"{month_name(month)}/{year}"
+
+
+def get_category_expense_total(*, category, year, month):
+    """Calcula o total gasto em uma categoria."""
+    total = _qualifying_expenses(year=year, month=month).filter(
+        category=category
+    ).aggregate(total_amount=Sum("amount"))["total_amount"]
+    return total or Decimal("0.00")
+
 
 def suggest_category_limit(*, category, year, month):
     """Sugere um limite para a categoria."""
@@ -77,7 +89,8 @@ def suggest_category_limit(*, category, year, month):
     return Insight.objects.create(
         title=f"Limite sugerido para {category.name}",
         message=(
-            f"Neste mês, os gastos em {category.name} estão em R$ {total}. "
+            f"Em {_month_label(year=year, month=month)}, os gastos em "
+            f"{category.name} somam {brl(total)}. "
             f"Você pode criar uma meta mensal para acompanhar essa categoria com mais calma."
         ),
         insight_type=Insight.InsightType.CATEGORY_LIMIT,
@@ -93,6 +106,8 @@ def approve_insight(*, insight):
         return insight
 
     if insight.insight_type == Insight.InsightType.CATEGORY_LIMIT:
+        if insight.category is None:
+            raise ValidationError("A categoria deste insight não existe mais.")
         goal = Goal.objects.create(
             name=f"Limite: {insight.category.name}",
             goal_type=Goal.GoalType.REDUCTION,
@@ -136,25 +151,14 @@ def silence_insight(*, insight):
 
 
 def detect_recurrent_habits(*, year, month):
-    """Detecta hábitos recorrentes."""
-    expenses = Transaction.objects.filter(
-        transaction_type=Transaction.TransactionType.EXPENSE,
-        status=Transaction.PaymentStatus.PAID,
-        date__year=year,
-        date__month=month,
-    ).exclude(
-        status__in=[
-            Transaction.PaymentStatus.CANCELED,
-            Transaction.PaymentStatus.IGNORED,
-            Transaction.PaymentStatus.FORECASTED,
-        ]
-    )
-
+    """Detecta categorias com tres ou mais despesas pagas no mes."""
     created = []
     grouped = (
-        expenses.values("category_id", "category__name")
+        _qualifying_expenses(year=year, month=month)
+        .values("category_id", "category__name")
         .annotate(total_amount=Sum("amount"), count=Count("id"))
-        .filter(count__gte=3)  # Considera recorrente se tiver 3 ou
+        .filter(count__gte=3)
+        .order_by("category__name")
     )
     for item in grouped:
         source_key = _build_monthly_source_key(
@@ -176,15 +180,33 @@ def detect_recurrent_habits(*, year, month):
         insight = Insight.objects.create(
             title=f"Hábito recorrente em {item['category__name']}",
             message=(
-                f"Identifiquei {item['count']} gastos em {item['category__name']} "
-                f"neste mês, somando R$ {item['total_amount']}. Talvez valha acompanhar "
-                f"essa categoria com uma meta leve."
+                f"Em {_month_label(year=year, month=month)}, identifiquei "
+                f"{item['count']} gastos em {item['category__name']}, somando "
+                f"{brl(item['total_amount'])}. Talvez valha acompanhar essa "
+                f"categoria com uma meta leve."
             ),
             insight_type=Insight.InsightType.RECURRING_EXPENSE,
             category_id=item["category_id"],
-            suggested_amount=item["total_amount"]
-            / item["count"],  # Média para sugerir uma meta
+            suggested_amount=(item["total_amount"] / item["count"]).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            ),
             source_key=source_key,
         )
         created.append(insight)
+    return created
+
+
+def generate_monthly_insights(*, year, month):
+    """Gera os insights do mes e devolve apenas os criados agora."""
+    category_ids = (
+        _qualifying_expenses(year=year, month=month)
+        .values_list("category_id", flat=True)
+        .distinct()
+    )
+    created = []
+    for category in Category.objects.filter(id__in=category_ids).order_by("name"):
+        insight = suggest_category_limit(category=category, year=year, month=month)
+        if insight is not None:
+            created.append(insight)
+    created.extend(detect_recurrent_habits(year=year, month=month))
     return created

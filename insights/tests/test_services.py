@@ -3,15 +3,18 @@
 from datetime import date
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from accounts.models import FinancialAccount
 from categories.models import Category
 from goals.models import Goal, MonthlyGoal
 from insights.models import IgnoredPattern, Insight
+from insights.tests.scenarios import build_realistic_month
 from insights.services import (
     approve_insight,
     detect_recurrent_habits,
+    generate_monthly_insights,
     get_category_expense_total,
     ignore_insight,
     silence_insight,
@@ -146,3 +149,127 @@ class InsightServiceTests(TestCase):
         self.assertEqual(created[0].insight_type, Insight.InsightType.RECURRING_EXPENSE)
         self.assertEqual(created[0].category, self.category)
         self.assertEqual(created[0].suggested_amount, Decimal("20.00"))
+
+
+class GenerateMonthlyInsightsTests(TestCase):
+    """Valida a geracao mensal sobre um cenario realista."""
+
+    def setUp(self):
+        self.categories = build_realistic_month(year=2026, month=5)
+
+    def _titles(self, insights):
+        return sorted(insight.title for insight in insights)
+
+    def test_creates_insights_only_for_qualifying_categories(self):
+        created = generate_monthly_insights(year=2026, month=5)
+
+        by_type = {}
+        for insight in created:
+            by_type.setdefault(insight.insight_type, set()).add(insight.category_id)
+        mercado = self.categories["Mercado"].id
+        transporte = self.categories["Transporte"].id
+        self.assertEqual(
+            by_type[Insight.InsightType.CATEGORY_LIMIT], {mercado, transporte}
+        )
+        self.assertEqual(by_type[Insight.InsightType.RECURRING_EXPENSE], {mercado})
+        self.assertEqual(len(created), 3)
+
+    def test_ignores_non_paid_card_and_uncategorized_spending(self):
+        created = generate_monthly_insights(year=2026, month=5)
+
+        categories = {insight.category_id for insight in created}
+        self.assertNotIn(self.categories["Lazer"].id, categories)
+        self.assertNotIn(self.categories["Saude"].id, categories)
+        self.assertNotIn(None, categories)
+        for insight in created:
+            self.assertNotIn("None", insight.title)
+            self.assertNotIn("None", insight.message)
+
+    def test_does_not_leak_next_month_spending(self):
+        generate_monthly_insights(year=2026, month=5)
+
+        limit = Insight.objects.get(
+            insight_type=Insight.InsightType.CATEGORY_LIMIT,
+            category=self.categories["Mercado"],
+        )
+        self.assertEqual(limit.suggested_amount, Decimal("420.50"))
+
+    def test_second_run_creates_nothing(self):
+        generate_monthly_insights(year=2026, month=5)
+
+        self.assertEqual(generate_monthly_insights(year=2026, month=5), [])
+        self.assertEqual(Insight.objects.count(), 3)
+
+    def test_silenced_limit_pattern_blocks_only_category_limit(self):
+        mercado = self.categories["Mercado"]
+        IgnoredPattern.objects.create(pattern_key=f"category-limit:{mercado.id}")
+
+        created = generate_monthly_insights(year=2026, month=5)
+
+        mercado_types = {i.insight_type for i in created if i.category_id == mercado.id}
+        self.assertEqual(mercado_types, {Insight.InsightType.RECURRING_EXPENSE})
+
+    def test_silenced_habit_pattern_blocks_only_recurring_expense(self):
+        mercado = self.categories["Mercado"]
+        IgnoredPattern.objects.create(pattern_key=f"habit-category:{mercado.id}")
+
+        created = generate_monthly_insights(year=2026, month=5)
+
+        self.assertNotIn(
+            Insight.InsightType.RECURRING_EXPENSE, {i.insight_type for i in created}
+        )
+        self.assertEqual(len(created), 2)
+
+    def test_empty_database_returns_empty_list(self):
+        Transaction.objects.all().delete()
+
+        self.assertEqual(generate_monthly_insights(year=2026, month=5), [])
+
+    def test_recurring_average_is_quantized_to_cents(self):
+        Transaction.objects.all().delete()
+        account = FinancialAccount.objects.first()
+        category = self.categories["Mercado"]
+        for day, amount in ((1, "10.00"), (2, "10.00"), (3, "10.01")):
+            Transaction.objects.create(
+                description="Item",
+                amount=Decimal(amount),
+                transaction_type=Transaction.TransactionType.EXPENSE,
+                status=Transaction.PaymentStatus.PAID,
+                account=account,
+                category=category,
+                date=date(2026, 5, day),
+            )
+
+        created = detect_recurrent_habits(year=2026, month=5)
+
+        self.assertEqual(created[0].suggested_amount, Decimal("10.00"))
+
+    def test_messages_use_brl_and_month_name(self):
+        generate_monthly_insights(year=2026, month=5)
+
+        limit = Insight.objects.get(
+            insight_type=Insight.InsightType.CATEGORY_LIMIT,
+            category=self.categories["Mercado"],
+        )
+        self.assertIn("R$ 420,50", limit.message)
+        self.assertIn("Maio/2026", limit.message)
+        self.assertNotIn("neste mês", limit.message.lower())
+        habit = Insight.objects.get(insight_type=Insight.InsightType.RECURRING_EXPENSE)
+        self.assertIn("R$ 420,50", habit.message)
+        self.assertIn("Maio/2026", habit.message)
+
+    def test_approve_with_removed_category_raises_and_keeps_pending(self):
+        generate_monthly_insights(year=2026, month=5)
+        insight = Insight.objects.get(
+            insight_type=Insight.InsightType.CATEGORY_LIMIT,
+            category=self.categories["Transporte"],
+        )
+        self.categories["Transporte"].delete()
+        insight.refresh_from_db()
+
+        with self.assertRaises(ValidationError):
+            approve_insight(insight=insight)
+
+        insight.refresh_from_db()
+        self.assertEqual(insight.status, Insight.Status.PENDING)
+        self.assertFalse(Goal.objects.filter(name__startswith="Limite:").exists())
