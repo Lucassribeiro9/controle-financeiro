@@ -11,6 +11,10 @@ from core.templatetags.money import brl, month_name
 from goals.models import Goal
 from goals.services import create_monthly_goal_from_goal
 from insights.models import IgnoredPattern, Insight
+from transactions.constants import (
+    EXCLUDED_SPENDING_STATUSES,
+    SPENDING_TRANSACTION_TYPES,
+)
 from transactions.models import Transaction
 
 
@@ -40,15 +44,14 @@ def _get_pattern_key_from_source_key(source_key):
 
 
 def _qualifying_expenses(*, year, month):
-    """Despesas pagas e categorizadas do mes que contam para os insights."""
+    """Gastos efetivos e categorizados do mes que contam para os insights."""
 
     return Transaction.objects.filter(
-        transaction_type=Transaction.TransactionType.EXPENSE,
-        status=Transaction.PaymentStatus.PAID,
+        transaction_type__in=SPENDING_TRANSACTION_TYPES,
         category__isnull=False,
         date__year=year,
         date__month=month,
-    )
+    ).exclude(status__in=EXCLUDED_SPENDING_STATUSES)
 
 
 def _month_label(*, year, month):
@@ -151,7 +154,7 @@ def silence_insight(*, insight):
 
 
 def detect_recurrent_habits(*, year, month):
-    """Detecta categorias com tres ou mais despesas pagas no mes."""
+    """Detecta categorias com tres ou mais gastos efetivos no mes."""
     created = []
     grouped = (
         _qualifying_expenses(year=year, month=month)

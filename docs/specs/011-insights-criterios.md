@@ -11,7 +11,6 @@ Tornar a geracao executavel, corrigir os defeitos encontrados e documentar regra
 ## Fora de Escopo
 
 - Geradores de `monthly_goal`, `bill_reminder` e `low_balance`.
-- Contar `card_purchase` e `benefit_purchase` como gasto (follow-up para unificar a definicao de gasto entre insights, goals, reports e home).
 - Botao na UI, mudanca de layout ou navegacao, edicao do valor sugerido antes da aprovacao.
 - Agendamento automatico (cron), command de seed e fixtures.
 
@@ -31,16 +30,18 @@ Tornar a geracao executavel, corrigir os defeitos encontrados e documentar regra
 
 ### Gasto considerado
 
-- `transaction_type = expense`, `status = paid`, com categoria, dentro do mes.
-- Ficam fora: previstos, pendentes, cancelados, ignorados, sem categoria, `card_purchase`, `benefit_purchase`, transferencias e receitas.
-- Limitacao conhecida: gastos no cartao e no beneficio nao entram. Mantem coerencia com o `Goal` de reducao criado na aprovacao, que mede apenas `expense`.
+- Definicao unica em `transactions/constants.py` (#211), compartilhada com goals, reports, home e categorias: `expense`, `card_purchase` e `benefit_purchase`, pela data da compra, exceto `canceled`, `ignored` e `forecasted`. Pendentes, atrasados e parcialmente pagos contam.
+- Insights exige ainda categoria e o mes informado.
+- Ficam fora: sem categoria, `statement_payment` (a compra no cartao ja foi contada), transferencias e receitas.
+- O `Goal` de reducao criado na aprovacao usa a mesma definicao, entao o progresso da meta e o limite sugerido batem para o mesmo mes.
+- Metas existentes: sem backfill. `MonthlyGoal.current_amount` e `status` sao recalculados quando a pagina de metas do periodo e aberta, entao meses passados podem mudar de status ao serem reabertos.
 
 ### Criterios por tipo
 
 | Tipo | Gerado? | Condicao | Valor sugerido | Ao aprovar |
 | --- | --- | --- | --- | --- |
 | `category_limit` | Sim | categoria com gasto > 0 no mes | total do mes (2 casas) | cria `Goal` de reducao + `MonthlyGoal` |
-| `recurring_expense` | Sim | categoria com 3 ou mais despesas no mes | media (0,01, ROUND_HALF_UP) | apenas registra a decisao |
+| `recurring_expense` | Sim | categoria com 3 ou mais gastos no mes | media (0,01, ROUND_HALF_UP) | apenas registra a decisao |
 | `monthly_goal` | Nao | - | - | - |
 | `bill_reminder` | Nao | - | - | - |
 | `low_balance` | Nao | - | - | - |
@@ -96,7 +97,6 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 - Aprovar usa o mes corrente para a meta, e nao o mes do insight. Aprovar em junho um insight de maio cria a meta de junho. Manter ou usar o mes do insight?
 - Receber `category_limit` e `recurring_expense` para a mesma categoria no mesmo mes e repetitivo? Reavaliar com uso real.
-- Contar gasto no cartao e no beneficio exige unificar a definicao de gasto (ver spec 008) e mudar o `Goal` de reducao.
 
 ## Task Breakdown Inicial
 

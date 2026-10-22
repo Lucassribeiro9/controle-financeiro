@@ -26,8 +26,8 @@ class GenerateInsightsCommandTests(TestCase):
     def test_creates_insights_for_given_month(self):
         output = self._run("--year", "2026", "--month", "5")
 
-        self.assertIn("3 insights criados para 05/2026", output)
-        self.assertEqual(Insight.objects.count(), 3)
+        self.assertIn("5 insights criados para 05/2026", output)
+        self.assertEqual(Insight.objects.count(), 5)
 
     def test_second_run_reports_zero(self):
         self._run("--year", "2026", "--month", "5")
@@ -35,7 +35,7 @@ class GenerateInsightsCommandTests(TestCase):
         output = self._run("--year", "2026", "--month", "5")
 
         self.assertIn("0 insights criados para 05/2026", output)
-        self.assertEqual(Insight.objects.count(), 3)
+        self.assertEqual(Insight.objects.count(), 5)
 
     def test_defaults_to_current_month(self):
         with mock.patch(
@@ -44,7 +44,7 @@ class GenerateInsightsCommandTests(TestCase):
         ):
             output = self._run()
 
-        self.assertIn("3 insights criados para 05/2026", output)
+        self.assertIn("5 insights criados para 05/2026", output)
 
     def test_invalid_month_raises_command_error(self):
         with self.assertRaises(CommandError):

@@ -13,6 +13,7 @@ from goals.models import MonthlyGoal
 from imports.models import ImportedTransaction
 from insights.models import Insight
 from recurrences.models import Recurrence
+from transactions.constants import SPENDING_TRANSACTION_TYPES
 from transactions.models import Transaction, Transfer
 
 
@@ -24,11 +25,7 @@ PENDING_STATUSES = [
 ]
 FORECAST_STATUSES = [Transaction.PaymentStatus.FORECASTED]
 INCOME_TYPES = [Transaction.TransactionType.INCOME]
-EXPENSE_TYPES = [
-    Transaction.TransactionType.EXPENSE,
-    Transaction.TransactionType.CARD_PURCHASE,
-    Transaction.TransactionType.BENEFIT_PURCHASE,
-]
+EXPENSE_TYPES = SPENDING_TRANSACTION_TYPES
 SUMMARY_CARD_STATUSES = {
     "realized": REALIZED_STATUSES,
     "pending": PENDING_STATUSES,

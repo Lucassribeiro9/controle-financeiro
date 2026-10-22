@@ -16,9 +16,10 @@ EXPENSE = Transaction.TransactionType.EXPENSE
 def build_realistic_month(*, year, month):
     """Cria um mes com gastos que qualificam e que nao devem gerar insight.
 
-    Qualificam: Mercado (3 despesas pagas) e Transporte (2 despesas pagas).
-    Nao qualificam: Lazer (previsto, cancelado e pendente), Saude (apenas
-    compra no cartao), despesas sem categoria, receita e gasto do mes seguinte.
+    Qualificam: Mercado (3 despesas pagas), Transporte (2 despesas pagas),
+    Lazer (despesa pendente) e Saude (compra pendente no cartao).
+    Nao qualificam: lancamentos previstos ou cancelados, despesas sem
+    categoria, receita e gasto do mes seguinte.
     """
 
     institution = Institution.objects.create(name="Inter", code="077")
