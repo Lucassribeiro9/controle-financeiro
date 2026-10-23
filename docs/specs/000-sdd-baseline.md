@@ -99,7 +99,6 @@ imports/        -> importacao e revisao de arquivos
 insights/       -> sugestoes automaticas
 templates/      -> base e partials compartilhados
 static/         -> CSS e assets estaticos
-docs/plans/     -> planos e roadmap
 docs/specs/     -> specs SDD
 ```
 
@@ -126,9 +125,10 @@ Diretorios compartilhados relevantes:
 project/
 templates/
 static/
-docs/plans/
 docs/specs/
 ```
+
+Planos, histórico das fases, ADRs e o plano-mestre ficam no Confluence (espaço FIN), não no repositório.
 
 O app `rates` (Rendimentos) foi descontinuado na #196 e removido por completo na #208.
 

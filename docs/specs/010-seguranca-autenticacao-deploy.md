@@ -142,7 +142,7 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - Objeto inexistente responde 404; views `@api_login_required` respondem 404 em JSON
   (via `process_exception` do middleware), views HTML mantem o 404 padrao.
 - Gatilho para multiusuario: necessidade real de um segundo usuario; exige nova spec de
-  ownership (ver `docs/plans/scope.md`). A open question sobre owner para dados
+  ownership (ver [Escopo do aplicativo](https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/1474561), Confluence). A open question sobre owner para dados
   existentes passa para essa spec.
 - Follow-up: lookup de `Recurrence` por nome nao unico (issue #206).
 
@@ -159,4 +159,4 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - [x] Task: Documentar decisao single-user vs multiusuario (issue #200).
   - Acceptance: scope deixa claro o limite atual e o gatilho para nova spec.
   - Verify: revisao manual.
-  - Files: `docs/plans/scope.md`, esta spec.
+  - Files: [Escopo do aplicativo](https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/1474561) (Confluence), esta spec.

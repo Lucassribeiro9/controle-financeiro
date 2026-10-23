@@ -1,5 +1,8 @@
 # Spec 002 - UX/UI Design System
 
+> **Identidade visual e tema:** regidos pela ADR-007 (Wise no claro, escuro inspirado na Mercury), que substitui as referências visuais desta spec e o item "tema claro/escuro" de Fora de Escopo. Esta spec continua valendo para padrões de uso: filtros, badges, estados vazios e confirmações.
+> ADR-007: https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/851969
+
 ## Contexto
 
 O app ja tem uma base visual boa, com sidebar, icones, cards, tabelas e Chart.js. A proxima fase precisa formalizar esses padroes para evitar que cada tela evolua com solucoes diferentes.
