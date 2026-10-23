@@ -166,6 +166,112 @@ class RecurrenceServiceTests(TestCase):
 
         self.assertEqual(updated_count, 1)
 
+    def _assert_single_forecast_after(self, change) -> None:
+        """Aplica a alteracao entre duas geracoes e garante uma unica transacao."""
+
+        generate_monthly_recurrences_forecasts(year=2026, month=6)
+        change(Transaction.objects.get(recurrence=self.recurrence))
+
+        created_count = generate_monthly_recurrences_forecasts(year=2026, month=6)
+
+        self.assertEqual(created_count, 0)
+        self.assertEqual(Transaction.objects.filter(recurrence=self.recurrence).count(), 1)
+
+    def test_regenerate_after_adjusting_amount_does_not_duplicate(self):
+        """Ajustar o valor da previsao nao permite recria-la."""
+
+        def change(forecast):
+            forecast.amount = Decimal("150.00")
+            forecast.save()
+
+        self._assert_single_forecast_after(change)
+
+    def test_regenerate_after_ignoring_does_not_duplicate(self):
+        """Previsao ignorada nao volta na proxima geracao."""
+
+        def change(forecast):
+            forecast.status = Transaction.PaymentStatus.IGNORED
+            forecast.save()
+
+        self._assert_single_forecast_after(change)
+
+    def test_regenerate_after_skipping_month_does_not_duplicate(self):
+        """Mes pulado nao e recriado na proxima geracao."""
+
+        generate_monthly_recurrences_forecasts(year=2026, month=6)
+        skip_recurrence_for_month(recurrence_id=self.recurrence.id, year=2026, month=6)
+
+        created_count = generate_monthly_recurrences_forecasts(year=2026, month=6)
+
+        self.assertEqual(created_count, 0)
+        self.assertEqual(Transaction.objects.count(), 1)
+
+    def test_regenerate_after_confirming_does_not_duplicate(self):
+        """Previsao confirmada nao e recriada na proxima geracao."""
+
+        def change(forecast):
+            forecast.transaction_type = Transaction.TransactionType.EXPENSE
+            forecast.status = Transaction.PaymentStatus.PENDING
+            forecast.save()
+
+        self._assert_single_forecast_after(change)
+
+    def test_regenerate_after_changing_recurrence_fields_does_not_duplicate(self):
+        """Mudar valor, dia, conta ou cartao da recorrencia nao duplica o mes."""
+
+        other_account = FinancialAccount.objects.create(
+            name="Conta reserva",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("0.00"),
+        )
+
+        def change(_forecast):
+            self.recurrence.expected_amount = Decimal("200.00")
+            self.recurrence.expected_day = 20
+            self.recurrence.account = other_account
+            self.recurrence.save()
+
+        self._assert_single_forecast_after(change)
+
+    def test_regenerate_after_changing_forecast_date_in_same_month_does_not_duplicate(
+        self,
+    ):
+        """Editar a data da transacao dentro do mes nao permite nova previsao."""
+
+        def change(forecast):
+            forecast.date = date(2026, 6, 25)
+            forecast.save()
+
+        self._assert_single_forecast_after(change)
+
+    def test_generate_for_next_month_creates_new_forecast(self):
+        """Deduplicacao e mensal: o mes seguinte gera nova previsao."""
+
+        generate_monthly_recurrences_forecasts(year=2026, month=6)
+
+        created_count = generate_monthly_recurrences_forecasts(year=2026, month=7)
+
+        self.assertEqual(created_count, 1)
+        self.assertEqual(Transaction.objects.filter(recurrence=self.recurrence).count(), 2)
+
+    def test_skip_recurrence_for_month_works_after_changing_expected_day(self):
+        """Pular o mes ignora a previsao mesmo apos mudar o dia esperado."""
+
+        generate_monthly_recurrences_forecasts(year=2026, month=6)
+        self.recurrence.expected_day = 20
+        self.recurrence.save()
+
+        updated_count = skip_recurrence_for_month(
+            recurrence_id=self.recurrence.id, year=2026, month=6
+        )
+
+        self.assertEqual(updated_count, 1)
+        self.assertEqual(
+            Transaction.objects.get(recurrence=self.recurrence).status,
+            Transaction.PaymentStatus.IGNORED,
+        )
+
     def test_match_recurrence_with_real_transaction_adds_match_note(self):
         """Reconciliar recorrencia deve anotar vinculacao na transacao real."""
 
