@@ -1,6 +1,7 @@
 """Views do app imports."""
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -216,6 +217,8 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
             return _redirect_to_review(request)
         return JsonResponse({"error": str(exc)}, status=400)
 
+    already_confirmed = imported_transaction.status == ImportedTransaction.Status.CONFIRMED
+
     try:
         transaction = confirm_imported_transaction(
             imported_transaction=imported_transaction,
@@ -226,14 +229,18 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
             amount=amount,
             date=transaction_date,
         )
-    except ValueError as exc:
+    except (ValueError, ValidationError) as exc:
+        error = " ".join(exc.messages) if isinstance(exc, ValidationError) else str(exc)
         if _should_redirect_to_review(request):
-            messages.error(request, str(exc))
+            messages.error(request, error)
             return _redirect_to_review(request)
-        return JsonResponse({"error": str(exc)}, status=400)
+        return JsonResponse({"error": error}, status=400)
 
     if _should_redirect_to_review(request):
-        messages.success(request, "Importação confirmada.")
+        if already_confirmed:
+            messages.info(request, "Importação já confirmada.")
+        else:
+            messages.success(request, "Importação confirmada.")
         return _redirect_to_review(request)
 
     return JsonResponse(
@@ -254,7 +261,13 @@ def discard_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
         ImportedTransaction,
         pk=imported_transaction_id,
     )
-    discarded = discard_imported_transaction(imported_transaction=imported_transaction)
+    try:
+        discarded = discard_imported_transaction(imported_transaction=imported_transaction)
+    except ValueError as exc:
+        if _should_redirect_to_review(request):
+            messages.error(request, str(exc))
+            return _redirect_to_review(request)
+        return JsonResponse({"error": str(exc)}, status=400)
 
     if _should_redirect_to_review(request):
         messages.success(request, "Importação descartada.")

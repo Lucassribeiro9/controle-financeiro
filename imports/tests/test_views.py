@@ -5,6 +5,7 @@ from decimal import Decimal
 from io import BytesIO
 
 from core.testing import AuthenticatedTestCase
+from django.contrib.messages import get_messages
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
@@ -499,6 +500,113 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertEqual(transaction.amount, Decimal("90.50"))
         self.assertEqual(transaction.date, date(2026, 5, 11))
         self.assertEqual(imported_transaction.status, ImportedTransaction.Status.CONFIRMED)
+
+    def _pending_import(self, **overrides):
+        """Cria uma importacao pendente pronta para confirmar."""
+
+        data = dict(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description="Mercado Dia",
+            normalized_description="Mercado Dia",
+            amount=Decimal("87.45"),
+            date=date(2026, 5, 10),
+            suggested_account=self.account,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+        data.update(overrides)
+        return ImportedTransaction.objects.create(**data)
+
+    def _confirm(self, imported_transaction, data=None):
+        return self.client.post(
+            reverse("imports:confirm", kwargs={"imported_transaction_id": imported_transaction.id}),
+            data or {},
+        )
+
+    def test_confirm_import_twice_creates_one_transaction(self):
+        """Deve devolver 200 e manter um lancamento ao repetir o POST."""
+
+        imported_transaction = self._pending_import()
+
+        first = self._confirm(imported_transaction)
+        second = self._confirm(imported_transaction)
+
+        self.account.refresh_from_db()
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(
+            first.json()["confirmed_transaction_id"], second.json()["confirmed_transaction_id"]
+        )
+        self.assertEqual(Transaction.objects.count(), 1)
+        self.assertEqual(self.account.balance, Decimal("912.55"))
+
+    def test_confirm_import_twice_from_page_shows_info_message(self):
+        """Deve avisar que a importacao ja estava confirmada."""
+
+        imported_transaction = self._pending_import()
+        data = {"next": "review-page"}
+
+        self._confirm(imported_transaction, data)
+        response = self._confirm(imported_transaction, data)
+
+        messages_text = [str(message) for message in get_messages(response.wsgi_request)]
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("Importação já confirmada.", messages_text)
+        self.assertEqual(Transaction.objects.count(), 1)
+
+    def test_confirm_discarded_import_returns_400(self):
+        """Deve recusar confirmar linha descartada."""
+
+        imported_transaction = self._pending_import(status=ImportedTransaction.Status.DISCARDED)
+
+        response = self._confirm(imported_transaction)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["error"],
+            "Só é possível confirmar importações pendentes ou duplicadas.",
+        )
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_confirm_import_with_invalid_data_returns_400(self):
+        """Deve responder 400, nao 500, quando o model recusa os dados."""
+
+        imported_transaction = self._pending_import()
+
+        response = self._confirm(imported_transaction, {"amount": "0"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.json())
+        imported_transaction.refresh_from_db()
+        self.assertEqual(imported_transaction.status, ImportedTransaction.Status.PENDING)
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_confirm_import_with_invalid_data_from_page_shows_error(self):
+        """Deve redirecionar com mensagem de erro na revisao."""
+
+        imported_transaction = self._pending_import()
+
+        response = self._confirm(imported_transaction, {"amount": "0", "next": "review-page"})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(list(get_messages(response.wsgi_request))), 1)
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_discard_confirmed_import_returns_400(self):
+        """Deve recusar descartar linha confirmada."""
+
+        imported_transaction = self._pending_import()
+        self._confirm(imported_transaction)
+
+        response = self.client.post(
+            reverse("imports:discard", kwargs={"imported_transaction_id": imported_transaction.id})
+        )
+
+        imported_transaction.refresh_from_db()
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Importação confirmada não pode ser descartada.")
+        self.assertEqual(imported_transaction.status, ImportedTransaction.Status.CONFIRMED)
+        self.assertIsNotNone(imported_transaction.confirmed_transaction)
 
     def test_confirm_import_requires_account(self):
         """Deve exigir conta quando nao houver sugestao salva."""

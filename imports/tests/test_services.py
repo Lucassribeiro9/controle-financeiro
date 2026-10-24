@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from accounts.models import FinancialAccount
@@ -219,6 +220,102 @@ class ImportServiceTests(TestCase):
                 imported_transaction=imported_transaction,
                 account=self.account,
             )
+
+    def test_confirm_twice_with_stale_instance_creates_one_transaction(self):
+        """Deve devolver o mesmo lancamento quando a instancia lida esta velha."""
+
+        imported_transaction = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row()],
+        )[0]
+        stale = ImportedTransaction.objects.get(pk=imported_transaction.pk)
+
+        first = confirm_imported_transaction(
+            imported_transaction=imported_transaction, account=self.account
+        )
+        second = confirm_imported_transaction(imported_transaction=stale, account=self.account)
+
+        self.account.refresh_from_db()
+        self.assertEqual(first, second)
+        self.assertEqual(Transaction.objects.count(), 1)
+        self.assertEqual(self.account.balance, Decimal("912.55"))
+
+    def test_confirm_discarded_import_is_rejected(self):
+        """Deve recusar confirmacao de linha descartada."""
+
+        imported_transaction = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row()],
+        )[0]
+        discard_imported_transaction(imported_transaction=imported_transaction)
+        stale = ImportedTransaction.objects.get(pk=imported_transaction.pk)
+        stale.status = ImportedTransaction.Status.PENDING
+
+        with self.assertRaisesMessage(
+            ValueError, "Só é possível confirmar importações pendentes ou duplicadas."
+        ):
+            confirm_imported_transaction(imported_transaction=stale, account=self.account)
+
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_confirm_duplicate_import_is_allowed(self):
+        """Deve permitir confirmar linha marcada como duplicada."""
+
+        imported_transaction = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row()],
+        )[0]
+        imported_transaction.status = ImportedTransaction.Status.DUPLICATE
+        imported_transaction.save(update_fields=["status"])
+
+        confirm_imported_transaction(imported_transaction=imported_transaction, account=self.account)
+
+        imported_transaction.refresh_from_db()
+        self.assertEqual(imported_transaction.status, ImportedTransaction.Status.CONFIRMED)
+
+    def test_confirm_validation_error_keeps_status_and_creates_nothing(self):
+        """Deve propagar ValidationError sem criar lancamento nem mudar o status."""
+
+        imported_transaction = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row()],
+        )[0]
+
+        with self.assertRaises(ValidationError):
+            confirm_imported_transaction(
+                imported_transaction=imported_transaction,
+                account=self.account,
+                amount=Decimal("0.00"),
+            )
+
+        imported_transaction.refresh_from_db()
+        self.assertEqual(imported_transaction.status, ImportedTransaction.Status.PENDING)
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_discard_confirmed_import_is_rejected(self):
+        """Deve recusar descarte de linha confirmada, mantendo o lancamento vinculado."""
+
+        imported_transaction = stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=[self._row()],
+        )[0]
+        transaction = confirm_imported_transaction(
+            imported_transaction=imported_transaction, account=self.account
+        )
+
+        with self.assertRaisesMessage(
+            ValueError, "Importação confirmada não pode ser descartada."
+        ):
+            discard_imported_transaction(imported_transaction=imported_transaction)
+
+        imported_transaction.refresh_from_db()
+        self.assertEqual(imported_transaction.status, ImportedTransaction.Status.CONFIRMED)
+        self.assertEqual(imported_transaction.confirmed_transaction, transaction)
 
     def test_discard_imported_transaction_marks_discarded(self):
         """Deve descartar importacao sem criar Transaction."""
