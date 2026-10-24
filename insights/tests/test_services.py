@@ -10,7 +10,7 @@ from accounts.models import FinancialAccount
 from categories.models import Category
 from goals.models import Goal, MonthlyGoal
 from insights.models import IgnoredPattern, Insight
-from insights.tests.scenarios import build_realistic_month
+from core.demo_data import build_realistic_month
 from insights.services import (
     approve_insight,
     detect_recurrent_habits,
