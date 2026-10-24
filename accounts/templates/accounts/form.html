@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 
 {% block title %}{{ form_title }} - Controle Financeiro{% endblock %}
 
@@ -17,6 +18,17 @@
             {% if form.non_field_errors %}
                 <div class="app-message">
                     {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% if account %}
+                <div class="form-field">
+                    <span>Saldo atual</span>
+                    <strong>{{ account.balance|currency:account.currency }}</strong>
+                    <small class="muted">
+                        O saldo muda por lançamentos ou por ajuste.
+                        <a href="{% url 'accounts:adjust_balance' account.id %}">Ajustar saldo</a>
+                    </small>
                 </div>
             {% endif %}
 

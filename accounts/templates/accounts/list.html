@@ -25,6 +25,7 @@
                         <strong>{{ summary.total_balance|currency:summary.currency }}</strong>
                         <p class="muted">
                             {{ summary.active_count }} ativa(s), {{ summary.inactive_count }} inativa(s)
+                            {% if summary.inactive_count %}· inativas fora do total{% endif %}
                         </p>
                     </div>
                 </div>

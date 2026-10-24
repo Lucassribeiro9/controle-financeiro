@@ -51,6 +51,9 @@ class FinancialAccountForm(forms.ModelForm):
         """Configura querysets de campos relacionais."""
 
         super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            # Saldo so muda por lancamento ou ajuste explicito (ADR-009).
+            del self.fields["balance"]
         self.fields["institution"].queryset = Institution.objects.order_by("name")
 
     def clean_name(self):
