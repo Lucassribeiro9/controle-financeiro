@@ -160,16 +160,29 @@ def approve_insight(*, insight, existing_goal_action=None):
     return insight
 
 
+def _lock_not_approved(insight):
+    """Relê o insight com lock e recusa decidir um insight já aprovado."""
+
+    insight = Insight.objects.select_for_update().get(pk=insight.pk)
+    if insight.status == Insight.Status.APPROVED:
+        raise ValidationError("Insight aprovado não pode ser ignorado nem silenciado.")
+    return insight
+
+
+@transaction.atomic
 def ignore_insight(*, insight):
-    """Ignora um insight."""
+    """Ignora um insight pendente (aprovado não pode ser ignorado)."""
+    insight = _lock_not_approved(insight)
     insight.status = Insight.Status.IGNORED
     insight.full_clean()
     insight.save(update_fields=["status", "updated_at"])
     return insight
 
 
+@transaction.atomic
 def silence_insight(*, insight):
-    """Silencia um insight."""
+    """Silencia um insight pendente (aprovado não pode ser silenciado)."""
+    insight = _lock_not_approved(insight)
     if insight.source_key:
         IgnoredPattern.objects.get_or_create(
             pattern_key=_get_pattern_key_from_source_key(insight.source_key)

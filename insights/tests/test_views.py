@@ -159,6 +159,25 @@ class InsightViewTests(AuthenticatedTestCase):
         self.assertEqual(self.insight.status, Insight.Status.APPROVED)
         self.assertEqual(MonthlyGoal.objects.get().target_amount, Decimal("300.00"))
 
+    def test_ignore_and_silence_approved_insight_show_error_message(self):
+        self.client.post(
+            reverse("insights:approve", kwargs={"insight_id": self.insight.id})
+        )
+
+        for name in ("ignore", "silence"):
+            response = self.client.post(
+                reverse(f"insights:{name}", kwargs={"insight_id": self.insight.id}),
+                follow=True,
+            )
+            messages = [str(m) for m in response.context["messages"]]
+            self.assertIn(
+                "Insight aprovado não pode ser ignorado nem silenciado.", messages
+            )
+
+        self.insight.refresh_from_db()
+        self.assertEqual(self.insight.status, Insight.Status.APPROVED)
+        self.assertFalse(IgnoredPattern.objects.exists())
+
     def test_ignore_insight_marks_item_as_ignored(self):
         response = self.client.post(
             reverse("insights:ignore", kwargs={"insight_id": self.insight.id}),

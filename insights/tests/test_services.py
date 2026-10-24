@@ -198,6 +198,17 @@ class InsightServiceTests(TestCase):
         self.assertEqual(MonthlyGoal.objects.count(), 1)
         self.assertEqual(approved.monthly_goal.goal.pk, Goal.objects.order_by("pk").first().pk)
 
+    def test_ignore_and_silence_reject_approved_insight(self):
+        approved = approve_insight(insight=self._limit_insight())
+
+        for action in (ignore_insight, silence_insight):
+            with self.assertRaises(ValidationError):
+                action(insight=approved)
+
+        approved.refresh_from_db()
+        self.assertEqual(approved.status, Insight.Status.APPROVED)
+        self.assertFalse(IgnoredPattern.objects.exists())
+
     def test_approve_rejects_unknown_existing_goal_action(self):
         with self.assertRaises(ValidationError):
             approve_insight(insight=self._limit_insight(), existing_goal_action="x")
