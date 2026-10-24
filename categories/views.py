@@ -1,6 +1,5 @@
 """Views do app categories."""
 
-import datetime
 from decimal import Decimal
 
 from django.contrib import messages
@@ -89,7 +88,7 @@ def category_create_goal_page(request: HttpRequest, category_id: int) -> HttpRes
     """Renderiza e processa o formulario de criacao de meta mensal por categoria."""
 
     category = get_object_or_404(Category, pk=category_id)
-    today = datetime.date.today()
+    today = timezone.localdate()
     error = None
 
     if request.method == "POST":

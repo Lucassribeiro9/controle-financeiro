@@ -196,9 +196,9 @@ flowchart LR
 | FAT-02 | P1: Fatura consistente - AC 2 | #221 | Verified |
 | FAT-03 | P1: Fatura consistente - AC 3 | #221 | Verified |
 | FAT-04 | P1: Fatura consistente - AC 4 | #221 | Verified |
-| DAT-01 | P1: Datas no fuso - AC 1-2 | #227 | Pending |
-| DAT-02 | P1: Datas no fuso - AC 3-4 | #227 | Pending |
-| DAT-03 | P1: Datas no fuso - AC 5 | #227 | Pending |
+| DAT-01 | P1: Datas no fuso - AC 1-2 | #227 | Verified |
+| DAT-02 | P1: Datas no fuso - AC 3-4 | #227 | Verified |
+| DAT-03 | P1: Datas no fuso - AC 5 | #227 | Verified |
 | AJU-01 | P1: Ajuste de saldo - AC 1-4 | #226 | Pending |
 | AJU-02 | P1: Ajuste de saldo - AC 5 | #226 | Pending |
 | AJU-03 | P1: Ajuste de saldo - AC 6-7 | #226 | Pending |
@@ -210,7 +210,7 @@ flowchart LR
 | SAL-01 | P1: Saldo protegido - AC 1-3 | #231 | Pending |
 | SAL-02 | P1: Saldo protegido - AC 4-5 | #231 | Pending |
 
-**Cobertura:** 17 requisitos; 4 verificados (#221), 13 pendentes, todos ligados a uma issue.
+**Cobertura:** 17 requisitos; 7 verificados (#221, #227), 10 pendentes, todos ligados a uma issue.
 
 ## Criterios de Sucesso
 

@@ -32,6 +32,15 @@ class BackupDatabaseTests(SimpleTestCase):
         self.dir = Path(tmp.name)
         self.source = make_database(self.dir / "db.sqlite3")
 
+    def test_defaults_name_to_local_time(self):
+        """Sem `now`, o nome da copia usa o horario local (spec 013, DAT-02)."""
+
+        local = datetime(2026, 10, 31, 22, 15, 0)
+        with mock.patch("core.backup.timezone.localtime", return_value=local):
+            target = backup_database(self.source)
+
+        self.assertEqual(target.name, "db-20261031-221500.sqlite3")
+
     def test_creates_readable_copy_in_backups_dir_with_date_in_name(self):
         """A copia fica em <pasta do banco>/backups, com data no nome e os mesmos dados."""
 

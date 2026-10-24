@@ -266,7 +266,7 @@ def pay_statement(*, statement, amount=None):
             account=payment_account,
             card=statement.card,
             statement=statement,
-            date=date.today(),
+            date=timezone.localdate(),
         )
         payment_transaction.full_clean()
         payment_transaction.save()
@@ -290,7 +290,7 @@ def _sync_statement_purchase_statuses(*, statement):
 def update_statement_status(*, statement, today=None):
     """Atualiza a fatura para atrasada quando passou do vencimento sem pagamento total."""
 
-    today = today or date.today()
+    today = today or timezone.localdate()
     statement = CardStatement.objects.get(pk=statement.pk)
 
     if statement.status in (

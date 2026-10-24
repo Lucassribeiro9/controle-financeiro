@@ -1,6 +1,6 @@
 """Tests dos servicos do app cards."""
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -17,6 +17,7 @@ from cards.services import (
     get_or_create_card_statement,
     pay_statement,
     refresh_statement_amounts,
+    update_statement_status,
 )
 from institutions.models import Institution
 from transactions.models import Transaction
@@ -342,6 +343,37 @@ class CardStatementServiceTests(TestCase):
         self.assertEqual(payment_transaction.status, Transaction.PaymentStatus.PAID)
         self.assertEqual(payment_transaction.account, self.payment_account)
         self.assertEqual(payment_transaction.card, self.card)
+
+    def test_pay_statement_uses_local_date_for_payment_transaction(self):
+        """O pagamento deve gravar a data local, nao a do servidor (spec 013, DAT-01)."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+
+        with patch("cards.services.timezone.localdate", return_value=date(2026, 10, 31)):
+            pay_statement(statement=statement)
+
+        payment_transaction = Transaction.objects.get(
+            transaction_type=Transaction.TransactionType.STATEMENT_PAYMENT,
+            statement=statement,
+        )
+        self.assertEqual(payment_transaction.date, date(2026, 10, 31))
+
+    def test_update_statement_status_uses_local_date_by_default(self):
+        """Sem `today`, o vencimento deve ser comparado com a data local (DAT-01)."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        due_date = statement.due_date
+
+        with patch("cards.services.timezone.localdate", return_value=due_date):
+            on_due_date = update_statement_status(statement=statement)
+        self.assertNotEqual(on_due_date.status, CardStatement.StatementStatus.LATE)
+
+        with patch(
+            "cards.services.timezone.localdate",
+            return_value=due_date + timedelta(days=1),
+        ):
+            after_due_date = update_statement_status(statement=statement)
+        self.assertEqual(after_due_date.status, CardStatement.StatementStatus.LATE)
 
     def test_partial_payment_marks_statement_as_partially_paid(self):
         """Pagamento parcial deve marcar fatura como parcialmente paga."""

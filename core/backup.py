@@ -1,8 +1,9 @@
 """Backup consistente do banco SQLite (spec 012 / ADR-008)."""
 
 import sqlite3
-from datetime import datetime
 from pathlib import Path
+
+from django.utils import timezone
 
 BACKUP_DIR_NAME = "backups"
 BACKUP_PREFIX = "db-"
@@ -22,7 +23,7 @@ def backup_database(source, *, now=None, keep=KEEP_BACKUPS):
     if not source.is_file():
         raise FileNotFoundError(f"Banco nao encontrado: {source}")
 
-    now = now or datetime.now()
+    now = now or timezone.localtime()
     backup_dir = source.parent / BACKUP_DIR_NAME
     backup_dir.mkdir(exist_ok=True)
     target = backup_dir / (

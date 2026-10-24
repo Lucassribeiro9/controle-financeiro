@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from core.testing import AuthenticatedTestCase
 from django.urls import reverse
@@ -241,6 +242,17 @@ class CategoryCreateGoalViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "categories/create_goal.html")
         self.assertContains(response, "Alimentacao")
+
+    def test_get_create_goal_form_defaults_to_local_month(self):
+        """O mes inicial deve seguir a data local (spec 013, DAT-02)."""
+
+        with patch("categories.views.timezone.localdate", return_value=date(2026, 10, 31)):
+            response = self.client.get(
+                reverse("categories:create_goal", kwargs={"category_id": self.category.id})
+            )
+
+        self.assertEqual(response.context["year"], 2026)
+        self.assertEqual(response.context["month"], 10)
 
     def test_post_create_goal_success_redirects(self):
         """POST valido deve redirecionar para a lista de categorias."""
