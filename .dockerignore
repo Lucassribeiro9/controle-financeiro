@@ -10,6 +10,7 @@ __pycache__
 .mypy_cache
 .coverage
 **/db.sqlite3
+**/backups
 .env
 .env.*
 !.env.example
