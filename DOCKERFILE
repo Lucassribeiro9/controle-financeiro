@@ -26,6 +26,10 @@ RUN DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(
     python manage.py collectstatic --noinput \
     && chown -R app:app /app
 
+# diretório do banco de produção (ADR-008): o volume nomeado montado aqui
+# herda este dono, então o usuário app consegue gravar
+RUN mkdir -p /data && chown app:app /data
+
 USER app
 
 EXPOSE 8000

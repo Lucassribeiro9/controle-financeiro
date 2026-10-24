@@ -252,6 +252,54 @@ class ProdSettingsStartupTests(SimpleTestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
+class ProdDatabaseSettingsTests(SimpleTestCase):
+    """Garante o banco de producao persistente (spec 012 / ADR-008)."""
+
+    prod = "project.settings.prod"
+    PRINT_DB = (
+        "from django.conf import settings; d = settings.DATABASES['default']; "
+        "print(d['NAME']); print(d['OPTIONS'])"
+    )
+
+    def test_database_path_defaults_to_data_volume(self):
+        """Sem DJANGO_DB_PATH o banco fica em /data/db.sqlite3."""
+
+        result = run_python(self.PRINT_DB, env=valid_prod_env(), settings_module=self.prod)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines()[0], "/data/db.sqlite3")
+
+    def test_database_path_comes_from_environment(self):
+        """DJANGO_DB_PATH sobrescreve o caminho do banco."""
+
+        env = valid_prod_env(DJANGO_DB_PATH="/outro/banco.sqlite3")
+
+        result = run_python(self.PRINT_DB, env=env, settings_module=self.prod)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines()[0], "/outro/banco.sqlite3")
+
+    def test_database_uses_wal_and_busy_timeout(self):
+        """Producao liga WAL e espera locks por ate 20 s."""
+
+        result = run_python(self.PRINT_DB, env=valid_prod_env(), settings_module=self.prod)
+
+        options = result.stdout.splitlines()[1]
+        self.assertIn("journal_mode=WAL", options)
+        self.assertIn("'timeout': 20", options)
+        self.assertIn("'transaction_mode': 'IMMEDIATE'", options)
+
+    def test_dev_database_stays_in_project_dir(self):
+        """Dev continua com db.sqlite3 na raiz do projeto."""
+
+        code = self.PRINT_DB.replace("d['OPTIONS']", "d.get('OPTIONS')")
+
+        result = run_python(code, settings_module="project.settings.dev")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines()[0], str(BASE_DIR / "db.sqlite3"))
+
+
 class DefaultSettingsModuleTests(SimpleTestCase):
     """Garante qual settings cada ponto de entrada carrega por padrao."""
 

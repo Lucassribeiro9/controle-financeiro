@@ -26,6 +26,21 @@ if not ALLOWED_HOSTS:
         "(hosts separados por virgula, ex.: app.example.com)."
     )
 
+# Banco SQLite em volume persistente (ADR-008). WAL deixa leituras e escrita
+# coexistirem entre os workers; IMMEDIATE evita deadlock ao promover leitura
+# para escrita; timeout de 20 s espera o lock em vez de dar "database is locked".
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.environ.get("DJANGO_DB_PATH") or "/data/db.sqlite3",
+        "OPTIONS": {
+            "timeout": 20,
+            "init_command": "PRAGMA journal_mode=WAL;",
+            "transaction_mode": "IMMEDIATE",
+        },
+    }
+}
+
 CSRF_TRUSTED_ORIGINS = parse_csv(os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS"))
 
 # Arquivos estaticos servidos pelo proprio app via WhiteNoise.
