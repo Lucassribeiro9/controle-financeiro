@@ -77,7 +77,7 @@ Tornar a geracao executavel, corrigir os defeitos encontrados e documentar regra
 
 ## Testes Esperados
 
-- Service sobre cenario realista (`insights/tests/scenarios.py`): inclusao, exclusao, mes seguinte, idempotencia, `IgnoredPattern`, banco vazio, arredondamento da media, formato da mensagem, aprovacao com categoria removida.
+- Service sobre cenario realista (`core/demo_data.py`): inclusao, exclusao, mes seguinte, idempotencia, `IgnoredPattern`, banco vazio, arredondamento da media, formato da mensagem, aprovacao com categoria removida.
 - Command: argumentos, padrao do mes corrente, mes invalido.
 - View: aprovar com categoria removida redireciona com message, sem 500.
 - Validacao manual no banco local, registrando so contagens e resultados.
@@ -104,7 +104,7 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - [ ] Task: Escrever cenario realista e testes de service.
   - Acceptance: testes cobrem inclusao, exclusao, idempotencia e silenciamento.
   - Verify: `python manage.py test insights`.
-  - Files: `insights/tests/scenarios.py`, `insights/tests/test_services.py`.
+  - Files: `core/demo_data.py`, `insights/tests/test_services.py`.
 - [ ] Task: Implementar `generate_monthly_insights` e corrigir defeitos.
   - Acceptance: sem "None", media quantizada, mensagens em BRL, aprovacao sem `AttributeError`.
   - Verify: testes de service e de view.
