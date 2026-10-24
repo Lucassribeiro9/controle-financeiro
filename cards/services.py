@@ -74,6 +74,19 @@ def get_or_create_card_statement(*, card, transaction_date):
     return statement
 
 
+def ensure_statement_accepts_purchases(statement):
+    """Bloqueia criacao, edicao e cancelamento de compras em faturas finais."""
+
+    if statement is None:
+        return
+
+    statement.refresh_from_db()
+    if statement.status == CardStatement.StatementStatus.CANCELED:
+        raise ValidationError("Fatura cancelada nao permite alteracao de compras.")
+    if statement.status == CardStatement.StatementStatus.PAID:
+        raise ValidationError("Fatura paga nao permite alteracao de compras.")
+
+
 def credit_benefit_card_balance(*, card, amount):
     """Credita saldo em cartao de beneficio."""
 
