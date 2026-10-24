@@ -161,6 +161,16 @@ Regras principais:
 - usar messages/redirect em fluxos HTML;
 - manter JSON apenas para endpoint API/async intencional.
 
+Padroes de arquitetura (ADR-012, https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/1179675):
+
+- GET nunca grava no banco; escrita so em POST ou em comandos (rotina diaria);
+- invariantes de um unico objeto ficam no `clean` do model; regras que envolvem varios objetos (saldo, fatura, parcelas, metas) ficam no service e valem igualmente para criar, editar e cancelar;
+- service chama `full_clean()` antes de todo `save()`; `update()` em massa so com comentario explicando por que e seguro;
+- acao que altera saldo, fatura ou status financeiro roda em `transaction.atomic`, rele o objeto com `select_for_update` e e idempotente (repetir nao gera efeito novo);
+- utilitario usado por dois ou mais apps vai para `core/<assunto>.py`, com teste; copias locais sao removidas quando o arquivo for tocado;
+- erros de service chegam a tela e as APIs pelo modulo unico `core/errors.py` (mensagens legiveis, erros de form, `messages` e JSON 400);
+- datas de negocio com `timezone.localdate()` e data/hora com `timezone.now()`.
+
 Exemplo esperado:
 
 ```python
@@ -225,6 +235,7 @@ Regras operacionais:
 - Atualizar spec quando a decisao de produto mudar.
 - Preservar dados financeiros e regras de saldo.
 - Usar branch curta seguindo o padrao documentado.
+- Seguir os padroes de arquitetura da ADR-012 (ver Code Style).
 
 ### Ask First
 
@@ -242,6 +253,9 @@ Regras operacionais:
 - Fazer lancamento recorrente virar pago automaticamente por padrao.
 - Tratar transferencia como receita ou despesa.
 - Retornar JSON cru em fluxo HTML sem intencao explicita.
+- Gravar no banco durante uma requisicao GET.
+- Usar `date.today()` ou `datetime.now()` fora de testes.
+- Copiar um helper que ja existe em `core` (ou que outro app ja usa) em vez de reutiliza-lo.
 
 ## Spec Readiness Checklist
 
