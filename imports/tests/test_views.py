@@ -130,6 +130,56 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Tipo de importacao nao suportado", response.json()["error"])
 
+    def test_upload_import_rejects_non_zip_xlsx(self):
+        """Deve responder 400 quando o arquivo XLSX nao e um zip."""
+
+        response = self.client.post(
+            reverse("imports:upload"),
+            {
+                "source_type": ImportedTransaction.SourceType.XLSX,
+                "file": self._csv_file(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Arquivo XLSX inválido.")
+        self.assertEqual(ImportedTransaction.objects.count(), 0)
+
+    def test_upload_import_page_shows_message_for_non_zip_xlsx(self):
+        """Deve mostrar a mensagem na tela de upload, sem erro 500."""
+
+        response = self.client.post(
+            reverse("imports:upload-page"),
+            {
+                "source_type": ImportedTransaction.SourceType.XLSX,
+                "file": self._csv_file(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Arquivo XLSX inválido.")
+        self.assertEqual(ImportedTransaction.objects.count(), 0)
+
+    def test_upload_import_validation_error_cites_line_and_rolls_back(self):
+        """Deve responder 400 citando a linha e desfazer o lote inteiro."""
+
+        content = (
+            "date,description,amount\n"
+            "2026-10-01,Mercado,-10\n"
+            "2026-10-02,Casa,-9999999999999\n"
+        ).encode()
+        upload = BytesIO(content)
+        upload.name = "extrato.csv"
+
+        response = self.client.post(
+            reverse("imports:upload"),
+            {"source_type": ImportedTransaction.SourceType.CSV, "file": upload},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Linha 3", response.json()["error"])
+        self.assertEqual(ImportedTransaction.objects.count(), 0)
+
     def test_review_imports_lists_pending_items(self):
         """Deve listar importacoes para revisao."""
 

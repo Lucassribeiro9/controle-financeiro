@@ -93,19 +93,14 @@ def _stage_import_from_request(request: HttpRequest):
     if account_id:
         suggested_account = get_object_or_404(FinancialAccount, pk=account_id)
 
-    try:
-        importer = get_importer_for_source_type(source_type)
-        rows = importer.parse(uploaded_file)
-        imported_transactions = stage_imported_transactions(
-            file_name=uploaded_file.name,
-            source_type=source_type,
-            rows=rows,
-            suggested_account=suggested_account,
-        )
-    except ValueError:
-        raise
-
-    return imported_transactions
+    importer = get_importer_for_source_type(source_type)
+    rows = importer.parse(uploaded_file)
+    return stage_imported_transactions(
+        file_name=uploaded_file.name,
+        source_type=source_type,
+        rows=rows,
+        suggested_account=suggested_account,
+    )
 
 
 def _should_redirect_to_review(request: HttpRequest) -> bool:

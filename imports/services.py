@@ -138,7 +138,12 @@ def stage_imported_transactions(*, file_name, source_type, rows, suggested_accou
             elif detect_duplicate_transaction(imported_transaction=imported_transaction):
                 imported_transaction.status = ImportedTransaction.Status.DUPLICATE
 
-            imported_transaction.full_clean()
+            try:
+                imported_transaction.full_clean()
+            except ValidationError as exc:
+                where = f"Linha {row.line_number}: " if row.line_number else ""
+                raise ValueError(f"{where}{' '.join(exc.messages)}") from exc
+
             imported_transaction.save()
             imported.append(imported_transaction)
 

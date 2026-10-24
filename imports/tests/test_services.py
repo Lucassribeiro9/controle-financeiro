@@ -1,5 +1,6 @@
 """Tests dos services do app imports."""
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
@@ -75,6 +76,23 @@ class ImportServiceTests(TestCase):
 
         self.assertEqual(first_hash, second_hash)
         self.assertEqual(len(first_hash), 64)
+
+    def test_stage_validation_error_cites_line_and_rolls_back(self):
+        """Deve virar ValueError com a linha de origem e desfazer o lote."""
+
+        rows = [
+            replace(self._row(), line_number=2),
+            replace(self._row(amount=Decimal("9999999999999.00")), line_number=3),
+        ]
+
+        with self.assertRaisesMessage(ValueError, "Linha 3:"):
+            stage_imported_transactions(
+                file_name="extrato.csv",
+                source_type=ImportedTransaction.SourceType.CSV,
+                rows=rows,
+            )
+
+        self.assertEqual(ImportedTransaction.objects.count(), 0)
 
     def test_stage_imported_transactions_creates_pending_items(self):
         """Deve salvar linhas importadas como pendencias de revisao."""
