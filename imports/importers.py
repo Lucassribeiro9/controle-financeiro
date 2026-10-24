@@ -6,7 +6,7 @@ import unicodedata
 import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from io import BytesIO
 from xml.etree import ElementTree
 
@@ -28,6 +28,7 @@ class ImportedTransactionRow:
     amount: Decimal
     suggested_transaction_type: str
     external_id: str = ""
+    line_number: int = 0
 
 
 def normalize_description(description: str) -> str:
@@ -128,6 +129,7 @@ def _build_row(
     raw_description: str,
     raw_amount: Decimal,
     external_id: str = "",
+    line_number: int = 0,
 ) -> ImportedTransactionRow:
     """Monta uma linha importada normalizada a partir dos campos basicos."""
 
@@ -145,6 +147,7 @@ def _build_row(
         amount=raw_amount.copy_abs(),
         suggested_transaction_type=transaction_type,
         external_id=external_id.strip(),
+        line_number=line_number,
     )
 
 
@@ -194,6 +197,7 @@ class CsvTransactionImporter:
                         row[column_indexes["amount"]], line_number=line_number
                     ),
                     external_id=row[external_index] if external_index is not None else "",
+                    line_number=line_number,
                 )
             )
 
@@ -212,9 +216,12 @@ class XlsxTransactionImporter:
         if isinstance(workbook, str):
             workbook = workbook.encode("utf-8")
 
-        with zipfile.ZipFile(BytesIO(workbook)) as archive:
-            shared_strings = self._read_shared_strings(archive)
-            rows = self._read_first_sheet_rows(archive, shared_strings)
+        try:
+            with zipfile.ZipFile(BytesIO(workbook)) as archive:
+                shared_strings = self._read_shared_strings(archive)
+                rows = self._read_first_sheet_rows(archive, shared_strings)
+        except (zipfile.BadZipFile, KeyError, IndexError, ElementTree.ParseError) as exc:
+            raise ValueError("Arquivo XLSX inválido.") from exc
 
         if not rows:
             return []
@@ -241,6 +248,7 @@ class XlsxTransactionImporter:
                     raw_description=self._get_cell(row, column_indexes["description"]),
                     raw_amount=raw_amount,
                     external_id=self._get_cell(row, column_indexes.get("external_id")),
+                    line_number=line_number,
                 )
             )
 
@@ -331,7 +339,23 @@ class XlsxTransactionImporter:
         if cell_type == "s":
             return shared_strings[int(value.text)]
 
+        if cell_type in (None, "n"):
+            return self._round_numeric(value.text)
+
         return value.text
+
+    def _round_numeric(self, raw_value: str) -> str:
+        """Arredonda ruido de ponto flutuante de celulas numericas para 2 casas."""
+
+        try:
+            number = Decimal(raw_value)
+        except InvalidOperation:
+            return raw_value
+
+        if not number.is_finite() or number == number.quantize(Decimal("0.01")):
+            return raw_value
+
+        return str(number.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
     def _get_cell(self, row: list[str], index: int | None) -> str:
         """Busca uma celula por indice com fallback vazio."""
@@ -388,6 +412,7 @@ class OfxTransactionImporter:
                     raw_description=raw_description,
                     raw_amount=_parse_amount(raw_amount, line_number=line_number),
                     external_id=external_id,
+                    line_number=line_number,
                 )
             )
 

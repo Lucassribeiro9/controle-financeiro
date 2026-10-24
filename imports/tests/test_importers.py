@@ -570,3 +570,80 @@ class XlsxBrazilianFormatTests(SimpleTestCase):
             ValueError, "Cabeçalho com coluna repetida: description"
         ):
             XlsxTransactionImporter().parse(file_obj)
+
+
+class XlsxInvalidFileTests(SimpleTestCase):
+    """Garante que XLSX invalido vira ValueError amigavel (spec 014, #235)."""
+
+    _xlsx_file_from_sheet_xml = XlsxTransactionImporterTests._xlsx_file_from_sheet_xml
+
+    def _numeric_sheet(self, amount, *, cell_type=None):
+        type_attr = f' t="{cell_type}"' if cell_type else ""
+        return self._xlsx_file_from_sheet_xml(
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            "<sheetData>"
+            '<row r="1">'
+            '<c r="A1" t="inlineStr"><is><t>date</t></is></c>'
+            '<c r="B1" t="inlineStr"><is><t>description</t></is></c>'
+            '<c r="C1" t="inlineStr"><is><t>amount</t></is></c>'
+            "</row>"
+            '<row r="2">'
+            '<c r="A2" t="inlineStr"><is><t>2026-10-01</t></is></c>'
+            '<c r="B2" t="inlineStr"><is><t>Mercado</t></is></c>'
+            f'<c r="C2"{type_attr}><v>{amount}</v></c>'
+            "</row>"
+            "</sheetData>"
+            "</worksheet>"
+        )
+
+    def test_file_that_is_not_a_zip_is_rejected(self):
+        """Deve recusar arquivo que nao e zip."""
+
+        with self.assertRaisesMessage(ValueError, "Arquivo XLSX inválido."):
+            XlsxTransactionImporter().parse(BytesIO(b"date,description,amount\n"))
+
+    def test_zip_without_first_sheet_is_rejected(self):
+        """Deve recusar zip sem xl/worksheets/sheet1.xml."""
+
+        file_obj = BytesIO()
+        with ZipFile(file_obj, "w", ZIP_DEFLATED) as archive:
+            archive.writestr("outro.txt", "x")
+        file_obj.seek(0)
+
+        with self.assertRaisesMessage(ValueError, "Arquivo XLSX inválido."):
+            XlsxTransactionImporter().parse(file_obj)
+
+    def test_invalid_sheet_xml_is_rejected(self):
+        """Deve recusar planilha com XML invalido."""
+
+        with self.assertRaisesMessage(ValueError, "Arquivo XLSX inválido."):
+            XlsxTransactionImporter().parse(self._xlsx_file_from_sheet_xml("<worksheet>"))
+
+    def test_numeric_cell_with_float_noise_is_rounded(self):
+        """Deve arredondar celula numerica para 2 casas."""
+
+        rows = XlsxTransactionImporter().parse(self._numeric_sheet("-10.199999999999999"))
+
+        self.assertEqual(rows[0].amount, Decimal("10.20"))
+
+    def test_numeric_cell_rounds_half_up(self):
+        """Deve arredondar metade para cima."""
+
+        rows = XlsxTransactionImporter().parse(self._numeric_sheet("10.005", cell_type="n"))
+
+        self.assertEqual(rows[0].amount, Decimal("10.01"))
+
+    def test_nan_cell_is_rejected(self):
+        """Deve recusar NaN em celula numerica."""
+
+        with self.assertRaisesMessage(ValueError, "Valor inválido na linha 2"):
+            XlsxTransactionImporter().parse(self._numeric_sheet("NaN"))
+
+    def test_text_cell_with_many_decimals_is_not_rounded(self):
+        """Deve recusar texto com mais de 2 casas, sem arredondar."""
+
+        with self.assertRaisesMessage(ValueError, "Valor inválido na linha 2"):
+            XlsxTransactionImporter().parse(
+                self._numeric_sheet("10.199999999999999", cell_type="str")
+            )
