@@ -9,7 +9,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase
 
 from insights.models import Insight
-from insights.tests.scenarios import build_realistic_month
+from core.demo_data import build_realistic_month
 
 
 class GenerateInsightsCommandTests(TestCase):
