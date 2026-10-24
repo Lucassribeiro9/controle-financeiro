@@ -8,6 +8,7 @@ from django.test import TestCase
 
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
+from cards.services import close_statement, get_or_create_card_statement
 from categories.models import Category
 from installments.models import InstallmentPlan
 from installments.services import (
@@ -168,6 +169,70 @@ class InstallmentPlanServiceTests(TestCase):
             plan.transactions.filter(status=Transaction.PaymentStatus.CANCELED).count(),
             9,
         )
+
+    def test_create_installment_plan_updates_expected_amount_of_each_statement(self):
+        """Cada fatura afetada recebe o valor previsto das suas parcelas."""
+
+        plan = self._create_plan(total_amount=Decimal("300.00"), installments=3)
+
+        statements = CardStatement.objects.filter(card=self.card).order_by("year", "month")
+        self.assertEqual(statements.count(), 3)
+        for statement in statements:
+            self.assertEqual(statement.expected_amount, Decimal("100.00"))
+        self.assertEqual(plan.transactions.count(), 3)
+
+    def test_create_installment_plan_rejects_paid_statement_and_rolls_back(self):
+        """Parcela em fatura paga rejeita o plano inteiro sem gravar nada."""
+
+        get_or_create_card_statement(card=self.card, transaction_date=date(2026, 6, 8))
+        CardStatement.objects.filter(month=6).update(
+            status=CardStatement.StatementStatus.PAID,
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Fatura paga nao permite alteracao de compras.",
+        ):
+            self._create_plan(total_amount=Decimal("300.00"), installments=3)
+
+        self.assertEqual(InstallmentPlan.objects.count(), 0)
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_cancel_installment_plan_reduces_closed_amount_of_closed_statement(self):
+        """Cancelar o plano tira a parcela cancelada do valor fechado."""
+
+        plan = self._create_plan(total_amount=Decimal("300.00"), installments=3)
+        may_statement = CardStatement.objects.get(card=self.card, month=5)
+        close_statement(statement=may_statement)
+        may_statement.refresh_from_db()
+        self.assertEqual(may_statement.closed_amount, Decimal("100.00"))
+
+        cancel_installment_plan(plan=plan)
+
+        may_statement.refresh_from_db()
+        self.assertEqual(may_statement.closed_amount, Decimal("0.00"))
+        self.assertEqual(may_statement.expected_amount, Decimal("0.00"))
+        june_statement = CardStatement.objects.get(card=self.card, month=6)
+        self.assertEqual(june_statement.expected_amount, Decimal("0.00"))
+
+    def test_cancel_installment_plan_keeps_paid_statement_untouched(self):
+        """Fatura paga nao e recalculada ao cancelar o plano."""
+
+        plan = self._create_plan(total_amount=Decimal("300.00"), installments=3)
+        CardStatement.objects.filter(month=5).update(
+            status=CardStatement.StatementStatus.PAID,
+            expected_amount=Decimal("100.00"),
+            closed_amount=Decimal("100.00"),
+            paid_amount=Decimal("100.00"),
+        )
+        plan.transactions.filter(installment_number=1).update(
+            status=Transaction.PaymentStatus.PAID,
+        )
+
+        cancel_installment_plan(plan=plan)
+
+        may_statement = CardStatement.objects.get(month=5)
+        self.assertEqual(may_statement.closed_amount, Decimal("100.00"))
 
     def test_cancel_completed_plan_raises_validation_error(self):
         """Nao deve cancelar parcelamento concluido."""

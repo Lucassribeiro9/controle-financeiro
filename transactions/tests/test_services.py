@@ -10,6 +10,7 @@ from django.test import TestCase
 from accounts.models import FinancialAccount
 from cards.models import Card
 from cards.models import CardStatement
+from cards.services import get_or_create_card_statement
 from categories.models import Category
 from institutions.models import Institution
 from transactions.models import Transaction
@@ -663,6 +664,88 @@ class TransactionServiceTests(TestCase):
                 date=date(2026, 5, 8),
                 notes="",
             )
+
+    def test_create_credit_purchase_rejects_paid_statement(self):
+        """Compra nova no credito nao entra em fatura paga."""
+
+        statement = get_or_create_card_statement(card=self.card, transaction_date=date(2026, 5, 8))
+        statement.status = CardStatement.StatementStatus.PAID
+        statement.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Fatura paga nao permite alteracao de compras.",
+        ):
+            create_transaction_by_payment_method(
+                payment_method="credit",
+                description="Compra online",
+                amount=Decimal("120.00"),
+                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                card=self.card,
+                category=self.category,
+                date=date(2026, 5, 8),
+            )
+
+        self.assertFalse(Transaction.objects.exists())
+
+    def test_create_credit_purchase_rejects_canceled_statement(self):
+        """Compra nova no credito nao entra em fatura cancelada."""
+
+        statement = get_or_create_card_statement(card=self.card, transaction_date=date(2026, 5, 8))
+        statement.status = CardStatement.StatementStatus.CANCELED
+        statement.save(update_fields=["status", "updated_at"])
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Fatura cancelada nao permite alteracao de compras.",
+        ):
+            create_transaction_by_payment_method(
+                payment_method="credit",
+                description="Compra online",
+                amount=Decimal("120.00"),
+                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                card=self.card,
+                category=self.category,
+                date=date(2026, 5, 8),
+            )
+
+    def test_create_credit_purchase_updates_open_statement_expected_amount(self):
+        """Compra nova no credito recalcula o valor previsto da fatura aberta."""
+
+        for amount in (Decimal("120.00"), Decimal("80.00")):
+            transaction = create_transaction_by_payment_method(
+                payment_method="credit",
+                description="Compra online",
+                amount=amount,
+                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                card=self.card,
+                category=self.category,
+                date=date(2026, 5, 8),
+            )
+
+        transaction.statement.refresh_from_db()
+        self.assertEqual(transaction.statement.expected_amount, Decimal("200.00"))
+        self.assertEqual(transaction.statement.closed_amount, Decimal("0.00"))
+
+    def test_create_credit_purchase_updates_closed_statement_closed_amount(self):
+        """Compra nova em fatura fechada e nao paga atualiza o valor fechado."""
+
+        statement = get_or_create_card_statement(card=self.card, transaction_date=date(2026, 5, 8))
+        statement.status = CardStatement.StatementStatus.PENDING
+        statement.save(update_fields=["status", "updated_at"])
+
+        create_transaction_by_payment_method(
+            payment_method="credit",
+            description="Compra online",
+            amount=Decimal("120.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            card=self.card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+        statement.refresh_from_db()
+        self.assertEqual(statement.closed_amount, Decimal("120.00"))
 
 
 class TransferServiceTests(TestCase):

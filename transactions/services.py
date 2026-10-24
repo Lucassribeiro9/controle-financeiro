@@ -8,6 +8,7 @@ from django.db import transaction as db_transaction
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
 from cards.services import (
+    ensure_statement_accepts_purchases,
     get_or_create_card_statement,
     refresh_statement_amounts,
 )
@@ -94,19 +95,6 @@ def _resolve_card_purchase_statement(*, transaction_type, card, transaction_date
         return get_or_create_card_statement(card=card, transaction_date=transaction_date)
 
     return None
-
-
-def _ensure_statement_can_change(statement):
-    """Bloqueia alteracao de compras em faturas finais."""
-
-    if statement is None:
-        return
-
-    statement.refresh_from_db()
-    if statement.status == CardStatement.StatementStatus.CANCELED:
-        raise ValidationError("Fatura cancelada nao permite alteracao de compras.")
-    if statement.status == CardStatement.StatementStatus.PAID:
-        raise ValidationError("Fatura paga nao permite alteracao de compras.")
 
 
 def create_transaction(
@@ -275,18 +263,23 @@ def create_transaction_by_payment_method(
                 category=category,
             )
 
-        statement = get_or_create_card_statement(card=card, transaction_date=date)
-        return create_transaction(
-            description=description,
-            amount=amount,
-            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
-            date=date,
-            card=card,
-            statement=statement,
-            category=category,
-            status=status,
-            notes=notes,
-        )
+        with db_transaction.atomic():
+            statement = get_or_create_card_statement(card=card, transaction_date=date)
+            ensure_statement_accepts_purchases(statement)
+            purchase = create_transaction(
+                description=description,
+                amount=amount,
+                transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+                date=date,
+                card=card,
+                statement=statement,
+                category=category,
+                status=status,
+                notes=notes,
+            )
+            refresh_statement_amounts(statement=statement)
+
+        return purchase
 
     if payment_method == "benefit":
         if card is None:
@@ -345,7 +338,7 @@ def update_transaction(
             if statement is not None
         ]
         for statement in affected_statements:
-            _ensure_statement_can_change(statement)
+            ensure_statement_accepts_purchases(statement)
 
         if transaction_type not in (
             Transaction.TransactionType.CARD_PURCHASE,

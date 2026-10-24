@@ -7,7 +7,14 @@ from decimal import Decimal, ROUND_DOWN
 from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
 
-from cards.services import get_or_create_card_statement
+from django.utils import timezone
+
+from cards.models import CardStatement
+from cards.services import (
+    ensure_statement_accepts_purchases,
+    get_or_create_card_statement,
+    refresh_statement_amounts,
+)
 from transactions.models import Transaction
 
 from .models import InstallmentPlan
@@ -76,11 +83,17 @@ def create_installment_plan_from_purchase(
 def generate_installment_transactions(*, plan):
     """Gera transacoes de compra no cartao para cada parcela."""
 
+    with db_transaction.atomic():
+        return _generate_installment_transactions(plan=plan)
+
+
+def _generate_installment_transactions(*, plan):
     plan = InstallmentPlan.objects.select_related("card", "category").get(pk=plan.pk)
     if plan.transactions.exists():
         raise ValidationError("Parcelas ja foram geradas para este parcelamento.")
 
     transactions = []
+    statements = {}
     installment_amounts = _calculate_installment_amounts(
         total_amount=plan.total_amount,
         total_installments=plan.total_installments,
@@ -95,6 +108,8 @@ def generate_installment_transactions(*, plan):
             card=plan.card,
             transaction_date=installment_date,
         )
+        ensure_statement_accepts_purchases(statement)
+        statements[statement.pk] = statement
         transaction = Transaction(
             description=f"{plan.description} ({index}/{plan.total_installments})",
             amount=amount,
@@ -111,6 +126,9 @@ def generate_installment_transactions(*, plan):
         transaction.save()
         transactions.append(transaction)
 
+    for statement in statements.values():
+        refresh_statement_amounts(statement=statement)
+
     return transactions
 
 
@@ -126,10 +144,21 @@ def cancel_installment_plan(*, plan):
         plan.status = InstallmentPlan.Status.CANCELED
         plan.save(update_fields=["status", "updated_at"])
 
-        # Cancela parcelas que ainda nao foram pagas
-        plan.transactions.filter(
-            status=Transaction.PaymentStatus.PENDING,
-        ).update(status=Transaction.PaymentStatus.CANCELED, updated_at=date.today())
+        pending = plan.transactions.filter(status=Transaction.PaymentStatus.PENDING)
+        statement_ids = set(pending.values_list("statement_id", flat=True))
+
+        # update() em massa e seguro: so troca status das parcelas pendentes do plano,
+        # sem save() customizado nem impacto em saldo; a fatura e recalculada abaixo.
+        pending.update(status=Transaction.PaymentStatus.CANCELED, updated_at=timezone.now())
+
+        statements = CardStatement.objects.filter(pk__in=statement_ids - {None}).exclude(
+            status__in=[
+                CardStatement.StatementStatus.PAID,
+                CardStatement.StatementStatus.CANCELED,
+            ]
+        )
+        for statement in statements:
+            refresh_statement_amounts(statement=statement)
 
     return plan
 
