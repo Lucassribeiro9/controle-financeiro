@@ -60,6 +60,22 @@ python3 manage.py createsuperuser
 # docker: docker compose run --rm web python manage.py createsuperuser
 ```
 
+### Dados de exemplo (dev)
+
+Para revisar telas e reproduzir bugs a partir de um estado conhecido, gere 3 meses de
+dados coerentes (instituicao, contas, cartao com faturas, categorias, receitas, despesas
+pagas e pendentes, compra parcelada, transferencias, recorrencias com previsoes, objetivos
+e insights pendentes). Tudo passa pelos services, entao saldos e faturas respeitam as regras.
+
+```bash
+python3 manage.py seed_demo_data --reset
+# docker: docker compose run --rm web python manage.py seed_demo_data --reset
+```
+
+- `--reset` apaga **todos os dados financeiros** do banco antes de gerar (o usuario e preservado). Rodar de novo gera o mesmo resultado.
+- Sem `--reset`, o comando so roda com o banco financeiro vazio; se ja houver dados, recusa.
+- Recusa rodar com `DEBUG=False`, entao nao funciona em producao.
+
 ### Deploy (producao)
 
 Usa `project.settings.prod` (padrao de `wsgi.py` e `asgi.py`), que **falha no
