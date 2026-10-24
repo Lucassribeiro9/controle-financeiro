@@ -2,6 +2,7 @@
 
 import csv
 import re
+import unicodedata
 import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -9,6 +10,9 @@ from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from xml.etree import ElementTree
 
+from django.core.exceptions import ValidationError
+
+from core.forms import normalize_decimal, parse_br_date
 from transactions.models import Transaction
 
 from .models import ImportedTransaction
@@ -51,12 +55,20 @@ def _decode_text(content) -> str:
 
 
 def _parse_amount(raw_amount: str, *, line_number: int) -> Decimal:
-    """Converte valor textual para Decimal."""
+    """Converte valor textual (pt-BR ou ISO) para Decimal com no maximo 2 casas."""
+
+    invalid = ValueError(f"Valor inválido na linha {line_number}: {raw_amount}")
 
     try:
-        amount = Decimal(raw_amount.strip().replace(",", "."))
-    except (ValueError, InvalidOperation) as exc:
-        raise ValueError(f"Valor inválido na linha {line_number}: {raw_amount}") from exc
+        amount = normalize_decimal(raw_amount)
+    except ValueError as exc:
+        raise invalid from exc
+
+    if amount is None or not amount.is_finite():
+        raise invalid
+
+    if amount != amount.quantize(Decimal("0.01")):
+        raise invalid
 
     if amount == Decimal("0.00"):
         raise ValueError(f"Valor zero não permitido na linha {line_number}")
@@ -64,13 +76,50 @@ def _parse_amount(raw_amount: str, *, line_number: int) -> Decimal:
     return amount
 
 
-def _parse_iso_date(raw_date: str, *, line_number: int) -> date:
-    """Converte data ISO para date."""
+def _parse_date(raw_date: str, *, line_number: int) -> date:
+    """Converte data ISO ou dd/mm/aaaa para date."""
 
     try:
-        return date.fromisoformat(raw_date.strip())
-    except ValueError as exc:
+        return parse_br_date(raw_date.strip())
+    except ValidationError as exc:
         raise ValueError(f"Data inválida na linha {line_number}: {raw_date}") from exc
+
+
+HEADER_ALIASES = {
+    "date": {"date", "data"},
+    "description": {"description", "descricao", "historico"},
+    "amount": {"amount", "valor"},
+    "external_id": {"external_id", "identificador"},
+}
+
+
+def _normalize_header(header: str) -> str:
+    """Normaliza cabecalho sem caixa, sem acento e sem espacos nas pontas."""
+
+    decomposed = unicodedata.normalize("NFKD", header.strip().lower())
+    return "".join(char for char in decomposed if not unicodedata.combining(char))
+
+
+def _map_headers(headers: list[str], *, file_label: str) -> dict[str, int]:
+    """Mapeia cabecalhos (ingles ou portugues) para o indice de cada campo."""
+
+    column_indexes: dict[str, int] = {}
+
+    for index, header in enumerate(headers):
+        normalized = _normalize_header(header)
+        for field, aliases in HEADER_ALIASES.items():
+            if normalized in aliases:
+                if field in column_indexes:
+                    raise ValueError(f"Cabeçalho com coluna repetida: {field}")
+                column_indexes[field] = index
+
+    missing_fields = {"date", "description", "amount"} - set(column_indexes)
+    if missing_fields:
+        raise ValueError(
+            f"{file_label} sem colunas obrigatórias: {', '.join(sorted(missing_fields))}"
+        )
+
+    return column_indexes
 
 
 def _build_row(
@@ -108,29 +157,43 @@ class CsvTransactionImporter:
         """Parseia um CSV e retorna linhas normalizadas para staging."""
 
         content = _decode_text(_read_file_content(file_obj))
-        reader = csv.DictReader(content.splitlines())
-        missing_fields = self.required_fields - set(reader.fieldnames or [])
+        lines = content.splitlines()
+        first_line = next((line for line in lines if line.strip()), "")
+        delimiter = ";" if ";" in first_line else ","
+        reader = csv.reader(lines, delimiter=delimiter)
 
-        if missing_fields:
+        try:
+            records = list(enumerate(reader, start=1))
+        except csv.Error as exc:
+            raise ValueError("Arquivo CSV inválido.") from exc
+
+        records = [(number, row) for number, row in records if any(c.strip() for c in row)]
+        if not records:
             raise ValueError(
-                f"CSV sem colunas obrigatórias: {', '.join(sorted(missing_fields))}"
+                f"CSV sem colunas obrigatórias: {', '.join(sorted(self.required_fields))}"
             )
 
+        _, headers = records[0]
+        column_indexes = _map_headers(headers, file_label="CSV")
         rows = []
 
-        for line_number, row in enumerate(reader, start=2):
-            if not any((value or "").strip() for value in row.values()):
-                continue
+        for line_number, row in records[1:]:
+            if len(row) > len(headers):
+                raise ValueError(f"Linha {line_number} tem mais colunas que o cabeçalho.")
+            if len(row) < len(headers):
+                raise ValueError(f"Linha {line_number} tem menos colunas que o cabeçalho.")
 
-            transaction_date = _parse_iso_date(row["date"], line_number=line_number)
-            raw_amount = _parse_amount(row["amount"], line_number=line_number)
-
+            external_index = column_indexes.get("external_id")
             rows.append(
                 _build_row(
-                    transaction_date=transaction_date,
-                    raw_description=row["description"],
-                    raw_amount=raw_amount,
-                    external_id=row.get("external_id") or "",
+                    transaction_date=_parse_date(
+                        row[column_indexes["date"]], line_number=line_number
+                    ),
+                    raw_description=row[column_indexes["description"]],
+                    raw_amount=_parse_amount(
+                        row[column_indexes["amount"]], line_number=line_number
+                    ),
+                    external_id=row[external_index] if external_index is not None else "",
                 )
             )
 
@@ -157,13 +220,7 @@ class XlsxTransactionImporter:
             return []
 
         headers = [str(value).strip() for value in rows[0]]
-        missing_fields = self.required_fields - set(headers)
-        if missing_fields:
-            raise ValueError(
-                f"XLSX sem colunas obrigatórias: {', '.join(sorted(missing_fields))}"
-            )
-
-        column_indexes = {header: index for index, header in enumerate(headers)}
+        column_indexes = _map_headers(headers, file_label="XLSX")
         imported_rows = []
 
         for line_number, row in enumerate(rows[1:], start=2):
@@ -284,11 +341,11 @@ class XlsxTransactionImporter:
         return str(row[index]).strip()
 
     def _parse_xlsx_date(self, raw_date: str, *, line_number: int) -> date:
-        """Converte data ISO ou serial do Excel para date."""
+        """Converte data ISO, dd/mm/aaaa ou serial do Excel para date."""
 
         raw_date = raw_date.strip()
         try:
-            return date.fromisoformat(raw_date)
+            return _parse_date(raw_date, line_number=line_number)
         except ValueError:
             pass
 

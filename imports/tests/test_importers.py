@@ -66,9 +66,9 @@ class CsvTransactionImporterTests(SimpleTestCase):
             CsvTransactionImporter().parse(file_obj)
 
     def test_parse_rejects_invalid_date(self):
-        """Deve rejeitar data fora do formato ISO."""
+        """Deve rejeitar data que nao seja ISO nem dd/mm/aaaa."""
 
-        file_obj = StringIO("date,description,amount\n10/05/2026,Mercado Dia,-87.45\n")
+        file_obj = StringIO("date,description,amount\n31/02/2026,Mercado Dia,-87.45\n")
 
         with self.assertRaisesMessage(ValueError, "Data inválida na linha 2"):
             CsvTransactionImporter().parse(file_obj)
@@ -182,9 +182,9 @@ class CsvTransactionImporterTests(SimpleTestCase):
             CsvTransactionImporter().parse(file_obj)
 
     def test_parse_rejects_invalid_date(self):
-        """Deve rejeitar data fora do formato ISO."""
+        """Deve rejeitar data que nao seja ISO nem dd/mm/aaaa."""
 
-        file_obj = StringIO("date,description,amount\n10/05/2026,Mercado Dia,-87.45\n")
+        file_obj = StringIO("date,description,amount\n31/02/2026,Mercado Dia,-87.45\n")
 
         with self.assertRaisesMessage(ValueError, "Data inválida na linha 2"):
             CsvTransactionImporter().parse(file_obj)
@@ -418,3 +418,155 @@ class ImporterFactoryTests(SimpleTestCase):
 
         with self.assertRaisesMessage(ValueError, "Tipo de importacao nao suportado"):
             get_importer_for_source_type("pdf")
+
+
+class CsvBrazilianFormatTests(SimpleTestCase):
+    """Garante o formato brasileiro de extratos CSV (spec 014, #234)."""
+
+    def _parse(self, text):
+        return CsvTransactionImporter().parse(StringIO(text))
+
+    def test_unquoted_decimal_comma_is_rejected_for_extra_columns(self):
+        """Deve recusar valor com virgula sem aspas, que o CSV parte em duas colunas."""
+
+        with self.assertRaisesMessage(
+            ValueError, "Linha 2 tem mais colunas que o cabeçalho."
+        ):
+            self._parse("date,description,amount\n2026-10-01,Mercado,-10,50\n")
+
+    def test_unquoted_thousands_and_decimal_comma_is_rejected(self):
+        """Deve recusar `-1.234,56` sem aspas em vez de importar R$ 1,234."""
+
+        with self.assertRaisesMessage(
+            ValueError, "Linha 2 tem mais colunas que o cabeçalho."
+        ):
+            self._parse("date,description,amount\n2026-10-01,Mercado,-1.234,56\n")
+
+    def test_quoted_brazilian_amount_is_read(self):
+        """Deve ler `"-1.234,56"` entre aspas como despesa de R$ 1.234,56."""
+
+        rows = self._parse('date,description,amount\n2026-10-01,Mercado,"-1.234,56"\n')
+
+        self.assertEqual(rows[0].amount, Decimal("1234.56"))
+        self.assertEqual(
+            rows[0].suggested_transaction_type, Transaction.TransactionType.EXPENSE
+        )
+
+    def test_brazilian_date_is_accepted(self):
+        """Deve aceitar data dd/mm/aaaa."""
+
+        rows = self._parse("date,description,amount\n01/10/2026,Mercado,-10\n")
+
+        self.assertEqual(rows[0].date, date(2026, 10, 1))
+
+    def test_semicolon_delimiter_with_portuguese_headers(self):
+        """Deve ler extrato `Data;Descrição;Valor` com valores BR."""
+
+        rows = self._parse(
+            "Data;Descrição;Valor\n"
+            "01/10/2026;Mercado;-1.234,56\n"
+            "02/10/2026;Salario;5.000,00\n"
+        )
+
+        self.assertEqual([row.amount for row in rows], [Decimal("1234.56"), Decimal("5000.00")])
+        self.assertEqual(rows[0].date, date(2026, 10, 1))
+        self.assertEqual(rows[0].raw_description, "Mercado")
+
+    def test_header_aliases_ignore_case_and_accents(self):
+        """Deve aceitar HISTÓRICO e Identificador sem diferenciar caixa e acento."""
+
+        rows = self._parse(
+            "DATA,HISTÓRICO,VALOR,Identificador\n2026-10-01,Mercado,-10.50,FIT1\n"
+        )
+
+        self.assertEqual(rows[0].raw_description, "Mercado")
+        self.assertEqual(rows[0].amount, Decimal("10.50"))
+        self.assertEqual(rows[0].external_id, "FIT1")
+
+    def test_repeated_header_field_is_rejected(self):
+        """Deve recusar duas colunas que mapeiam para o mesmo campo."""
+
+        with self.assertRaisesMessage(
+            ValueError, "Cabeçalho com coluna repetida: description"
+        ):
+            self._parse("date,description,historico,amount\n2026-10-01,A,B,-1\n")
+
+    def test_short_row_is_rejected(self):
+        """Deve recusar linha com menos colunas que o cabecalho."""
+
+        with self.assertRaisesMessage(
+            ValueError, "Linha 2 tem menos colunas que o cabeçalho."
+        ):
+            self._parse("date,description,amount\n2026-10-01,Mercado\n")
+
+    def test_amount_formats(self):
+        """Deve ler virgula como decimal e ponto sem virgula como decimal."""
+
+        cases = {
+            "-10,50": Decimal("10.50"),
+            "1.234.567,89": Decimal("1234567.89"),
+            "1234.56": Decimal("1234.56"),
+            "-87.45": Decimal("87.45"),
+        }
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                rows = self._parse(f'date,description,amount\n2026-10-01,A,"{raw}"\n')
+                self.assertEqual(rows[0].amount, expected)
+
+    def test_amount_with_more_than_two_decimals_is_rejected(self):
+        """Deve recusar valor ambiguo ou com casas extras, sem arredondar."""
+
+        for raw in ["1.234", "10,505", "1,234.56", "NaN", "Infinity"]:
+            with self.subTest(raw=raw):
+                with self.assertRaisesMessage(ValueError, "Valor inválido na linha 2"):
+                    self._parse(f'date,description,amount\n2026-10-01,A,"{raw}"\n')
+
+    def test_two_digit_year_is_rejected(self):
+        """Deve recusar dd/mm/aa."""
+
+        with self.assertRaisesMessage(ValueError, "Data inválida na linha 2"):
+            self._parse("date,description,amount\n01/10/26,A,-1\n")
+
+
+class XlsxBrazilianFormatTests(SimpleTestCase):
+    """Garante o mesmo parse BR de valor, data e cabecalho no XLSX."""
+
+    _xlsx_file = XlsxTransactionImporterTests._xlsx_file
+
+    def test_brazilian_values_dates_and_headers(self):
+        """Deve ler Data/Descrição/Valor com valor e data em formato BR."""
+
+        file_obj = self._xlsx_file(
+            [
+                ["Data", "Descrição", "Valor"],
+                ["01/10/2026", "Mercado", "-1.234,56"],
+            ]
+        )
+
+        rows = XlsxTransactionImporter().parse(file_obj)
+
+        self.assertEqual(rows[0].date, date(2026, 10, 1))
+        self.assertEqual(rows[0].amount, Decimal("1234.56"))
+
+    def test_xlsx_serial_date_still_works(self):
+        """Deve manter o serial do Excel como data valida."""
+
+        file_obj = self._xlsx_file(
+            [["date", "description", "amount"], ["46296", "Mercado", "-10"]]
+        )
+
+        rows = XlsxTransactionImporter().parse(file_obj)
+
+        self.assertEqual(rows[0].date, date(2026, 10, 1))
+
+    def test_xlsx_repeated_header_field_is_rejected(self):
+        """Deve recusar duas colunas que mapeiam para o mesmo campo."""
+
+        file_obj = self._xlsx_file(
+            [["date", "description", "descricao", "amount"], ["2026-10-01", "A", "B", "-1"]]
+        )
+
+        with self.assertRaisesMessage(
+            ValueError, "Cabeçalho com coluna repetida: description"
+        ):
+            XlsxTransactionImporter().parse(file_obj)
