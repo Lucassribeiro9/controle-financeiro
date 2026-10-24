@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
+from django.utils import timezone
 
 from categories.models import Category
 from transactions.constants import (
@@ -157,6 +158,53 @@ def update_monthly_goal_status(monthly_goal: MonthlyGoal) -> MonthlyGoal:
 
 
 @transaction.atomic
+def get_or_create_reduction_goal(*, category: Category, target_amount: Decimal) -> Goal:
+    """Retorna o Goal de reducao da categoria, criando-o se nao existir.
+
+    Trava a categoria para que duas chamadas concorrentes nao criem dois Goals.
+    Se houver duplicatas antigas, reutiliza a mais antiga em vez de falhar.
+    """
+
+    Category.objects.select_for_update().get(pk=category.pk)
+    goal = (
+        Goal.objects.filter(goal_type=Goal.GoalType.REDUCTION, category=category)
+        .order_by("pk")
+        .first()
+    )
+    if goal is not None:
+        return goal
+
+    goal = Goal(
+        name=f"Limite - {category.name}",
+        goal_type=Goal.GoalType.REDUCTION,
+        category=category,
+        target_amount=target_amount,
+        start_date=timezone.localdate(),
+    )
+    goal.full_clean()
+    goal.save()
+    return goal
+
+
+def get_reduction_monthly_goal(
+    *, category: Category, year: int, month: int
+) -> MonthlyGoal | None:
+    """Retorna a meta mensal de reducao da categoria no mes, travada para escrita."""
+
+    return (
+        MonthlyGoal.objects.select_for_update()
+        .filter(
+            goal__goal_type=Goal.GoalType.REDUCTION,
+            goal__category=category,
+            year=year,
+            month=month,
+        )
+        .order_by("goal_id")
+        .first()
+    )
+
+
+@transaction.atomic
 def create_reduction_goal_for_category(
     *,
     category: Category,
@@ -178,15 +226,7 @@ def create_reduction_goal_for_category(
             {"target_amount": "O valor da meta deve ser positivo."}
         )
 
-    goal, _ = Goal.objects.get_or_create(
-        goal_type=Goal.GoalType.REDUCTION,
-        category=category,
-        defaults={
-            "name": f"Limite - {category.name}",
-            "target_amount": target_amount,
-            "start_date": date.today(),
-        },
-    )
+    goal = get_or_create_reduction_goal(category=category, target_amount=target_amount)
 
     return create_monthly_goal_from_goal(
         goal=goal,

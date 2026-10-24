@@ -1,15 +1,18 @@
 """Regras de negocio para os insights."""
 
-from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Count, Sum
+from django.utils import timezone
 
 from categories.models import Category
 from core.templatetags.money import brl, month_name
-from goals.models import Goal
-from goals.services import create_monthly_goal_from_goal
+from goals.services import (
+    create_reduction_goal_for_category,
+    get_reduction_monthly_goal,
+)
 from insights.models import IgnoredPattern, Insight
 from transactions.constants import (
     EXCLUDED_SPENDING_STATUSES,
@@ -103,27 +106,52 @@ def suggest_category_limit(*, category, year, month):
     )
 
 
-def approve_insight(*, insight):
-    """Aprova um insight."""
+class MonthlyGoalConflict(Exception):
+    """Ja existe meta mensal da categoria com valor diferente do sugerido."""
+
+    def __init__(self, *, insight, monthly_goal):
+        super().__init__("Ja existe meta mensal para esta categoria no mes.")
+        self.insight = insight
+        self.monthly_goal = monthly_goal
+
+
+@transaction.atomic
+def approve_insight(*, insight, existing_goal_action=None):
+    """Aprova um insight.
+
+    Para `category_limit`, reutiliza o Goal de reducao da categoria e a meta do
+    mes corrente. Se a meta ja existe com outro valor, exige `existing_goal_action`
+    ("keep" ou "update"); sem ela levanta `MonthlyGoalConflict`.
+    """
+
+    if existing_goal_action not in (None, "keep", "update"):
+        raise ValidationError("Ação inválida para a meta existente.")
+
+    insight = Insight.objects.select_for_update().get(pk=insight.pk)
     if insight.status != Insight.Status.PENDING:
         return insight
 
     if insight.insight_type == Insight.InsightType.CATEGORY_LIMIT:
         if insight.category is None:
             raise ValidationError("A categoria deste insight não existe mais.")
-        goal = Goal.objects.create(
-            name=f"Limite: {insight.category.name}",
-            goal_type=Goal.GoalType.REDUCTION,
-            target_amount=insight.suggested_amount,
-            start_date=date.today(),
-            category=insight.category,
+        today = timezone.localdate()
+        monthly_goal = get_reduction_monthly_goal(
+            category=insight.category, year=today.year, month=today.month
         )
-        monthly_goal = create_monthly_goal_from_goal(
-            goal=goal,
-            year=date.today().year,
-            month=date.today().month,
-            target_amount=insight.suggested_amount,
-        )
+        if monthly_goal is None:
+            monthly_goal = create_reduction_goal_for_category(
+                category=insight.category,
+                year=today.year,
+                month=today.month,
+                target_amount=insight.suggested_amount,
+            )
+        elif monthly_goal.target_amount != insight.suggested_amount:
+            if existing_goal_action is None:
+                raise MonthlyGoalConflict(insight=insight, monthly_goal=monthly_goal)
+            if existing_goal_action == "update":
+                monthly_goal.target_amount = insight.suggested_amount
+                monthly_goal.full_clean()
+                monthly_goal.save()
         insight.monthly_goal = monthly_goal
 
     insight.status = Insight.Status.APPROVED

@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -12,6 +13,7 @@ from goals.models import Goal, MonthlyGoal
 from insights.models import IgnoredPattern, Insight
 from insights.tests.scenarios import build_realistic_month
 from insights.services import (
+    MonthlyGoalConflict,
     approve_insight,
     detect_recurrent_habits,
     generate_monthly_insights,
@@ -105,6 +107,100 @@ class InsightServiceTests(TestCase):
         self.assertEqual(Goal.objects.count(), 1)
         self.assertEqual(MonthlyGoal.objects.count(), 1)
         self.assertEqual(approved.monthly_goal.target_amount, Decimal("300.00"))
+
+    def _limit_insight(self, amount="300.00", source_key=None):
+        return Insight.objects.create(
+            title="Limite sugerido",
+            message="Criar meta para alimentacao.",
+            insight_type=Insight.InsightType.CATEGORY_LIMIT,
+            category=self.category,
+            suggested_amount=Decimal(amount),
+            source_key=source_key,
+        )
+
+    def test_approve_twice_does_not_duplicate_goal_or_monthly_goal(self):
+        insight = self._limit_insight()
+
+        approve_insight(insight=insight)
+        approve_insight(insight=insight)
+
+        self.assertEqual(Goal.objects.count(), 1)
+        self.assertEqual(MonthlyGoal.objects.count(), 1)
+
+    def test_approve_reuses_goal_across_months_of_same_category(self):
+        first = self._limit_insight(source_key="a")
+        second = self._limit_insight(source_key="b")
+        with patch("insights.services.timezone.localdate", return_value=date(2026, 5, 10)):
+            approve_insight(insight=first)
+        with patch("insights.services.timezone.localdate", return_value=date(2026, 6, 10)):
+            approve_insight(insight=second)
+
+        self.assertEqual(Goal.objects.count(), 1)
+        self.assertEqual(MonthlyGoal.objects.count(), 2)
+
+    def test_approve_with_existing_monthly_goal_same_amount_links_it(self):
+        first = approve_insight(insight=self._limit_insight(source_key="a"))
+        second = approve_insight(insight=self._limit_insight(source_key="b"))
+
+        self.assertEqual(second.monthly_goal_id, first.monthly_goal_id)
+        self.assertEqual(MonthlyGoal.objects.count(), 1)
+
+    def test_approve_with_different_amount_requires_decision(self):
+        first = approve_insight(insight=self._limit_insight(source_key="a"))
+        second = self._limit_insight(amount="450.00", source_key="b")
+
+        with self.assertRaises(MonthlyGoalConflict) as ctx:
+            approve_insight(insight=second)
+
+        second.refresh_from_db()
+        self.assertEqual(second.status, Insight.Status.PENDING)
+        self.assertEqual(ctx.exception.monthly_goal.pk, first.monthly_goal_id)
+        first.monthly_goal.refresh_from_db()
+        self.assertEqual(first.monthly_goal.target_amount, Decimal("300.00"))
+
+    def test_approve_keep_preserves_existing_amount(self):
+        first = approve_insight(insight=self._limit_insight(source_key="a"))
+        second = approve_insight(
+            insight=self._limit_insight(amount="450.00", source_key="b"),
+            existing_goal_action="keep",
+        )
+
+        self.assertEqual(second.status, Insight.Status.APPROVED)
+        self.assertEqual(second.monthly_goal_id, first.monthly_goal_id)
+        second.monthly_goal.refresh_from_db()
+        self.assertEqual(second.monthly_goal.target_amount, Decimal("300.00"))
+
+    def test_approve_update_changes_existing_amount(self):
+        approve_insight(insight=self._limit_insight(source_key="a"))
+        second = approve_insight(
+            insight=self._limit_insight(amount="450.00", source_key="b"),
+            existing_goal_action="update",
+        )
+
+        second.monthly_goal.refresh_from_db()
+        self.assertEqual(second.monthly_goal.target_amount, Decimal("450.00"))
+        self.assertEqual(MonthlyGoal.objects.count(), 1)
+        self.assertEqual(Goal.objects.count(), 1)
+
+    def test_approve_with_legacy_duplicate_goals_does_not_fail(self):
+        for _ in range(2):
+            Goal.objects.create(
+                name="Limite: Alimentacao",
+                goal_type=Goal.GoalType.REDUCTION,
+                target_amount=Decimal("300.00"),
+                start_date=date(2026, 1, 1),
+                category=self.category,
+            )
+
+        approved = approve_insight(insight=self._limit_insight())
+
+        self.assertEqual(Goal.objects.count(), 2)
+        self.assertEqual(MonthlyGoal.objects.count(), 1)
+        self.assertEqual(approved.monthly_goal.goal.pk, Goal.objects.order_by("pk").first().pk)
+
+    def test_approve_rejects_unknown_existing_goal_action(self):
+        with self.assertRaises(ValidationError):
+            approve_insight(insight=self._limit_insight(), existing_goal_action="x")
 
     def test_ignore_insight_marks_as_ignored_without_creating_goal(self):
         insight = Insight.objects.create(

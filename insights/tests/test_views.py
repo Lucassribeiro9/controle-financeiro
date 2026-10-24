@@ -98,6 +98,67 @@ class InsightViewTests(AuthenticatedTestCase):
         self.assertEqual(len(messages), 1)
         self.assertEqual(str(messages[0]), "Insight aprovado com sucesso.")
 
+    def test_approve_twice_does_not_duplicate_records(self):
+        url = reverse("insights:approve", kwargs={"insight_id": self.insight.id})
+
+        self.client.post(url)
+        self.client.post(url)
+
+        self.assertEqual(Goal.objects.count(), 1)
+        self.assertEqual(MonthlyGoal.objects.count(), 1)
+
+    def _existing_goal_with_other_amount(self):
+        other = Insight.objects.create(
+            title="Outro limite",
+            message="Outra sugestao.",
+            insight_type=Insight.InsightType.CATEGORY_LIMIT,
+            category=self.category,
+            suggested_amount=Decimal("300.00"),
+            source_key="other",
+        )
+        self.client.post(reverse("insights:approve", kwargs={"insight_id": other.id}))
+
+    def test_approve_with_existing_goal_shows_comparison_without_writing(self):
+        self._existing_goal_with_other_amount()
+
+        response = self.client.post(
+            reverse("insights:approve", kwargs={"insight_id": self.insight.id})
+        )
+
+        self.insight.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "insights/confirm_approve.html")
+        self.assertContains(response, "300,00")
+        self.assertContains(response, "500,00")
+        self.assertEqual(self.insight.status, Insight.Status.PENDING)
+        self.assertEqual(MonthlyGoal.objects.get().target_amount, Decimal("300.00"))
+
+    def test_approve_with_existing_goal_update_changes_amount(self):
+        self._existing_goal_with_other_amount()
+
+        response = self.client.post(
+            reverse("insights:approve", kwargs={"insight_id": self.insight.id}),
+            data={"existing_goal_action": "update"},
+        )
+
+        self.insight.refresh_from_db()
+        self.assertRedirects(response, reverse("insights:page"))
+        self.assertEqual(self.insight.status, Insight.Status.APPROVED)
+        self.assertEqual(MonthlyGoal.objects.get().target_amount, Decimal("500.00"))
+        self.assertEqual(Goal.objects.count(), 1)
+
+    def test_approve_with_existing_goal_keep_preserves_amount(self):
+        self._existing_goal_with_other_amount()
+
+        self.client.post(
+            reverse("insights:approve", kwargs={"insight_id": self.insight.id}),
+            data={"existing_goal_action": "keep"},
+        )
+
+        self.insight.refresh_from_db()
+        self.assertEqual(self.insight.status, Insight.Status.APPROVED)
+        self.assertEqual(MonthlyGoal.objects.get().target_amount, Decimal("300.00"))
+
     def test_ignore_insight_marks_item_as_ignored(self):
         response = self.client.post(
             reverse("insights:ignore", kwargs={"insight_id": self.insight.id}),

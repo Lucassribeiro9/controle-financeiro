@@ -17,7 +17,8 @@ Tornar a geracao executavel, corrigir os defeitos encontrados e documentar regra
 ## Estado Atual
 
 - `Insight` tem 5 tipos, mas so `category_limit` e `recurring_expense` possuem gerador.
-- Aprovar `category_limit` cria `Goal` de reducao e `MonthlyGoal` no mes corrente (`date.today()`), nao no mes do insight.
+- Aprovar `category_limit` reutiliza o `Goal` de reducao da categoria (cria so se nao existir) e cria o `MonthlyGoal` no mes corrente (`timezone.localdate()`), nao no mes do insight. A aprovacao e atomica e idempotente (FIN-41).
+- Se ja existe `MonthlyGoal` da categoria no mes com valor diferente do sugerido, a view mostra a comparacao e pergunta se altera ou mantem; com o mesmo valor, apenas vincula ao insight.
 - A FK `Insight.category` e `SET_NULL`; aprovar um `category_limit` cuja categoria foi removida quebrava com `AttributeError`.
 
 ## Comportamento Esperado
