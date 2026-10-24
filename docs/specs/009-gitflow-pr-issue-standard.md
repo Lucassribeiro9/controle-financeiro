@@ -118,4 +118,4 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - [ ] Task: Documentar politica de squash merge.
   - Acceptance: regra fica clara no README ou doc de contribuicao.
   - Verify: revisao manual.
-  - Files: `README.md` ou `docs/plans/sdd-roadmap.md`.
+  - Files: `README.md` ou [SDD Roadmap](https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/1409042) (Confluence).

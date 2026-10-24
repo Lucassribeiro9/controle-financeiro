@@ -25,8 +25,8 @@ Aplicativo web local para controle financeiro pessoal com Django.
 
 O projeto segue como referencia:
 
-- `docs/plans/scope.md`
-- `docs/plans/controle-financeiro-implementation-plan.md`
+- [Escopo do aplicativo](https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/1474561) (Confluence, Histórico › Planos)
+- [Plano de Implementação](https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/786454) (Confluence, Histórico › Planos)
 
 ## Stack e Execução
 
@@ -372,22 +372,8 @@ Regras importantes:
 
 ## Documentação Detalhada
 
-Para detalhes técnicos das fases:
-
-- `docs/phases/fase-1-fundacao.md`
-- `docs/phases/fase-2-cadastros-fundamentais.md`
-- `docs/phases/fase-3-transacoes-e-transferencias.md`
-- `docs/phases/fase-4-cartoes-e-faturas.md`
-- `docs/phases/fase-5-recorrencias-e-previsoes.md`
-- `docs/phases/fase-6-objetivos-e-metas-mensais.md`
-- `docs/phases/fase-7-dashboards-e-relatorios.md`
-- `docs/phases/fase-8-importacoes-xlsx-csv-ofx.md`
-- `docs/phases/fase-9-insights-e-sugestoes.md`
-- `docs/phases/fase-9-1-interfaces-operacionais-e-parcelamentos.md`
-- `docs/phases/fase-10-taxas-cdi-e-rendimentos.md`
+Os detalhes técnicos das fases 1 a 10 foram migrados para o Confluence, em [Histórico › Fases (1 a 10)](https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/1245185). O contexto vigente (plano-mestre e ADRs) também está no espaço FIN do Confluence; as specs executáveis continuam em `docs/specs/`.
 
 ## Roadmap
 
-Os próximos passos seguem o plano de implementação:
-
-- `docs/plans/controle-financeiro-implementation-plan.md`
+Os próximos passos seguem o [Plano-mestre: próxima fase (uso real)](https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/950274), no Confluence. O plano de implementação original está em [Plano de Implementação](https://lucasdevlop94-1792776715909.atlassian.net/wiki/spaces/FIN/pages/786454).
