@@ -59,7 +59,6 @@
 #   -------------------------|--------------------------------------------------------
 #   Documental / Arquitetura | documentation-writer + mermaid-diagrams/excalidraw + create-readme
 #   Backend / Django         | tdd + spec-driven-development + controle-financeiro-python-django
-#   Automação n8n            | n8n-workflow-patterns + n8n-node-configuration + n8n-code-js/py
 #   Diagramas                | mermaid-diagrams / excalidraw-diagram-generator
 #   Governança / PR          | controle-financeiro-code-review + pattern-assistant(github)
 #   UI / Frontend            | frontend-design + tdd
@@ -78,7 +77,6 @@
 # - `.agents/github/skills/create-readme/SKILL.md`
 # - `.agents/mermaid/skills/mermaid-diagrams/SKILL.md`
 # - `.agents/excalidraw/skills/excalidraw-diagram-generator/SKILL.md`
-# - `.agents/n8n/skills/n8n-workflow-patterns/SKILL.md`
 # - `.agents/frontend-design/SKILL.md`
 # Referências:
 # - `.agents/delivery-suite/skills/execute-issue/references/execution-protocol.md`
@@ -122,22 +120,6 @@
 # Exemplos:
 # - `.agents/github/examples/input.md`
 # - `.agents/github/examples/output.md`
-
-### n8n-automation-architect (n8n)
-# Path: `.agents/n8n/AGENT.md`
-# Quando usar:
-# - Desenhar arquitetura de workflows n8n (webhook, API, banco, AI, agendado, batch)
-# - Configurar nodes com campos obrigatórios e dependências por operação
-# - Escrever/validar expressões `{{ }}` e mapeamentos entre nodes
-# - Implementar lógica em Code node (JavaScript ou Python quando necessário)
-# - Validar e preparar workflows para ativação com risco e rollback
-# Skills associadas:
-# - `.agents/n8n/skills/n8n-workflow-patterns/SKILL.md`
-# - `.agents/n8n/skills/n8n-node-configuration/SKILL.md`
-# - `.agents/n8n/skills/n8n-expression-syntax/SKILL.md`
-# - `.agents/n8n/skills/n8n-code-javascript/SKILL.md`
-# - `.agents/n8n/skills/n8n-code-python/SKILL.md`
-# - `.agents/n8n/skills/n8n-mcp-tools-expert/SKILL.md`
 
 ### excalidraw-diagram-assistant (excalidraw)
 # Path: `.agents/excalidraw/AGENT.md`
@@ -221,11 +203,6 @@
 1. Task Reviewer identifica tipo `docs` ou `spec`.
 2. Issue Executor usa: `documentation-writer` + `mermaid-diagrams` OU `excalidraw-diagram-generator` + `create-readme`.
 3. PR Reviewer valida: renderização, links, rastreabilidade para issue/spec.
-
-## Fluxo Específico: Automação n8n
-1. Task Reviewer valida objetivo, trigger, sistemas envolvidos.
-2. Issue Executor usa: `n8n-workflow-patterns` + `n8n-node-configuration` + `n8n-code-*`.
-3. PR Reviewer valida: risco, rollback, campos obrigatórios, expressões.
 
 ## Fluxo Específico: GitHub / Governança
 1. `pattern-assistant` valida branch, issue, PR template.
