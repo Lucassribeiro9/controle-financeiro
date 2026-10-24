@@ -97,5 +97,26 @@ class AccountSelectorTests(TestCase):
         self.assertEqual(summary[0]["total_balance"], Decimal("150.00"))
         self.assertEqual(summary[0]["active_count"], 2)
         self.assertEqual(summary[1]["currency"], FinancialAccount.Currency.USD)
-        self.assertEqual(summary[1]["total_balance"], Decimal("20.00"))
+        self.assertEqual(summary[1]["total_balance"], Decimal("0.00"))
         self.assertEqual(summary[1]["inactive_count"], 1)
+
+    def test_account_summary_total_matches_net_worth(self):
+        """Total de /accounts/ deve bater com o patrimonio dos relatorios."""
+
+        from reports.selectors import get_account_net_worth
+
+        for name, balance, active in (("A", "100.00", True), ("B", "40.00", False)):
+            FinancialAccount.objects.create(
+                name=name,
+                institution=self.inter,
+                account_type=FinancialAccount.AccountType.CHECKING,
+                balance=Decimal(balance),
+                is_active=active,
+            )
+
+        summary = get_account_summary()
+        net_worth = {row["currency"]: row["total"] for row in get_account_net_worth()}
+
+        self.assertEqual(
+            {row["currency"]: row["total_balance"] for row in summary}, net_worth
+        )

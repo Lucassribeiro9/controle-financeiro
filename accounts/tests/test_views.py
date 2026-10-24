@@ -125,8 +125,33 @@ class AccountViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(account.name, "Reserva")
         self.assertEqual(account.account_type, FinancialAccount.AccountType.PIGGY_BANK)
-        self.assertEqual(account.balance, Decimal("1500.00"))
+        self.assertEqual(account.balance, Decimal("1000.00"))
         self.assertFalse(account.is_active)
+
+    def test_update_page_shows_balance_read_only_with_adjust_link(self):
+        """Edicao mostra o saldo sem campo editavel e linka o ajuste."""
+
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.inter,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+
+        response = self.client.get(
+            reverse("accounts:update", kwargs={"account_id": account.id})
+        )
+
+        self.assertNotIn("balance", response.context["form"].fields)
+        self.assertContains(
+            response,
+            reverse("accounts:adjust_balance", kwargs={"account_id": account.id}),
+        )
+
+    def test_create_page_keeps_initial_balance_field(self):
+        response = self.client.get(reverse("accounts:create"))
+
+        self.assertIn("balance", response.context["form"].fields)
 
     def test_post_duplicate_name_in_same_institution_shows_form_error(self):
         """Deve validar nome unico por instituicao."""

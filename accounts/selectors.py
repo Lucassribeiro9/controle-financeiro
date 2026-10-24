@@ -27,7 +27,7 @@ def get_accounts_by_currency(*, currency: str):
 
 
 def get_account_summary() -> list[dict]:
-    """Agrupa contas por moeda e calcula totais de saldo."""
+    """Agrupa contas por moeda; o total soma so contas ativas, como o patrimonio."""
 
     accounts = (
         FinancialAccount.objects.select_related("institution")
@@ -45,7 +45,11 @@ def get_account_summary() -> list[dict]:
             "currency_label": currency_labels.get(currency, currency),
             "accounts": currency_accounts,
             "total_balance": sum(
-                (account.balance for account in currency_accounts),
+                (
+                    account.balance
+                    for account in currency_accounts
+                    if account.is_active
+                ),
                 Decimal("0.00"),
             ),
             "active_count": sum(

@@ -207,10 +207,10 @@ flowchart LR
 | EDT-01 | P1: Edicao restrita - AC 1-2 | #224 | Verified |
 | EDT-02 | P1: Edicao restrita - AC 3 | #224 | Verified |
 | EDT-03 | P1: Edicao restrita - AC 4 | #224 | Verified |
-| SAL-01 | P1: Saldo protegido - AC 1-3 | #231 | Pending |
-| SAL-02 | P1: Saldo protegido - AC 4-5 | #231 | Pending |
+| SAL-01 | P1: Saldo protegido - AC 1-3 | #231 | Verified |
+| SAL-02 | P1: Saldo protegido - AC 4-5 | #231 | Verified |
 
-**Cobertura:** 17 requisitos; 15 verificados (#221, #227, #226, #224), 2 pendentes, todos ligados a uma issue.
+**Cobertura:** 17 requisitos; 17 verificados (#221, #227, #226, #224, #231), 0 pendentes, todos ligados a uma issue.
 
 ## Criterios de Sucesso
 
