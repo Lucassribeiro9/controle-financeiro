@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
+from django.utils import timezone
 
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
@@ -21,6 +22,8 @@ BALANCE_IMPACT_STATUS = Transaction.PaymentStatus.PAID
 BALANCE_IMPACT_BY_TYPE = {
     Transaction.TransactionType.INCOME: Decimal("1"),
     Transaction.TransactionType.EXPENSE: Decimal("-1"),
+    Transaction.TransactionType.ADJUSTMENT_IN: Decimal("1"),
+    Transaction.TransactionType.ADJUSTMENT_OUT: Decimal("-1"),
     Transaction.TransactionType.STATEMENT_PAYMENT: Decimal("-1"),
 }
 
@@ -405,3 +408,36 @@ def mark_transaction_as_paid(transaction_id):
         transaction.save(update_fields=["status", "updated_at"])
 
     return transaction
+
+
+def adjust_account_balance(*, account, real_balance, notes=""):
+    """Ajusta o saldo da conta ao saldo real informado e registra a diferenca.
+
+    Devolve o lancamento de ajuste ou `None` quando nao ha diferenca. A conta e
+    relida com lock para que um segundo envio do mesmo ajuste encontre
+    diferenca zero (ADR-009).
+    """
+
+    with db_transaction.atomic():
+        account = FinancialAccount.objects.select_for_update().get(pk=account.pk)
+        if not account.is_active:
+            raise ValidationError("Reative a conta para ajustar o saldo.")
+
+        difference = real_balance - account.balance
+        if difference == Decimal("0.00"):
+            return None
+
+        if difference > Decimal("0.00"):
+            transaction_type = Transaction.TransactionType.ADJUSTMENT_IN
+        else:
+            transaction_type = Transaction.TransactionType.ADJUSTMENT_OUT
+
+        return create_transaction(
+            description="Ajuste de saldo",
+            amount=abs(difference),
+            transaction_type=transaction_type,
+            date=timezone.localdate(),
+            account=account,
+            status=Transaction.PaymentStatus.PAID,
+            notes=notes,
+        )

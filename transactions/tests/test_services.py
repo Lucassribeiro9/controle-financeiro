@@ -17,6 +17,7 @@ from transactions.models import Transaction
 from transactions.services import (
     create_transaction,
     create_transaction_by_payment_method,
+    adjust_account_balance,
     create_transfer,
     mark_transaction_as_paid,
     update_transaction,
@@ -315,7 +316,7 @@ class TransactionServiceTests(TestCase):
                 payment_method="transfer",
                 description="Aporte reserva",
                 amount=Decimal("100.00"),
-                transaction_type=Transaction.TransactionType.ADJUSTMENT,
+                transaction_type=Transaction.TransactionType.EXPENSE,
                 date=date(2026, 5, 8),
             )
 
@@ -802,3 +803,87 @@ class TransferServiceTests(TestCase):
 
         self.assertEqual(self.source_account.balance, Decimal("700.00"))
         self.assertEqual(self.destination_account.balance, Decimal("500.00"))
+
+
+class AdjustAccountBalanceServiceTests(TestCase):
+    """Garante o ajuste de saldo da conta (spec 013, AJU-01 a AJU-03)."""
+
+    def setUp(self):
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+
+    def test_higher_real_balance_creates_paid_adjustment_in(self):
+        with patch("transactions.services.timezone.localdate", return_value=date(2026, 10, 24)):
+            adjustment = adjust_account_balance(
+                account=self.account, real_balance=Decimal("1075.50"), notes="Rendimento"
+            )
+
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1075.50"))
+        self.assertEqual(adjustment.transaction_type, Transaction.TransactionType.ADJUSTMENT_IN)
+        self.assertEqual(adjustment.amount, Decimal("75.50"))
+        self.assertEqual(adjustment.status, Transaction.PaymentStatus.PAID)
+        self.assertEqual(adjustment.account, self.account)
+        self.assertEqual(adjustment.description, "Ajuste de saldo")
+        self.assertEqual(adjustment.notes, "Rendimento")
+        self.assertEqual(adjustment.date, date(2026, 10, 24))
+
+    def test_lower_real_balance_creates_paid_adjustment_out(self):
+        adjustment = adjust_account_balance(account=self.account, real_balance=Decimal("950.00"))
+
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("950.00"))
+        self.assertEqual(adjustment.transaction_type, Transaction.TransactionType.ADJUSTMENT_OUT)
+        self.assertEqual(adjustment.amount, Decimal("50.00"))
+        self.assertEqual(adjustment.status, Transaction.PaymentStatus.PAID)
+
+    def test_equal_real_balance_changes_nothing(self):
+        result = adjust_account_balance(account=self.account, real_balance=Decimal("1000.00"))
+
+        self.account.refresh_from_db()
+        self.assertIsNone(result)
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_negative_real_balance_is_accepted(self):
+        adjustment = adjust_account_balance(account=self.account, real_balance=Decimal("-20.00"))
+
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("-20.00"))
+        self.assertEqual(adjustment.amount, Decimal("1020.00"))
+
+    def test_inactive_account_is_rejected(self):
+        self.account.is_active = False
+        self.account.save()
+
+        with self.assertRaisesMessage(ValidationError, "Reative a conta para ajustar o saldo."):
+            adjust_account_balance(account=self.account, real_balance=Decimal("900.00"))
+
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_repeating_the_same_adjustment_applies_difference_once(self):
+        stale_account = FinancialAccount.objects.get(pk=self.account.pk)
+
+        adjust_account_balance(account=self.account, real_balance=Decimal("950.00"))
+        second = adjust_account_balance(account=stale_account, real_balance=Decimal("950.00"))
+
+        self.account.refresh_from_db()
+        self.assertIsNone(second)
+        self.assertEqual(self.account.balance, Decimal("950.00"))
+        self.assertEqual(Transaction.objects.count(), 1)
+
+    def test_adjustment_is_not_income_or_spending(self):
+        from core.selectors import INCOME_TYPES
+        from transactions.constants import SPENDING_TRANSACTION_TYPES
+
+        for kind in (
+            Transaction.TransactionType.ADJUSTMENT_IN,
+            Transaction.TransactionType.ADJUSTMENT_OUT,
+        ):
+            self.assertNotIn(kind, INCOME_TYPES)
+            self.assertNotIn(kind, SPENDING_TRANSACTION_TYPES)

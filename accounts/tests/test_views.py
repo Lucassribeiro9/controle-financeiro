@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from accounts.models import FinancialAccount
 from institutions.models import Institution
+from transactions.models import Transaction
 
 
 class AccountViewTests(AuthenticatedTestCase):
@@ -173,3 +174,84 @@ class AccountViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "accounts/detail.html")
         self.assertContains(response, "Investimentos")
+
+
+class AccountBalanceAdjustmentViewTests(AuthenticatedTestCase):
+    """Garante a tela de ajuste de saldo e a edicao sem saldo (spec 013)."""
+
+    def setUp(self):
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.url = reverse("accounts:adjust_balance", kwargs={"account_id": self.account.id})
+
+    def test_get_renders_form_without_writing(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/adjust_balance.html")
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_post_adjusts_balance_and_redirects_with_message(self):
+        response = self.client.post(self.url, data={"real_balance": "950,00", "notes": "Conferido"})
+
+        self.assertRedirects(
+            response, reverse("accounts:detail", kwargs={"account_id": self.account.id})
+        )
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("950.00"))
+        adjustment = Transaction.objects.get()
+        self.assertEqual(adjustment.transaction_type, Transaction.TransactionType.ADJUSTMENT_OUT)
+        self.assertEqual(adjustment.notes, "Conferido")
+
+    def test_post_shows_success_message_and_lists_adjustment_in_detail(self):
+        response = self.client.post(self.url, data={"real_balance": "1100,00"}, follow=True)
+
+        self.assertContains(response, "Saldo ajustado com sucesso.")
+        self.assertContains(response, "Ajuste de saldo")
+        self.assertContains(response, "Ajuste de entrada")
+
+    def test_post_same_balance_warns_and_creates_nothing(self):
+        response = self.client.post(self.url, data={"real_balance": "1000,00"}, follow=True)
+
+        self.assertContains(response, "nada foi alterado")
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_post_twice_applies_once(self):
+        self.client.post(self.url, data={"real_balance": "950,00"})
+        self.client.post(self.url, data={"real_balance": "950,00"})
+
+        self.assertEqual(Transaction.objects.count(), 1)
+
+    def test_post_more_than_two_decimals_is_rejected(self):
+        response = self.client.post(self.url, data={"real_balance": "950,005"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("real_balance", response.context["form"].errors)
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_post_inactive_account_shows_error(self):
+        self.account.is_active = False
+        self.account.save()
+
+        response = self.client.post(self.url, data={"real_balance": "900,00"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Reative a conta para ajustar o saldo.")
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_unknown_account_returns_404(self):
+        response = self.client.get(reverse("accounts:adjust_balance", kwargs={"account_id": 9999}))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_detail_links_to_adjust_balance(self):
+        response = self.client.get(
+            reverse("accounts:detail", kwargs={"account_id": self.account.id})
+        )
+
+        self.assertContains(response, self.url)

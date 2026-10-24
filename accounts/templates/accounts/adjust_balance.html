@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}Ajustar saldo - {{ account.name }} - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Ajustar saldo</h1>
+            <p class="muted">{{ account.name }} · saldo atual {{ account.balance|currency:account.currency }}</p>
+        </div>
+    </header>
+
+    <section class="panel">
+        <p class="muted">Informe o saldo real da conta. A diferença vira um lançamento de ajuste, sem contar como receita ou gasto.</p>
+
+        <form class="form-grid" method="post">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="app-message">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% for field in form %}
+                <label class="form-field" for="{{ field.id_for_label }}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="field-error">{{ field.errors|join:", " }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+
+            <div class="action-row">
+                <button class="button" type="submit">Ajustar saldo</button>
+                <a class="button button-secondary" href="{% url 'accounts:detail' account.id %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

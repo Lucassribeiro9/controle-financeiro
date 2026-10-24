@@ -15,7 +15,6 @@ from .models import Transaction
 ALLOWED_TRANSACTION_TYPES = [
     Transaction.TransactionType.INCOME,
     Transaction.TransactionType.EXPENSE,
-    Transaction.TransactionType.ADJUSTMENT,
     Transaction.TransactionType.CARD_PURCHASE,
     Transaction.TransactionType.BENEFIT_PURCHASE,
 ]
