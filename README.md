@@ -76,6 +76,7 @@ curta/padrao, com `DJANGO_DEBUG` verdadeiro ou sem `DJANGO_ALLOWED_HOSTS`.
    | --- | --- | --- |
    | `DJANGO_SECRET_KEY` | sim | Chave com 50+ caracteres, nao padrao |
    | `DJANGO_ALLOWED_HOSTS` | sim | Hosts separados por virgula |
+   | `DJANGO_DB_PATH` | nao | Padrao `/data/db.sqlite3`, dentro do volume `controle-financeiro-data` |
    | `DJANGO_CSRF_TRUSTED_ORIGINS` | nao | Origens HTTPS confiaveis, separadas por virgula |
    | `DJANGO_SECURE_HSTS_SECONDS` | nao | Padrao 3600; suba so depois de validar o HTTPS |
    | `DJANGO_SECURE_PROXY_SSL_HEADER` | nao | `true` se um proxy termina o TLS e envia `X-Forwarded-Proto` |
@@ -90,10 +91,40 @@ curta/padrao, com `DJANGO_DEBUG` verdadeiro ou sem `DJANGO_ALLOWED_HOSTS`.
 
 Observacoes:
 
-- O banco continua SQLite dentro do container: sem volume, os dados se perdem ao recriar o container.
+- O banco e SQLite no volume nomeado `controle-financeiro-data` (montado em `/data`): sobrevive a `up --build`, recriacao e `down`/`up`. Usa WAL e espera locks por ate 20 s, com 2 workers.
+- **Cuidado:** `docker compose -f docker-compose.prod.yml down -v` apaga o volume, ou seja, o banco e os backups juntos.
 - A producao exige HTTPS (cookies seguros e redirect). Atras de um proxy, defina `DJANGO_SECURE_PROXY_SSL_HEADER=true`.
 - HSTS comeca em 1 hora; `includeSubDomains`/`preload` (W005/W021) ficam silenciados ate haver um deploy HTTPS validado.
 - Se for necessario, o Nginx pode assumir `/static/` no futuro; hoje o WhiteNoise serve os estaticos.
+
+### Backup e restauracao do banco
+
+O comando `backup_db` usa a API de backup do SQLite (copia consistente com o app rodando) e grava em `/data/backups/db-AAAAMMDD-HHMMSS.sqlite3`, mantendo as 14 copias mais recentes.
+
+```bash
+docker compose -f docker-compose.prod.yml exec web python manage.py backup_db
+```
+
+Backup diario no host (cron, `crontab -e`; ajuste o caminho do projeto):
+
+```cron
+0 3 * * * cd /caminho/controle-financeiro && docker compose -f docker-compose.prod.yml exec -T web python manage.py backup_db
+```
+
+Os backups ficam no mesmo volume do banco. Copie-os para fora da maquina de tempos em tempos:
+
+```bash
+docker compose -f docker-compose.prod.yml cp web:/data/backups ./backups-copia
+```
+
+Restauracao (troque `ARQUIVO` pelo nome da copia):
+
+```bash
+docker compose -f docker-compose.prod.yml stop web
+docker compose -f docker-compose.prod.yml run --rm --no-deps web sh -c \
+  'cp /data/backups/ARQUIVO /data/db.sqlite3 && rm -f /data/db.sqlite3-wal /data/db.sqlite3-shm'
+docker compose -f docker-compose.prod.yml start web
+```
 
 ## Fase 1 - Fundação
 
