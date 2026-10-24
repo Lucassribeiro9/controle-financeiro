@@ -210,7 +210,7 @@ class TransactionFormTests(TestCase):
                 "description": "Aporte",
                 "payment_method": "transfer",
                 "amount": "100.00",
-                "transaction_type": Transaction.TransactionType.ADJUSTMENT,
+                "transaction_type": Transaction.TransactionType.EXPENSE,
                 "status": Transaction.PaymentStatus.PENDING,
                 "from_account": self.account.id,
                 "destination_account": self.account.id,
@@ -278,3 +278,38 @@ class TransferFormTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("destination_account", form.errors)
+
+
+class AdjustmentTypeFormTests(TestCase):
+    """Tipos de ajuste nao sao oferecidos nem aceitos no form de lancamento."""
+
+    def test_adjustment_types_are_not_choices(self):
+        values = [value for value, _ in TransactionForm().fields["transaction_type"].choices]
+
+        self.assertNotIn(Transaction.TransactionType.ADJUSTMENT_IN, values)
+        self.assertNotIn(Transaction.TransactionType.ADJUSTMENT_OUT, values)
+
+    def test_post_with_adjustment_type_is_rejected(self):
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta", institution=institution, balance=Decimal("10.00")
+        )
+
+        for kind in (
+            Transaction.TransactionType.ADJUSTMENT_IN,
+            Transaction.TransactionType.ADJUSTMENT_OUT,
+        ):
+            form = TransactionForm(
+                data={
+                    "description": "Ajuste",
+                    "payment_method": "cash",
+                    "amount": "10.00",
+                    "transaction_type": kind,
+                    "status": Transaction.PaymentStatus.PAID,
+                    "account": account.id,
+                    "date": "2026-05-08",
+                }
+            )
+
+            self.assertFalse(form.is_valid())
+            self.assertIn("transaction_type", form.errors)

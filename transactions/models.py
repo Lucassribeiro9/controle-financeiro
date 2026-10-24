@@ -11,7 +11,8 @@ class Transaction(models.Model):
 
         INCOME = "income", "Receita"
         EXPENSE = "expense", "Despesa"
-        ADJUSTMENT = "adjustment", "Ajuste"
+        ADJUSTMENT_IN = "adjustment_in", "Ajuste de entrada"
+        ADJUSTMENT_OUT = "adjustment_out", "Ajuste de saída"
         CARD_PURCHASE = "card_purchase", "Compra no cartão"
         BENEFIT_PURCHASE = "benefit_purchase", "Compra no benefício"
         FORECAST = "forecast", "Previsão"

@@ -438,7 +438,7 @@ class TransactionViewTests(AuthenticatedTestCase):
                 "description": "Aporte reserva",
                 "payment_method": "transfer",
                 "amount": "300.00",
-                "transaction_type": Transaction.TransactionType.ADJUSTMENT,
+                "transaction_type": Transaction.TransactionType.EXPENSE,
                 "status": Transaction.PaymentStatus.PENDING,
                 "from_account": self.account.id,
                 "destination_account": self.destination_account.id,

@@ -199,18 +199,18 @@ flowchart LR
 | DAT-01 | P1: Datas no fuso - AC 1-2 | #227 | Verified |
 | DAT-02 | P1: Datas no fuso - AC 3-4 | #227 | Verified |
 | DAT-03 | P1: Datas no fuso - AC 5 | #227 | Verified |
-| AJU-01 | P1: Ajuste de saldo - AC 1-4 | #226 | Pending |
-| AJU-02 | P1: Ajuste de saldo - AC 5 | #226 | Pending |
-| AJU-03 | P1: Ajuste de saldo - AC 6-7 | #226 | Pending |
-| AJU-04 | P1: Ajuste de saldo - AC 8-9 | #226 | Pending |
-| AJU-05 | P1: Ajuste de saldo - AC 10 | #226 | Pending |
+| AJU-01 | P1: Ajuste de saldo - AC 1-4 | #226 | Verified |
+| AJU-02 | P1: Ajuste de saldo - AC 5 | #226 | Verified |
+| AJU-03 | P1: Ajuste de saldo - AC 6-7 | #226 | Verified |
+| AJU-04 | P1: Ajuste de saldo - AC 8-9 | #226 | Verified |
+| AJU-05 | P1: Ajuste de saldo - AC 10 | #226 | Verified |
 | EDT-01 | P1: Edicao restrita - AC 1-2 | #224 | Pending |
 | EDT-02 | P1: Edicao restrita - AC 3 | #224 | Pending |
 | EDT-03 | P1: Edicao restrita - AC 4 | #224 | Pending |
 | SAL-01 | P1: Saldo protegido - AC 1-3 | #231 | Pending |
 | SAL-02 | P1: Saldo protegido - AC 4-5 | #231 | Pending |
 
-**Cobertura:** 17 requisitos; 7 verificados (#221, #227), 10 pendentes, todos ligados a uma issue.
+**Cobertura:** 17 requisitos; 12 verificados (#221, #227, #226), 5 pendentes, todos ligados a uma issue.
 
 ## Criterios de Sucesso
 

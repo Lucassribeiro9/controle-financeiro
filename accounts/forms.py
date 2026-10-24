@@ -8,6 +8,22 @@ from institutions.models import Institution
 from .models import FinancialAccount
 
 
+class AccountBalanceAdjustmentForm(forms.Form):
+    """Formulario para informar o saldo real de uma conta (ADR-009)."""
+
+    real_balance = BRDecimalField(label="Saldo real", max_digits=14, decimal_places=2)
+    notes = forms.CharField(
+        label="Observação",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+    def clean_notes(self):
+        """Normaliza espacos da observacao."""
+
+        return self.cleaned_data["notes"].strip()
+
+
 class FinancialAccountForm(forms.ModelForm):
     """Formulario para cadastrar e editar contas financeiras."""
 

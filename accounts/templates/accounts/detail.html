@@ -10,7 +10,10 @@
             <p class="muted">{{ account.institution }}</p>
         </div>
 
-        <a class="button" href="{% url 'accounts:update' account.id %}">Editar conta</a>
+        <div class="action-row">
+            <a class="button button-secondary" href="{% url 'accounts:adjust_balance' account.id %}">Ajustar saldo</a>
+            <a class="button" href="{% url 'accounts:update' account.id %}">Editar conta</a>
+        </div>
     </header>
 
     <section class="panel">
@@ -40,6 +43,29 @@
                 <dd>{{ account.updated_at|date_br }}</dd>
             </div>
         </dl>
+    </section>
+
+    <section class="panel page-section">
+        <h2>Últimos lançamentos</h2>
+        {% if recent_transactions %}
+            <table class="table">
+                <thead>
+                    <tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr>
+                </thead>
+                <tbody>
+                    {% for transaction in recent_transactions %}
+                        <tr>
+                            <td>{{ transaction.date|date_br }}</td>
+                            <td><a href="{% url 'transactions:detail' transaction.id %}">{{ transaction.description }}</a></td>
+                            <td>{{ transaction.get_transaction_type_display }}</td>
+                            <td>{{ transaction.amount|currency:account.currency }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Nenhum lançamento nesta conta.</p>
+        {% endif %}
     </section>
 
     <div class="action-row page-section">
