@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load money %}
+
+{% block title %}Meta já existe - Controle Financeiro{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <div>
+            <h1>Meta já existe</h1>
+            <p class="muted">
+                {{ insight.category.name }} já tem uma meta para {{ monthly_goal.month }}/{{ monthly_goal.year }}.
+                Deseja alterar o valor?
+            </p>
+        </div>
+    </header>
+
+    <section class="panel">
+        <p>Valor atual da meta: <strong>{{ monthly_goal.target_amount|brl }}</strong></p>
+        <p>Valor sugerido pelo insight: <strong>{{ insight.suggested_amount|brl }}</strong></p>
+
+        <div class="action-row">
+            <form method="post" action="{% url 'insights:approve' insight.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="existing_goal_action" value="update">
+                <button class="button" type="submit">Alterar para o valor sugerido</button>
+            </form>
+
+            <form method="post" action="{% url 'insights:approve' insight.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="existing_goal_action" value="keep">
+                <button class="button button-secondary" type="submit">Manter o valor atual</button>
+            </form>
+
+            <a class="button button-secondary" href="{% url 'insights:page' %}">Cancelar</a>
+        </div>
+    </section>
+{% endblock %}

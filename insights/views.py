@@ -10,7 +10,12 @@ from core.auth import api_login_required
 from core.utils import map_service_errors_to_view
 from .models import Insight
 from .selectors import get_insights_by_status, get_pending_insights, get_recent_insights
-from .services import approve_insight, ignore_insight, silence_insight
+from .services import (
+    MonthlyGoalConflict,
+    approve_insight,
+    ignore_insight,
+    silence_insight,
+)
 
 
 def _serialize_insight(insight: Insight) -> dict:
@@ -75,7 +80,16 @@ def approve_insight_view(request: HttpRequest, insight_id: int) -> HttpResponse:
     insight = get_object_or_404(Insight, pk=insight_id)
 
     try:
-        approve_insight(insight=insight)
+        approve_insight(
+            insight=insight,
+            existing_goal_action=request.POST.get("existing_goal_action") or None,
+        )
+    except MonthlyGoalConflict as conflict:
+        return render(
+            request,
+            "insights/confirm_approve.html",
+            {"insight": insight, "monthly_goal": conflict.monthly_goal},
+        )
     except ValidationError as exc:
         map_service_errors_to_view(request, exc)
     else:
@@ -89,8 +103,12 @@ def ignore_insight_view(request: HttpRequest, insight_id: int) -> HttpResponse:
     """Ignora um insight sem aplicar mudancas."""
 
     insight = get_object_or_404(Insight, pk=insight_id)
-    ignore_insight(insight=insight)
-    messages.info(request, "Insight ignorado.")
+    try:
+        ignore_insight(insight=insight)
+    except ValidationError as exc:
+        map_service_errors_to_view(request, exc)
+    else:
+        messages.info(request, "Insight ignorado.")
 
     return redirect("insights:page")
 
@@ -100,8 +118,12 @@ def silence_insight_view(request: HttpRequest, insight_id: int) -> HttpResponse:
     """Silencia um insight para evitar repeticao futura."""
 
     insight = get_object_or_404(Insight, pk=insight_id)
-    silence_insight(insight=insight)
-    messages.info(request, "Insight silenciado.")
+    try:
+        silence_insight(insight=insight)
+    except ValidationError as exc:
+        map_service_errors_to_view(request, exc)
+    else:
+        messages.info(request, "Insight silenciado.")
 
     return redirect("insights:page")
 
