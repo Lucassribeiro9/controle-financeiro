@@ -18,9 +18,6 @@ JSON_ROUTES = [
     ("post", "imports:confirm", {"imported_transaction_id": 1}),
     ("post", "imports:discard", {"imported_transaction_id": 1}),
     ("get", "recurrences:monthly-forecasts", {"year": 2026, "month": 1}),
-    ("post", "recurrences:confirm-forecast", {"transaction_id": 1}),
-    ("post", "recurrences:ignore-forecast", {"transaction_id": 1}),
-    ("post", "recurrences:adjust-forecast", {"transaction_id": 1}),
 ]
 
 
@@ -220,9 +217,6 @@ class ApiNotFoundTests(TestCase):
         routes = [
             ("post", "imports:confirm", {"imported_transaction_id": 999999}),
             ("post", "imports:discard", {"imported_transaction_id": 999999}),
-            ("post", "recurrences:confirm-forecast", {"transaction_id": 999999}),
-            ("post", "recurrences:ignore-forecast", {"transaction_id": 999999}),
-            ("post", "recurrences:adjust-forecast", {"transaction_id": 999999}),
         ]
         for method, name, kwargs in routes:
             with self.subTest(route=name):

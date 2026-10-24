@@ -86,15 +86,51 @@ class RecurrenceViewsTests(AuthenticatedTestCase):
         self.assertEqual(response.context["year"], today.year)
         self.assertEqual(response.context["month"], today.month)
 
+    def _url(self, name, forecast=None):
+        forecast = forecast or self.forecast
+        return reverse(f"recurrences:{name}-forecast", kwargs={"transaction_id": forecast.id})
+
+    @property
+    def month_url(self):
+        return reverse("recurrences:forecasts-page", kwargs={"year": 2026, "month": 6})
+
+    def _post(self, name, forecast=None, **data):
+        """Posta, segue o redirect (consumindo as messages) e valida o destino."""
+
+        response = self.client.post(self._url(name, forecast), data=data, follow=True)
+        self.assertEqual(response.redirect_chain, [(self.month_url, 302)])
+        return response
+
+    def _messages(self, response):
+        return [(m.level_tag, str(m)) for m in response.context["messages"]]
+
     def test_confirm_forecast_sets_pending_and_expense(self):
-        response = self.client.post(
-            reverse("recurrences:confirm-forecast", kwargs={"transaction_id": self.forecast.id})
-        )
+        response = self._post("confirm")
         self.forecast.refresh_from_db()
 
-        self.assertEqual(response.status_code, 200)
         self.assertEqual(self.forecast.status, Transaction.PaymentStatus.PENDING)
         self.assertEqual(self.forecast.transaction_type, Transaction.TransactionType.EXPENSE)
+        self.assertEqual(
+            self._messages(response), [("success", "Previsão confirmada com sucesso.")]
+        )
+
+    def test_confirm_forecast_response_is_not_json(self):
+        response = self.client.post(self._url("confirm"), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "recurrences/forecasts.html")
+        self.assertContains(response, "Previsão confirmada com sucesso.")
+
+    def test_confirm_forecast_twice_is_noop(self):
+        self._post("confirm")
+        self.forecast.refresh_from_db()
+        updated_at = self.forecast.updated_at
+
+        response = self._post("confirm")
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(self.forecast.updated_at, updated_at)
+        self.assertEqual(self._messages(response), [("info", "Esta previsão já foi confirmada.")])
 
     def test_confirm_forecast_with_homonym_recurrences_uses_linked_recurrence(self):
         """Homonimas de tipos diferentes confirmam cada uma com o tipo correto."""
@@ -118,10 +154,8 @@ class RecurrenceViewsTests(AuthenticatedTestCase):
         )
 
         for forecast in (self.forecast, income_forecast):
-            response = self.client.post(
-                reverse("recurrences:confirm-forecast", kwargs={"transaction_id": forecast.id})
-            )
-            self.assertEqual(response.status_code, 200)
+            response = self.client.post(self._url("confirm", forecast))
+            self.assertEqual(response.status_code, 302)
             forecast.refresh_from_db()
 
         self.assertEqual(self.forecast.transaction_type, Transaction.TransactionType.EXPENSE)
@@ -133,51 +167,117 @@ class RecurrenceViewsTests(AuthenticatedTestCase):
         self.recurrence.name = "Internet fibra"
         self.recurrence.save()
 
-        response = self.client.post(
-            reverse("recurrences:confirm-forecast", kwargs={"transaction_id": self.forecast.id})
-        )
+        response = self._post("confirm")
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._messages(response)[0][0], "success")
 
-    def test_confirm_forecast_without_recurrence_returns_json_404(self):
-        """Previsao sem vinculo (ex.: anterior ao campo) responde 404 JSON."""
+    def test_confirm_forecast_without_recurrence_returns_404(self):
+        """Previsao sem vinculo (ex.: anterior ao campo) responde 404 HTML."""
 
         self.forecast.recurrence = None
         self.forecast.save(update_fields=["recurrence"])
 
-        response = self.client.post(
-            reverse("recurrences:confirm-forecast", kwargs={"transaction_id": self.forecast.id})
-        )
+        response = self.client.post(self._url("confirm"))
         self.forecast.refresh_from_db()
 
         self.assertEqual(response.status_code, 404)
-        self.assertIn("error", response.json())
+        self.assertNotEqual(response["Content-Type"], "application/json")
+        self.assertEqual(self.forecast.status, Transaction.PaymentStatus.FORECASTED)
+
+    def test_actions_on_missing_id_return_html_404(self):
+        for name in ("confirm", "ignore", "adjust"):
+            with self.subTest(action=name):
+                response = self.client.post(
+                    reverse(f"recurrences:{name}-forecast", kwargs={"transaction_id": 999999})
+                )
+                self.assertEqual(response.status_code, 404)
+                self.assertNotEqual(response["Content-Type"], "application/json")
+
+    def test_actions_require_post(self):
+        for name in ("confirm", "ignore", "adjust"):
+            with self.subTest(action=name):
+                self.assertEqual(self.client.get(self._url(name)).status_code, 405)
+
+    def test_actions_redirect_anonymous_to_login(self):
+        self.client.logout()
+        for name in ("confirm", "ignore", "adjust"):
+            with self.subTest(action=name):
+                response = self.client.post(self._url(name))
+                self.assertEqual(response.status_code, 302)
+                self.assertIn(reverse("login"), response["Location"])
+        self.forecast.refresh_from_db()
         self.assertEqual(self.forecast.status, Transaction.PaymentStatus.FORECASTED)
 
     def test_ignore_forecast_sets_ignored_status(self):
-        response = self.client.post(
-            reverse("recurrences:ignore-forecast", kwargs={"transaction_id": self.forecast.id})
-        )
+        response = self._post("ignore")
         self.forecast.refresh_from_db()
 
-        self.assertEqual(response.status_code, 200)
         self.assertEqual(self.forecast.status, Transaction.PaymentStatus.IGNORED)
+        self.assertEqual(
+            self._messages(response), [("success", "Previsão ignorada com sucesso.")]
+        )
+
+    def test_ignore_forecast_twice_is_noop(self):
+        self._post("ignore")
+        response = self._post("ignore")
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(self.forecast.status, Transaction.PaymentStatus.IGNORED)
+        self.assertEqual(self._messages(response), [("info", "Esta previsão já foi ignorada.")])
+
+    def test_ignore_confirmed_forecast_is_rejected(self):
+        self._post("confirm")
+        response = self._post("ignore")
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(self.forecast.status, Transaction.PaymentStatus.PENDING)
+        self.assertEqual(self._messages(response)[0][0], "error")
 
     def test_adjust_forecast_updates_amount(self):
-        response = self.client.post(
-            reverse("recurrences:adjust-forecast", kwargs={"transaction_id": self.forecast.id}),
-            data={"amount": "135.50"},
-        )
+        response = self._post("adjust", amount="135,50")
         self.forecast.refresh_from_db()
 
-        self.assertEqual(response.status_code, 200)
         self.assertEqual(self.forecast.amount, Decimal("135.50"))
         self.assertIn("[REC_ADJUST]", self.forecast.notes)
-
-    def test_adjust_forecast_requires_positive_amount(self):
-        response = self.client.post(
-            reverse("recurrences:adjust-forecast", kwargs={"transaction_id": self.forecast.id}),
-            data={"amount": "0"},
+        self.assertEqual(
+            self._messages(response), [("success", "Previsão ajustada com sucesso.")]
         )
 
-        self.assertEqual(response.status_code, 400)
+    def test_adjust_forecast_rejects_invalid_amounts_without_saving(self):
+        cases = {
+            "": "Informe o novo valor da previsão.",
+            "abc": "Valor inválido. Use o formato 0,00.",
+            "NaN": "Valor inválido. Use o formato 0,00.",
+            "0": "O novo valor deve ser maior que zero.",
+            "-5": "O novo valor deve ser maior que zero.",
+        }
+        for amount, expected in cases.items():
+            with self.subTest(amount=amount):
+                response = self._post("adjust", amount=amount)
+                self.forecast.refresh_from_db()
+
+                self.assertEqual(self._messages(response), [("error", expected)])
+                self.assertEqual(self.forecast.amount, Decimal("120.00"))
+                self.assertEqual(self.forecast.notes, "")
+
+    def test_adjust_forecast_with_same_amount_is_noop(self):
+        response = self._post("adjust", amount="120,00")
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(self.forecast.notes, "")
+        self.assertEqual(self._messages(response)[0][0], "info")
+
+    def test_adjust_confirmed_forecast_is_rejected(self):
+        self._post("confirm")
+        response = self._post("adjust", amount="200,00")
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(self.forecast.amount, Decimal("120.00"))
+        self.assertEqual(self._messages(response)[0][0], "error")
+
+    def test_forecasts_page_shows_messages_after_redirect(self):
+        response = self.client.post(
+            self._url("adjust"), data={"amount": "0"}, follow=True
+        )
+
+        self.assertContains(response, "O novo valor deve ser maior que zero.")

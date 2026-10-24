@@ -1,7 +1,10 @@
 """Views do app recurrences."""
 
-from django.http import Http404, HttpRequest, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
@@ -10,16 +13,6 @@ from core.forms import normalize_decimal
 
 from .models import Recurrence
 from transactions.models import Transaction
-
-
-def _get_forecast_or_404(transaction_id: int) -> Transaction:
-    """Retorna transacao prevista para acao do usuario."""
-
-    return get_object_or_404(
-        Transaction.objects.select_related("recurrence"),
-        pk=transaction_id,
-        transaction_type=Transaction.TransactionType.FORECAST,
-    )
 
 
 def _get_transaction_type_from_recurrence(recurrence: Recurrence) -> str:
@@ -95,77 +88,115 @@ def forecasts_filter_page(request: HttpRequest):
     return forecasts_page(request, year=year, month=month)
 
 
-@api_login_required
+def _redirect_to_forecasts_month(forecast: Transaction) -> HttpResponse:
+    """Volta para a tela de previsoes do mes da previsao."""
+
+    return redirect(
+        "recurrences:forecasts-page", year=forecast.date.year, month=forecast.date.month
+    )
+
+
+def _lock_forecast_or_404(transaction_id: int) -> Transaction:
+    """Le a previsao com lock; aceita a ja processada para manter idempotencia.
+
+    Deve rodar dentro de `transaction.atomic`. Transacao que nunca foi previsao
+    (sem recorrencia de origem) responde 404.
+    """
+
+    transaction_obj = get_object_or_404(
+        Transaction.objects.select_for_update().select_related("recurrence"),
+        pk=transaction_id,
+    )
+    is_forecast = transaction_obj.transaction_type == Transaction.TransactionType.FORECAST
+    if not is_forecast and transaction_obj.recurrence_id is None:
+        raise Http404("Transacao nao e uma previsao recorrente.")
+    return transaction_obj
+
+
 @require_POST
-def confirm_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
+def confirm_forecast(request: HttpRequest, transaction_id: int) -> HttpResponse:
     """Confirma previsao para virar transacao real pendente."""
 
-    forecast = _get_forecast_or_404(transaction_id)
-    recurrence = forecast.recurrence
-    if recurrence is None:
-        raise Http404("Previsao sem recorrencia de origem.")
+    with transaction.atomic():
+        forecast = _lock_forecast_or_404(transaction_id)
+        if forecast.transaction_type != Transaction.TransactionType.FORECAST:
+            messages.info(request, "Esta previsão já foi confirmada.")
+            return _redirect_to_forecasts_month(forecast)
 
-    forecast.transaction_type = _get_transaction_type_from_recurrence(recurrence)
-    forecast.status = Transaction.PaymentStatus.PENDING
-    forecast.save(update_fields=["transaction_type", "status", "updated_at"])
+        recurrence = forecast.recurrence
+        if recurrence is None:
+            raise Http404("Previsao sem recorrencia de origem.")
 
-    return JsonResponse(
-        {
-            "id": forecast.id,
-            "status": forecast.status,
-            "transaction_type": forecast.transaction_type,
-            "message": "Previsão confirmada com sucesso.",
-        }
-    )
+        forecast.transaction_type = _get_transaction_type_from_recurrence(recurrence)
+        forecast.status = Transaction.PaymentStatus.PENDING
+        forecast.save(update_fields=["transaction_type", "status", "updated_at"])
+
+    messages.success(request, "Previsão confirmada com sucesso.")
+    return _redirect_to_forecasts_month(forecast)
 
 
-@api_login_required
 @require_POST
-def ignore_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
+def ignore_forecast(request: HttpRequest, transaction_id: int) -> HttpResponse:
     """Ignora previsao selecionada no mes."""
 
-    forecast = _get_forecast_or_404(transaction_id)
-    forecast.status = Transaction.PaymentStatus.IGNORED
-    forecast.save(update_fields=["status", "updated_at"])
+    with transaction.atomic():
+        forecast = _lock_forecast_or_404(transaction_id)
+        if forecast.transaction_type != Transaction.TransactionType.FORECAST:
+            messages.error(request, "Esta previsão já foi confirmada e não pode ser ignorada.")
+            return _redirect_to_forecasts_month(forecast)
+        if forecast.status == Transaction.PaymentStatus.IGNORED:
+            messages.info(request, "Esta previsão já foi ignorada.")
+            return _redirect_to_forecasts_month(forecast)
 
-    return JsonResponse(
-        {
-            "id": forecast.id,
-            "status": forecast.status,
-            "message": "Previsão ignorada com sucesso.",
-        }
-    )
+        forecast.status = Transaction.PaymentStatus.IGNORED
+        forecast.save(update_fields=["status", "updated_at"])
+
+    messages.success(request, "Previsão ignorada com sucesso.")
+    return _redirect_to_forecasts_month(forecast)
 
 
-@api_login_required
 @require_POST
-def adjust_forecast(request: HttpRequest, transaction_id: int) -> JsonResponse:
+def adjust_forecast(request: HttpRequest, transaction_id: int) -> HttpResponse:
     """Ajusta valor previsto antes da confirmacao."""
 
-    forecast = _get_forecast_or_404(transaction_id)
     amount_raw = request.POST.get("amount")
 
-    if not amount_raw:
-        return JsonResponse({"error": "Campo amount é obrigatório."}, status=400)
+    with transaction.atomic():
+        forecast = _lock_forecast_or_404(transaction_id)
+        if forecast.transaction_type != Transaction.TransactionType.FORECAST:
+            messages.error(request, "Esta previsão já foi confirmada e não pode ser ajustada.")
+            return _redirect_to_forecasts_month(forecast)
 
-    try:
-        new_amount = normalize_decimal(amount_raw)
-    except ValueError:
-        return JsonResponse({"error": "Campo amount inválido."}, status=400)
+        if not amount_raw:
+            messages.error(request, "Informe o novo valor da previsão.")
+            return _redirect_to_forecasts_month(forecast)
 
-    if new_amount <= 0:
-        return JsonResponse({"error": "Campo amount deve ser positivo."}, status=400)
+        try:
+            new_amount = normalize_decimal(amount_raw)
+            if not new_amount.is_finite():
+                raise ValueError("Valor nao finito.")
+        except ValueError:
+            messages.error(request, "Valor inválido. Use o formato 0,00.")
+            return _redirect_to_forecasts_month(forecast)
 
-    old_amount = forecast.amount
-    forecast.amount = new_amount
-    notes_line = f"[REC_ADJUST] de {old_amount} para {new_amount}"
-    forecast.notes = f"{forecast.notes}\n{notes_line}".strip()
-    forecast.save(update_fields=["amount", "notes", "updated_at"])
+        if new_amount <= 0:
+            messages.error(request, "O novo valor deve ser maior que zero.")
+            return _redirect_to_forecasts_month(forecast)
 
-    return JsonResponse(
-        {
-            "id": forecast.id,
-            "amount": str(forecast.amount),
-            "message": "Previsão ajustada com sucesso.",
-        }
-    )
+        old_amount = forecast.amount
+        if new_amount == old_amount:
+            messages.info(request, "O valor informado é igual ao valor atual.")
+            return _redirect_to_forecasts_month(forecast)
+
+        forecast.amount = new_amount
+        notes_line = f"[REC_ADJUST] de {old_amount} para {new_amount}"
+        forecast.notes = f"{forecast.notes}\n{notes_line}".strip()
+        try:
+            forecast.full_clean()
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+            return _redirect_to_forecasts_month(forecast)
+        forecast.save(update_fields=["amount", "notes", "updated_at"])
+
+    messages.success(request, "Previsão ajustada com sucesso.")
+    return _redirect_to_forecasts_month(forecast)
