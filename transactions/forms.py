@@ -94,6 +94,7 @@ class TransactionForm(forms.Form):
     def __init__(self, *args, **kwargs):
         """Configura querysets dos campos relacionais."""
 
+        self.allow_transfer = kwargs.pop("allow_transfer", True)
         super().__init__(*args, **kwargs)
 
         self.fields["account"].queryset = FinancialAccount.objects.filter(
@@ -200,6 +201,13 @@ class TransactionForm(forms.Form):
         total_installments = cleaned_data.get("total_installments")
         from_account = cleaned_data.get("from_account")
         destination_account = cleaned_data.get("destination_account")
+
+        if payment_method == "transfer" and not self.allow_transfer:
+            self.add_error(
+                "payment_method",
+                "Transferência não pode ser editada por aqui; crie uma transferência.",
+            )
+            return cleaned_data
 
         if payment_method == "transfer":
             if from_account is None:

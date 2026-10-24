@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.http import urlencode
 
 from core.utils import map_service_errors_to_view
+from .constants import GENERIC_EDIT_BLOCKED_TYPES
 from .forms import TransactionForm, TransferForm
 from .models import Transaction
 from .selectors import (
@@ -148,7 +149,10 @@ def transaction_detail_page(
     return render(
         request,
         "transactions/detail.html",
-        {"transaction": transaction},
+        {
+            "transaction": transaction,
+            "can_edit": transaction.transaction_type not in GENERIC_EDIT_BLOCKED_TYPES,
+        },
     )
 
 
@@ -160,8 +164,13 @@ def transaction_edit_page(request: HttpRequest, transaction_id: int) -> HttpResp
         pk=transaction_id,
     )
 
+    blocked_message = GENERIC_EDIT_BLOCKED_TYPES.get(transaction.transaction_type)
+    if blocked_message:
+        messages.warning(request, blocked_message)
+        return redirect("transactions:detail", transaction_id=transaction.id)
+
     if request.method == "POST":
-        form = TransactionForm(request.POST)
+        form = TransactionForm(request.POST, allow_transfer=False)
         if form.is_valid():
             try:
                 updated_transaction = update_transaction(

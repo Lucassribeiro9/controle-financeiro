@@ -623,3 +623,191 @@ class TransferViewTests(AuthenticatedTestCase):
             "Conta de destino deve ser diferente da conta de origem.",
         )
         self.assertEqual(Transfer.objects.count(), 0)
+
+
+class TransactionGenericEditRestrictionTests(AuthenticatedTestCase):
+    """Garante o bloqueio da edicao generica (spec 013, EDT-01 a EDT-03)."""
+
+    BLOCKED_TYPES = [
+        Transaction.TransactionType.STATEMENT_PAYMENT,
+        Transaction.TransactionType.FORECAST,
+        Transaction.TransactionType.ADJUSTMENT_IN,
+        Transaction.TransactionType.ADJUSTMENT_OUT,
+    ]
+
+    def setUp(self):
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+
+    def _create(self, transaction_type):
+        return Transaction.objects.create(
+            description="Lancamento especial",
+            amount=Decimal("100.00"),
+            transaction_type=transaction_type,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 8),
+        )
+
+    def _edit_url(self, transaction):
+        return reverse("transactions:edit", kwargs={"transaction_id": transaction.id})
+
+    def _detail_url(self, transaction):
+        return reverse("transactions:detail", kwargs={"transaction_id": transaction.id})
+
+    def test_get_edit_redirects_to_detail_with_warning(self):
+        for kind in self.BLOCKED_TYPES:
+            with self.subTest(kind=kind):
+                transaction = self._create(kind)
+
+                response = self.client.get(self._edit_url(transaction), follow=True)
+
+                self.assertRedirects(response, self._detail_url(transaction))
+                messages_list = [str(m) for m in response.context["messages"]]
+                self.assertEqual(len(messages_list), 1)
+                self.assertIn("não pode ser editad", messages_list[0])
+
+    def test_post_edit_redirects_and_keeps_transaction(self):
+        for kind in self.BLOCKED_TYPES:
+            with self.subTest(kind=kind):
+                transaction = self._create(kind)
+
+                response = self.client.post(
+                    self._edit_url(transaction),
+                    data={
+                        "description": "Alterado",
+                        "payment_method": "cash",
+                        "amount": "1,00",
+                        "transaction_type": Transaction.TransactionType.EXPENSE,
+                        "status": Transaction.PaymentStatus.PAID,
+                        "account": self.account.id,
+                        "date": "08/05/2026",
+                    },
+                )
+
+                self.assertRedirects(response, self._detail_url(transaction))
+                transaction.refresh_from_db()
+                self.assertEqual(transaction.description, "Lancamento especial")
+                self.assertEqual(transaction.transaction_type, kind)
+                self.assertEqual(transaction.amount, Decimal("100.00"))
+
+    def test_statement_payment_edit_keeps_balance_and_paid_amount(self):
+        institution = self.account.institution
+        card = Card.objects.create(
+            name="Inter Gold",
+            institution=institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=self.account,
+        )
+        from cards.models import CardStatement
+
+        statement = CardStatement.objects.create(
+            card=card,
+            year=2026,
+            month=5,
+            closing_date=date(2026, 5, 20),
+            due_date=date(2026, 5, 27),
+            expected_amount=Decimal("300.00"),
+            closed_amount=Decimal("300.00"),
+            paid_amount=Decimal("100.00"),
+            status=CardStatement.StatementStatus.PARTIALLY_PAID,
+        )
+        payment = self._create(Transaction.TransactionType.STATEMENT_PAYMENT)
+        Transaction.objects.filter(pk=payment.pk).update(statement=statement, card=card)
+
+        self.client.post(
+            self._edit_url(payment),
+            data={
+                "description": "Despesa",
+                "payment_method": "cash",
+                "amount": "100,00",
+                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "status": Transaction.PaymentStatus.PAID,
+                "account": self.account.id,
+                "date": "08/05/2026",
+            },
+        )
+
+        statement.refresh_from_db()
+        self.account.refresh_from_db()
+        payment.refresh_from_db()
+        self.assertEqual(statement.paid_amount, Decimal("100.00"))
+        self.assertEqual(statement.status, CardStatement.StatementStatus.PARTIALLY_PAID)
+        self.assertEqual(self.account.balance, Decimal("1000.00"))
+        self.assertEqual(payment.statement_id, statement.id)
+
+    def test_detail_hides_edit_button_for_blocked_types(self):
+        for kind in self.BLOCKED_TYPES:
+            with self.subTest(kind=kind):
+                transaction = self._create(kind)
+
+                response = self.client.get(self._detail_url(transaction))
+
+                self.assertNotContains(response, self._edit_url(transaction))
+
+    def test_detail_shows_edit_button_for_editable_types(self):
+        transaction = self._create(Transaction.TransactionType.EXPENSE)
+
+        response = self.client.get(self._detail_url(transaction))
+
+        self.assertContains(response, self._edit_url(transaction))
+
+    def test_post_edit_with_transfer_payment_method_is_rejected(self):
+        transaction = self._create(Transaction.TransactionType.EXPENSE)
+        other = FinancialAccount.objects.create(
+            name="Reserva",
+            institution=self.account.institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("0.00"),
+        )
+
+        response = self.client.post(
+            self._edit_url(transaction),
+            data={
+                "description": "Virou transferencia",
+                "payment_method": "transfer",
+                "amount": "100,00",
+                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "status": Transaction.PaymentStatus.PAID,
+                "from_account": self.account.id,
+                "destination_account": other.id,
+                "date": "08/05/2026",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, "Transferência não pode ser editada por aqui; crie uma transferência."
+        )
+        transaction.refresh_from_db()
+        self.assertEqual(transaction.description, "Lancamento especial")
+        self.assertEqual(Transfer.objects.count(), 0)
+
+    def test_post_edit_of_editable_type_still_works(self):
+        transaction = self._create(Transaction.TransactionType.EXPENSE)
+
+        response = self.client.post(
+            self._edit_url(transaction),
+            data={
+                "description": "Mercado editado",
+                "payment_method": "debit",
+                "amount": "120,00",
+                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "status": Transaction.PaymentStatus.PAID,
+                "account": self.account.id,
+                "date": "08/05/2026",
+            },
+        )
+
+        self.assertRedirects(response, self._detail_url(transaction))
+        transaction.refresh_from_db()
+        self.assertEqual(transaction.description, "Mercado editado")
+        self.assertEqual(transaction.amount, Decimal("120.00"))
