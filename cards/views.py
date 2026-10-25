@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core.utils import map_service_errors_to_view
+from core.errors import map_service_errors_to_view
 from core.forms import normalize_decimal
 from .forms import CardForm, StatementPaymentForm
 from .models import Card, CardStatement
@@ -123,7 +123,7 @@ def statement_detail_page(request: HttpRequest, statement_id: int) -> HttpRespon
         try:
             close_statement(statement=statement)
         except ValidationError as exc:
-            messages.error(request, _validation_error_message(exc))
+            map_service_errors_to_view(request, exc)
         else:
             messages.success(request, "Fatura fechada com sucesso.")
 
@@ -223,15 +223,3 @@ def _get_statement(*, statement_id: int) -> CardStatement:
         ),
         pk=statement_id,
     )
-
-
-def _validation_error_message(exc: ValidationError) -> str:
-    """Converte ValidationError em mensagem exibivel."""
-
-    if hasattr(exc, "message_dict"):
-        messages_list = []
-        for field_errors in exc.message_dict.values():
-            messages_list.extend(field_errors)
-        return " ".join(messages_list)
-
-    return " ".join(exc.messages)

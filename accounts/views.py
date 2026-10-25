@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core.utils import map_service_errors_to_view
+from core.errors import map_service_errors_to_view
 from transactions.services import adjust_account_balance
 
 from .forms import AccountBalanceAdjustmentForm, FinancialAccountForm

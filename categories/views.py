@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from core.templatetags.money import brl
-from core.utils import map_service_errors_to_view
+from core.errors import map_service_errors_to_view
 from goals.services import create_reduction_goal_for_category
 
 from .forms import CategoryForm, GoalForCategoryForm

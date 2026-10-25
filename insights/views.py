@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from core.auth import api_login_required
-from core.utils import map_service_errors_to_view
+from core.errors import map_service_errors_to_view
 from .models import Insight
 from .selectors import get_insights_by_status, get_pending_insights, get_recent_insights
 from .services import (

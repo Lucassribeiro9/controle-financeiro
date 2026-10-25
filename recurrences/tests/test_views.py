@@ -1,5 +1,8 @@
 """Tests das views do app recurrences."""
 
+from unittest.mock import patch
+
+from django.core.exceptions import ValidationError
 from datetime import date
 from decimal import Decimal
 
@@ -281,3 +284,13 @@ class RecurrenceViewsTests(AuthenticatedTestCase):
         )
 
         self.assertContains(response, "O novo valor deve ser maior que zero.")
+
+    def test_adjust_forecast_full_clean_error_is_readable_and_not_saved(self):
+        error = ValidationError({"amount": ["Valor invalido."]})
+
+        with patch.object(Transaction, "full_clean", side_effect=error):
+            response = self._post("adjust", amount="135,50")
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(self._messages(response), [("error", "Valor invalido.")])
+        self.assertEqual(self.forecast.amount, Decimal("120.00"))

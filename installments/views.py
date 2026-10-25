@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
-from core.utils import map_service_errors_to_view
+from core.errors import map_service_errors_to_view
 from transactions.models import Transaction
 from .forms import InstallmentPlanForm
 from .models import InstallmentPlan
@@ -96,12 +96,3 @@ def installment_cancel_page(request: HttpRequest, plan_id: int) -> HttpResponse:
             "pending_transactions": pending_transactions,
         },
     )
-
-
-def _validation_error_message(exc: ValidationError) -> str:
-    """Converte ValidationError em texto exibivel."""
-
-    if hasattr(exc, "messages"):
-        return " ".join(exc.messages)
-
-    return str(exc)

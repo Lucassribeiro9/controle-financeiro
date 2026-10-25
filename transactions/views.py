@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import urlencode
 
-from core.utils import map_service_errors_to_view
+from core.errors import map_service_errors_to_view
 from .constants import GENERIC_EDIT_BLOCKED_TYPES
 from .forms import TransactionForm, TransferForm
 from .models import Transaction

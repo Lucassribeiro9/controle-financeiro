@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from core.auth import api_login_required
+from core.errors import map_service_errors_to_view
 from core.forms import normalize_decimal
 
 from .models import Recurrence
@@ -194,7 +195,7 @@ def adjust_forecast(request: HttpRequest, transaction_id: int) -> HttpResponse:
         try:
             forecast.full_clean()
         except ValidationError as exc:
-            messages.error(request, " ".join(exc.messages))
+            map_service_errors_to_view(request, exc)
             return _redirect_to_forecasts_month(forecast)
         forecast.save(update_fields=["amount", "notes", "updated_at"])
 
