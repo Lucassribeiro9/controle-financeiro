@@ -90,6 +90,7 @@ Criar ou evoluir:
 ## Decisoes Fechadas
 
 - Limite mensal de categoria deve ser representado por `Goal` de reducao com `MonthlyGoal`, sem criar entidade nova de budget nesta fase.
+- A meta por categoria escolhe mes e ano (padrao: mes corrente) e e unica por mes; duplicata mostra mensagem legivel.
 - `Category` pode receber campos opcionais de apresentacao: `icon` e `color`.
 - Icones devem ser nomes validados de uma biblioteca/conjunto de icones alinhado aos icones dos menus.
 - Emojis nao devem ser usados como icones de categoria nesta fase.
