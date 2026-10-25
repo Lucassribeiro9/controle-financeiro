@@ -25,7 +25,6 @@ PENDING_STATUSES = [
 ]
 FORECAST_STATUSES = [Transaction.PaymentStatus.FORECASTED]
 INCOME_TYPES = [Transaction.TransactionType.INCOME]
-EXPENSE_TYPES = SPENDING_TRANSACTION_TYPES
 SUMMARY_CARD_STATUSES = {
     "realized": REALIZED_STATUSES,
     "pending": PENDING_STATUSES,
@@ -85,7 +84,7 @@ def get_summary_card_detail(*, card: str, today=None) -> dict:
         card=card, year=year, month=month, transaction_types=INCOME_TYPES
     )
     expenses = _list_card_transactions(
-        card=card, year=year, month=month, transaction_types=EXPENSE_TYPES
+        card=card, year=year, month=month, transaction_types=SPENDING_TRANSACTION_TYPES
     )
     if card == "forecasted":
         income_forecasts, expense_forecasts = _classify_recurring_forecasts(
@@ -163,7 +162,7 @@ def _build_transaction_totals(*, year: int, month: int, statuses: list[str]) -> 
     expenses = _sum_transactions(
         year=year,
         month=month,
-        transaction_types=EXPENSE_TYPES,
+        transaction_types=SPENDING_TRANSACTION_TYPES,
         statuses=statuses,
     )
 

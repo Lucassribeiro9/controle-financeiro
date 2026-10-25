@@ -14,8 +14,8 @@ from cards.models import CardStatement
 from categories.selectors import get_categories_at_risk
 from goals.models import MonthlyGoal
 from transactions.constants import (
-    EXCLUDED_SPENDING_STATUSES as EXCLUDED_STATUSES,
-    SPENDING_TRANSACTION_TYPES as EXPENSE_TRANSACTION_TYPES,
+    EXCLUDED_SPENDING_STATUSES,
+    SPENDING_TRANSACTION_TYPES,
 )
 from transactions.models import Transaction
 
@@ -50,7 +50,7 @@ def get_monthly_income_total(*, year: int, month: int):
         Transaction.objects.filter(
             transaction_type=Transaction.TransactionType.INCOME, date__year=year, date__month=month
         )
-        .exclude(status__in=EXCLUDED_STATUSES)
+        .exclude(status__in=EXCLUDED_SPENDING_STATUSES)
         .aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
     )
 
@@ -59,9 +59,9 @@ def get_monthly_expense_total(*, year: int, month: int):
     """Calcula o total de despesas para um determinado mês e ano."""
     return _to_money(
         Transaction.objects.filter(
-            transaction_type__in=EXPENSE_TRANSACTION_TYPES, date__year=year, date__month=month
+            transaction_type__in=SPENDING_TRANSACTION_TYPES, date__year=year, date__month=month
         )
-        .exclude(status__in=EXCLUDED_STATUSES)
+        .exclude(status__in=EXCLUDED_SPENDING_STATUSES)
         .aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
     )
 
@@ -70,9 +70,9 @@ def get_category_expense_breakdown(*, year: int, month: int):
     """Obtém o detalhamento das despesas por categoria para um determinado mês e ano."""
     rows = list(
         Transaction.objects.filter(
-            transaction_type__in=EXPENSE_TRANSACTION_TYPES, date__year=year, date__month=month
+            transaction_type__in=SPENDING_TRANSACTION_TYPES, date__year=year, date__month=month
         )
-        .exclude(status__in=EXCLUDED_STATUSES)
+        .exclude(status__in=EXCLUDED_SPENDING_STATUSES)
         .values("category_id", "category__name")
         .annotate(total_amount=Sum("amount"))
         .order_by("-total_amount")
@@ -166,10 +166,10 @@ def get_monthly_cashflow_series(*, year: int, month: int, range_months: int = 12
             date__lte=last_day,
             transaction_type__in=[
                 Transaction.TransactionType.INCOME,
-                *EXPENSE_TRANSACTION_TYPES,
+                *SPENDING_TRANSACTION_TYPES,
             ],
         )
-        .exclude(status__in=EXCLUDED_STATUSES)
+        .exclude(status__in=EXCLUDED_SPENDING_STATUSES)
         .annotate(period_year=ExtractYear("date"), period_month=ExtractMonth("date"))
         .values("period_year", "period_month", "transaction_type")
         .annotate(total=Sum("amount"))
@@ -183,7 +183,7 @@ def get_monthly_cashflow_series(*, year: int, month: int, range_months: int = 12
         total = _to_money(row["total"] or Decimal("0.00"))
         if row["transaction_type"] == Transaction.TransactionType.INCOME:
             period_map[period_key]["income_total"] = total
-        if row["transaction_type"] in EXPENSE_TRANSACTION_TYPES:
+        if row["transaction_type"] in SPENDING_TRANSACTION_TYPES:
             period_map[period_key]["expense_total"] += total
 
     series = []
