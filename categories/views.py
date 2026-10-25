@@ -1,7 +1,5 @@
 """Views do app categories."""
 
-from decimal import Decimal
-
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Count
@@ -9,9 +7,11 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from core.templatetags.money import brl
+from core.utils import map_service_errors_to_view
 from goals.services import create_reduction_goal_for_category
 
-from .forms import CategoryForm
+from .forms import CategoryForm, GoalForCategoryForm
 from .models import Category
 from .selectors import get_categories_with_monthly_spent
 
@@ -88,37 +88,31 @@ def category_create_goal_page(request: HttpRequest, category_id: int) -> HttpRes
     """Renderiza e processa o formulario de criacao de meta mensal por categoria."""
 
     category = get_object_or_404(Category, pk=category_id)
-    today = timezone.localdate()
-    error = None
 
     if request.method == "POST":
-        raw_amount = request.POST.get("target_amount", "").strip()
-        year = int(request.POST.get("year", today.year))
-        month = int(request.POST.get("month", today.month))
-
-        try:
-            target_amount = Decimal(raw_amount)
-            create_reduction_goal_for_category(
-                category=category,
-                year=year,
-                month=month,
-                target_amount=target_amount,
-            )
-            messages.success(
-                request,
-                f"Meta mensal de R$ {target_amount:.2f} criada para '{category.name}'.",
-            )
-            return redirect("categories:list")
-        except (ValidationError, Exception) as exc:
-            error = exc
+        form = GoalForCategoryForm(request.POST)
+        if form.is_valid():
+            target_amount = form.cleaned_data["target_amount"]
+            try:
+                create_reduction_goal_for_category(
+                    category=category,
+                    year=form.cleaned_data["year"],
+                    month=form.cleaned_data["month"],
+                    target_amount=target_amount,
+                )
+            except ValidationError as exc:
+                map_service_errors_to_view(request, exc, form=form)
+            else:
+                messages.success(
+                    request,
+                    f"Meta mensal de {brl(target_amount)} criada para '{category.name}'.",
+                )
+                return redirect("categories:list")
+    else:
+        form = GoalForCategoryForm()
 
     return render(
         request,
         "categories/create_goal.html",
-        {
-            "category": category,
-            "year": today.year,
-            "month": today.month,
-            "error": error,
-        },
+        {"category": category, "form": form},
     )

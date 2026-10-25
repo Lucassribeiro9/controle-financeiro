@@ -1,6 +1,10 @@
 """Forms do app categories."""
 
 from django import forms
+from django.utils import timezone
+
+from core.forms import BRDecimalField, BRIntegerField
+from core.templatetags.money import month_name
 
 from .models import Category
 
@@ -52,3 +56,28 @@ class CategoryForm(forms.ModelForm):
             self.add_error("parent", "Categoria pai não pode ser a própria categoria.")
 
         return cleaned_data
+
+
+class GoalForCategoryForm(forms.Form):
+    """Formulario de meta mensal de reducao por categoria, em formato BR."""
+
+    target_amount = BRDecimalField(
+        label="Valor limite (R$)",
+        max_digits=14,
+        decimal_places=2,
+        min_value=0,
+    )
+    month = forms.TypedChoiceField(
+        label="Mês",
+        choices=[(number, month_name(number)) for number in range(1, 13)],
+        coerce=int,
+    )
+    year = BRIntegerField(label="Ano", min_value=2000, max_value=2100)
+
+    def __init__(self, *args, **kwargs):
+        """Define mes e ano iniciais a partir da data local."""
+
+        super().__init__(*args, **kwargs)
+        today = timezone.localdate()
+        self.fields["month"].initial = today.month
+        self.fields["year"].initial = today.year

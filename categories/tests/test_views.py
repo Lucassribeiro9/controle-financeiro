@@ -251,8 +251,10 @@ class CategoryCreateGoalViewTests(AuthenticatedTestCase):
                 reverse("categories:create_goal", kwargs={"category_id": self.category.id})
             )
 
-        self.assertEqual(response.context["year"], 2026)
-        self.assertEqual(response.context["month"], 10)
+        form = response.context["form"]
+        self.assertEqual(form.fields["year"].initial, 2026)
+        self.assertEqual(form.fields["month"].initial, 10)
+        self.assertEqual(MonthlyGoal.objects.count(), 0)
 
     def test_post_create_goal_success_redirects(self):
         """POST valido deve redirecionar para a lista de categorias."""
@@ -311,3 +313,70 @@ class CategoryCreateGoalViewTests(AuthenticatedTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "categories/create_goal.html")
+
+    def _url(self):
+        return reverse("categories:create_goal", kwargs={"category_id": self.category.id})
+
+    def test_get_renders_br_amount_input_and_visible_period(self):
+        """GET deve renderizar valor em texto BR e mes/ano visiveis."""
+
+        response = self.client.get(self._url())
+
+        self.assertContains(response, 'name="target_amount"')
+        self.assertContains(response, 'data-mask="decimal"')
+        self.assertNotContains(response, 'type="number"')
+        self.assertNotContains(response, 'type="hidden" name="month"')
+        self.assertContains(response, "Janeiro")
+
+    def test_post_br_amount_creates_goal_and_shows_brl_message(self):
+        """Valor BR deve ser aceito e a mensagem mostrar R$ 50,00."""
+
+        response = self.client.post(
+            self._url(),
+            data={"target_amount": "50,00", "month": "10", "year": "2026"},
+            follow=True,
+        )
+
+        monthly_goal = MonthlyGoal.objects.get()
+        self.assertEqual(monthly_goal.target_amount, Decimal("50.00"))
+        self.assertEqual((monthly_goal.year, monthly_goal.month), (2026, 10))
+        messages_list = [str(m) for m in response.context["messages"]]
+        self.assertTrue(any("R$ 50,00" in m for m in messages_list), messages_list)
+
+    def test_post_thousands_amount_is_parsed(self):
+        self.client.post(
+            self._url(),
+            data={"target_amount": "1.234,56", "month": "10", "year": "2026"},
+        )
+
+        self.assertEqual(MonthlyGoal.objects.get().target_amount, Decimal("1234.56"))
+
+    def test_post_non_numeric_amount_returns_200_with_field_error(self):
+        response = self.client.post(
+            self._url(),
+            data={"target_amount": "abc", "month": "10", "year": "2026"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("target_amount", response.context["form"].errors)
+        self.assertEqual(MonthlyGoal.objects.count(), 0)
+
+    def test_post_invalid_month_returns_200_without_creating(self):
+        response = self.client.post(
+            self._url(),
+            data={"target_amount": "50,00", "month": "13", "year": "2026"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("month", response.context["form"].errors)
+        self.assertEqual(MonthlyGoal.objects.count(), 0)
+
+    def test_post_duplicate_month_shows_readable_error(self):
+        data = {"target_amount": "50,00", "month": "10", "year": "2026"}
+        self.client.post(self._url(), data=data)
+
+        response = self.client.post(self._url(), data=data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Já existe uma meta para Alimentacao em Outubro/2026.")
+        self.assertEqual(MonthlyGoal.objects.count(), 1)

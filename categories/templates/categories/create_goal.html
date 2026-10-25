@@ -14,27 +14,21 @@
         <form class="form-grid" method="post">
             {% csrf_token %}
 
-            {% if error %}
+            {% if form.non_field_errors %}
                 <div class="app-message">
-                    <p>{{ error }}</p>
+                    {{ form.non_field_errors }}
                 </div>
             {% endif %}
 
-            <label class="form-field" for="id_target_amount">
-                <span>Valor limite (R$)</span>
-                <input
-                    type="number"
-                    id="id_target_amount"
-                    name="target_amount"
-                    step="0.01"
-                    min="0.01"
-                    placeholder="Ex: 500.00"
-                    required
-                >
-            </label>
-
-            <input type="hidden" name="year" value="{{ year }}">
-            <input type="hidden" name="month" value="{{ month }}">
+            {% for field in form %}
+                <label class="form-field" for="{{ field.id_for_label }}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="field-error">{{ field.errors|join:", " }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
 
             <div class="action-row">
                 <button class="button" type="submit">Criar meta</button>
