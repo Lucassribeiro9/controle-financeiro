@@ -20,6 +20,7 @@ from imports.services import (
     detect_duplicate_import,
     discard_imported_transaction,
     stage_imported_transactions,
+    suggest_category,
 )
 from institutions.models import Institution
 from transactions.models import Transaction
@@ -155,6 +156,103 @@ class ImportServiceTests(TestCase):
         )
 
         self.assertEqual(imported[0].status, ImportedTransaction.Status.DUPLICATE)
+
+    def _stage(self, rows, **kwargs):
+        return stage_imported_transactions(
+            file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=rows,
+            **kwargs,
+        )
+
+    def _statuses(self, imported):
+        return [item.status for item in imported]
+
+    def test_identical_rows_in_same_file_stay_pending(self):
+        """Deve manter pendentes duas linhas iguais de um arquivo novo."""
+
+        imported = self._stage([self._row(), self._row()])
+
+        self.assertEqual(
+            self._statuses(imported), [ImportedTransaction.Status.PENDING] * 2
+        )
+
+    def test_reimport_marks_same_number_of_occurrences_as_duplicate(self):
+        """Deve marcar as duas ocorrencias ao reimportar o mesmo arquivo."""
+
+        self._stage([self._row(), self._row()])
+
+        imported = self._stage([self._row(), self._row()])
+
+        self.assertEqual(
+            self._statuses(imported), [ImportedTransaction.Status.DUPLICATE] * 2
+        )
+
+    def test_one_prior_import_marks_only_one_of_two_identical_rows(self):
+        """Deve marcar so tantas duplicadas quantas importacoes anteriores existem."""
+
+        self._stage([self._row()])
+
+        imported = self._stage([self._row(), self._row()])
+
+        self.assertEqual(
+            self._statuses(imported),
+            [ImportedTransaction.Status.DUPLICATE, ImportedTransaction.Status.PENDING],
+        )
+
+    def test_discarded_prior_import_still_counts(self):
+        """Deve contar importacoes anteriores descartadas."""
+
+        prior = self._stage([self._row()])[0]
+        discard_imported_transaction(imported_transaction=prior)
+
+        imported = self._stage([self._row()])
+
+        self.assertEqual(imported[0].status, ImportedTransaction.Status.DUPLICATE)
+
+    def test_same_external_id_twice_in_file_marks_second_as_duplicate(self):
+        """Deve manter a regra por external_id dentro do mesmo arquivo."""
+
+        imported = self._stage(
+            [self._row(external_id="FIT1"), self._row(external_id="FIT1")]
+        )
+
+        self.assertEqual(
+            self._statuses(imported),
+            [ImportedTransaction.Status.PENDING, ImportedTransaction.Status.DUPLICATE],
+        )
+
+    def test_registered_transactions_mark_only_as_many_rows_as_exist(self):
+        """Deve marcar no maximo K linhas quando ha K lancamentos iguais na conta."""
+
+        Transaction.objects.create(
+            description="Mercado Dia",
+            amount=Decimal("87.45"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 10),
+        )
+
+        imported = self._stage([self._row(), self._row()], suggested_account=self.account)
+
+        self.assertEqual(
+            self._statuses(imported),
+            [ImportedTransaction.Status.DUPLICATE, ImportedTransaction.Status.PENDING],
+        )
+
+    def test_suggest_category_matches_isolated_99_only(self):
+        """Deve sugerir Transporte para o app 99 e nao para numeros que contem 99."""
+
+        transport = Category.objects.create(name="Transporte")
+
+        for description in ["99 POP", "99*CORRIDA", "CORRIDA 99"]:
+            with self.subTest(description=description):
+                self.assertEqual(suggest_category(description), transport)
+
+        for description in ["LOJA 1999 LTDA", "PAG*AMAZON 99,90", "ITEM 99.90", "A99"]:
+            with self.subTest(description=description):
+                self.assertIsNone(suggest_category(description))
 
     def test_detect_duplicate_import_uses_external_id(self):
         """Deve detectar duplicidade por identificador externo."""

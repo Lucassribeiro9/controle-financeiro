@@ -1,6 +1,7 @@
 """Regras de negocio para importacoes."""
 
 import hashlib
+import re
 from dataclasses import dataclass
 
 from django.core.exceptions import ValidationError
@@ -17,6 +18,10 @@ REVIEWABLE_IMPORT_STATUSES = [
     ImportedTransaction.Status.PENDING,
     ImportedTransaction.Status.DUPLICATE,
 ]
+# "99" so conta como o app quando nao esta colado a letra, digito, ponto ou virgula.
+NINETY_NINE_APP_PATTERN = re.compile(r"(?<![\w.,])99(?![\w.,])")
+
+
 @dataclass(frozen=True)
 class BulkImportActionResult:
     """Resume o resultado de uma acao em lote na revisao."""
@@ -59,14 +64,19 @@ def suggest_category(description):
     if "supermercado" in description or "mercado" in description:
         return Category.objects.filter(name__icontains="aliment").first()
 
-    if "uber" in description or "99" in description:
+    if "uber" in description or NINETY_NINE_APP_PATTERN.search(description):
         return Category.objects.filter(name__icontains="transporte").first()
 
     return None
 
 
-def detect_duplicate_import(*, imported_transaction):
-    """Detecta duplicidade entre importacoes ja registradas."""
+def detect_duplicate_import(*, imported_transaction, occurrence=0, prior_count=None):
+    """Detecta duplicidade entre importacoes ja registradas.
+
+    Sem `external_id`, a linha e duplicada quando sua posicao entre as linhas
+    iguais do arquivo (`occurrence`, a partir de 0) e menor que a quantidade de
+    importacoes anteriores com o mesmo hash (`prior_count`).
+    """
 
     if imported_transaction.external_id:
         return ImportedTransaction.objects.filter(
@@ -75,15 +85,21 @@ def detect_duplicate_import(*, imported_transaction):
         ).exists()
 
     if imported_transaction.import_hash:
-        return ImportedTransaction.objects.filter(
-            import_hash=imported_transaction.import_hash,
-        ).exists()
+        if prior_count is None:
+            prior_count = ImportedTransaction.objects.filter(
+                import_hash=imported_transaction.import_hash,
+            ).count()
+        return occurrence < prior_count
 
     return False
 
 
-def detect_duplicate_transaction(*, imported_transaction):
-    """Detecta se a linha importada parece uma transacao real ja cadastrada."""
+def detect_duplicate_transaction(*, imported_transaction, occurrence=0):
+    """Detecta se a linha importada parece uma transacao real ja cadastrada.
+
+    Com K lancamentos iguais na conta, so as K primeiras linhas iguais do
+    arquivo (`occurrence` a partir de 0) sao duplicadas.
+    """
 
     if not imported_transaction.suggested_account_id:
         return False
@@ -97,16 +113,22 @@ def detect_duplicate_transaction(*, imported_transaction):
         imported_transaction.normalized_description
     )
 
-    return any(
-        _normalize_duplicate_description(candidate.description) == expected_description
+    matches = sum(
+        1
         for candidate in candidates
+        if _normalize_duplicate_description(candidate.description) == expected_description
     )
+    return occurrence < matches
 
 
 def stage_imported_transactions(*, file_name, source_type, rows, suggested_account=None):
     """Salva linhas importadas como pendencias para revisao do usuario."""
 
     imported = []
+    # Ocorrencias ja vistas neste arquivo e importacoes anteriores por hash.
+    seen_hashes = {}
+    prior_counts = {}
+    seen_transaction_keys = {}
 
     with db_transaction.atomic():
         for row in rows:
@@ -133,9 +155,31 @@ def stage_imported_transactions(*, file_name, source_type, rows, suggested_accou
                 status=ImportedTransaction.Status.PENDING,
             )
 
-            if detect_duplicate_import(imported_transaction=imported_transaction):
+            occurrence = seen_hashes.get(import_hash, 0)
+            seen_hashes[import_hash] = occurrence + 1
+            if import_hash not in prior_counts:
+                prior_counts[import_hash] = ImportedTransaction.objects.filter(
+                    import_hash=import_hash,
+                ).count()
+
+            transaction_key = (
+                row.date,
+                row.amount,
+                _normalize_duplicate_description(row.normalized_description),
+            )
+            transaction_occurrence = seen_transaction_keys.get(transaction_key, 0)
+            seen_transaction_keys[transaction_key] = transaction_occurrence + 1
+
+            if detect_duplicate_import(
+                imported_transaction=imported_transaction,
+                occurrence=occurrence,
+                prior_count=prior_counts[import_hash],
+            ):
                 imported_transaction.status = ImportedTransaction.Status.DUPLICATE
-            elif detect_duplicate_transaction(imported_transaction=imported_transaction):
+            elif detect_duplicate_transaction(
+                imported_transaction=imported_transaction,
+                occurrence=transaction_occurrence,
+            ):
                 imported_transaction.status = ImportedTransaction.Status.DUPLICATE
 
             try:
