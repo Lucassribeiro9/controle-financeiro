@@ -94,6 +94,39 @@ class TransactionModelTests(TestCase):
 
         self.assertIsNone(transaction.recurrence)
 
+    def test_recurrence_reverse_accessor_includes_forecast_and_confirmed(self):
+        """O reverso da recorrencia traz previsao e lancamento confirmado."""
+
+        recurrence = Recurrence.objects.create(
+            name="Internet",
+            expected_day=10,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.FIXED_BILL,
+            expected_amount=Decimal("120.00"),
+            account=self.account,
+        )
+        forecast = Transaction.objects.create(
+            description="[REC] Internet",
+            amount=Decimal("120.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 6, 10),
+            recurrence=recurrence,
+        )
+        confirmed = Transaction.objects.create(
+            description="Internet",
+            amount=Decimal("120.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 10),
+            recurrence=recurrence,
+        )
+
+        self.assertCountEqual(recurrence.transactions.all(), [forecast, confirmed])
+
     def test_create_income_transaction_linked_to_account(self):
         """Deve criar receita vinculada a uma conta financeira."""
 

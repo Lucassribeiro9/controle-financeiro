@@ -7,8 +7,8 @@ from django.db.models import Sum
 from accounts.models import FinancialAccount
 
 from .constants import (
-    EXCLUDED_SPENDING_STATUSES as EXCLUDED_STATUSES,
-    SPENDING_TRANSACTION_TYPES as EXPENSE_TRANSACTION_TYPES,
+    EXCLUDED_SPENDING_STATUSES,
+    SPENDING_TRANSACTION_TYPES,
 )
 from .models import Transaction, Transfer
 
@@ -36,7 +36,7 @@ def get_monthly_income_total(*, year, month):
         transaction_type=Transaction.TransactionType.INCOME,
         date__year=year,
         date__month=month,
-    ).exclude(status__in=EXCLUDED_STATUSES).aggregate(total=Sum("amount"))[
+    ).exclude(status__in=EXCLUDED_SPENDING_STATUSES).aggregate(total=Sum("amount"))[
         "total"
     ] or Decimal(
         "0.00"
@@ -47,10 +47,10 @@ def get_monthly_income_total(*, year, month):
 def get_monthly_expense_total(*, year, month):
     """Calcula o total de despesas mensais."""
     total = Transaction.objects.filter(
-        transaction_type__in=EXPENSE_TRANSACTION_TYPES,
+        transaction_type__in=SPENDING_TRANSACTION_TYPES,
         date__year=year,
         date__month=month,
-    ).exclude(status__in=EXCLUDED_STATUSES).aggregate(total=Sum("amount"))[
+    ).exclude(status__in=EXCLUDED_SPENDING_STATUSES).aggregate(total=Sum("amount"))[
         "total"
     ] or Decimal(
         "0.00"
