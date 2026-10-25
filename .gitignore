@@ -165,3 +165,6 @@ cython_debug/
 
 # Arquivos estaticos coletados (collectstatic)
 staticfiles/
+
+# Worktrees locais do Claude Code (não versionar)
+.claude/worktrees/
