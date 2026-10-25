@@ -162,9 +162,6 @@ def confirm_imported_transaction(
 ):
     """Confirma uma importacao e cria a transacao real correspondente."""
 
-    if imported_transaction.status == ImportedTransaction.Status.CONFIRMED:
-        return imported_transaction.confirmed_transaction
-
     transaction_type = transaction_type or imported_transaction.suggested_transaction_type
     description = description or imported_transaction.normalized_description
     amount = imported_transaction.amount if amount is None else amount
@@ -174,6 +171,17 @@ def confirm_imported_transaction(
         raise ValueError("Informe o tipo da transacao antes de confirmar a importacao.")
 
     with db_transaction.atomic():
+        # Relê a linha travada: a instância recebida pode estar velha (duplo clique).
+        imported_transaction = ImportedTransaction.objects.select_for_update().get(
+            pk=imported_transaction.pk
+        )
+
+        if imported_transaction.status == ImportedTransaction.Status.CONFIRMED:
+            return imported_transaction.confirmed_transaction
+
+        if imported_transaction.status not in REVIEWABLE_IMPORT_STATUSES:
+            raise ValueError("Só é possível confirmar importações pendentes ou duplicadas.")
+
         transaction = create_transaction(
             description=description,
             amount=amount,
@@ -210,13 +218,22 @@ def confirm_imported_transaction(
 def discard_imported_transaction(*, imported_transaction):
     """Descarta uma importacao pendente sem criar transacao real."""
 
-    imported_transaction.status = ImportedTransaction.Status.DISCARDED
-    imported_transaction.confirmed_transaction = None
-    imported_transaction.review_error = ""
-    imported_transaction.full_clean()
-    imported_transaction.save(
-        update_fields=["status", "confirmed_transaction", "review_error", "updated_at"]
-    )
+    with db_transaction.atomic():
+        imported_transaction = ImportedTransaction.objects.select_for_update().get(
+            pk=imported_transaction.pk
+        )
+
+        if imported_transaction.status == ImportedTransaction.Status.CONFIRMED:
+            raise ValueError("Importação confirmada não pode ser descartada.")
+
+        imported_transaction.status = ImportedTransaction.Status.DISCARDED
+        imported_transaction.confirmed_transaction = None
+        imported_transaction.review_error = ""
+        imported_transaction.full_clean()
+        imported_transaction.save(
+            update_fields=["status", "confirmed_transaction", "review_error", "updated_at"]
+        )
+
     return imported_transaction
 
 
