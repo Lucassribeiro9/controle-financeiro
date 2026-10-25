@@ -4,6 +4,7 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 
 from core.forms import AnnualRateField
@@ -59,6 +60,14 @@ class FormattingFieldTests(SimpleTestCase):
 
         self.assertEqual(field.clean("1.234,56"), Decimal("1234.56"))
         self.assertEqual(field.clean("1234.56"), Decimal("1234.56"))
+
+    def test_decimal_field_rejects_non_numeric_text_as_field_error(self):
+        field = BRDecimalField(max_digits=14, decimal_places=2)
+
+        with self.assertRaises(ValidationError) as ctx:
+            field.clean("abc")
+
+        self.assertEqual(ctx.exception.code, "invalid")
 
     def test_date_field_accepts_pt_br_and_iso_values(self):
         field = BRDateField()

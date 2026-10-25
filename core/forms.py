@@ -5,6 +5,7 @@ from decimal import Decimal
 from decimal import InvalidOperation
 
 from django import forms
+from django.core.exceptions import ValidationError
 
 
 DATE_INPUT_FORMATS = ["%d/%m/%Y", "%Y-%m-%d"]
@@ -106,7 +107,11 @@ class BRDecimalField(forms.DecimalField):
     def to_python(self, value):
         if value in self.empty_values:
             return None
-        return super().to_python(normalize_decimal(value))
+        try:
+            normalized = normalize_decimal(value)
+        except ValueError:
+            raise ValidationError(self.error_messages["invalid"], code="invalid")
+        return super().to_python(normalized)
 
 
 class BRDateField(forms.DateField):

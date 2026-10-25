@@ -408,10 +408,17 @@ class CreateReductionGoalForCategoryTests(TestCase):
             target_amount=Decimal("400.00"),
         )
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError) as ctx:
             create_reduction_goal_for_category(
                 category=self.category,
                 year=2026,
                 month=7,
                 target_amount=Decimal("500.00"),
             )
+
+        self.assertFalse(hasattr(ctx.exception, "error_dict"))
+        self.assertEqual(
+            ctx.exception.messages,
+            ["Já existe uma meta para Alimentacao em Julho/2026."],
+        )
+        self.assertEqual(MonthlyGoal.objects.count(), 1)

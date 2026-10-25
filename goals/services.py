@@ -7,6 +7,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from categories.models import Category
+from core.templatetags.money import month_name
 from transactions.constants import (
     EXCLUDED_SPENDING_STATUSES,
     SPENDING_TRANSACTION_TYPES,
@@ -227,6 +228,11 @@ def create_reduction_goal_for_category(
         )
 
     goal = get_or_create_reduction_goal(category=category, target_amount=target_amount)
+
+    if MonthlyGoal.objects.filter(goal=goal, year=year, month=month).exists():
+        raise ValidationError(
+            f"Já existe uma meta para {category.name} em {month_name(month)}/{year}."
+        )
 
     return create_monthly_goal_from_goal(
         goal=goal,
