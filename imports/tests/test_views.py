@@ -1,5 +1,8 @@
 """Tests das views do app imports."""
 
+from unittest.mock import patch
+
+from django.core.exceptions import ValidationError
 from datetime import date
 from decimal import Decimal
 from io import BytesIO
@@ -837,3 +840,30 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertEqual(invalid.status, ImportedTransaction.Status.PENDING)
         self.assertEqual(invalid.review_error, "Informe uma conta para confirmar.")
         self.assertEqual(Transaction.objects.count(), 1)
+
+    def test_confirm_import_validation_error_json_is_readable(self):
+        imported_transaction = self._pending_import()
+        error = ValidationError({"amount": ["Valor invalido."], "__all__": ["Erro geral."]})
+
+        with patch("imports.views.confirm_imported_transaction", side_effect=error):
+            response = self._confirm(imported_transaction)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"error": "Valor invalido. Erro geral."})
+
+    def test_confirm_import_validation_error_message_is_readable(self):
+        imported_transaction = self._pending_import()
+        error = ValidationError({"amount": ["Valor invalido."]})
+
+        with patch("imports.views.confirm_imported_transaction", side_effect=error):
+            response = self.client.post(
+                reverse(
+                    "imports:confirm",
+                    kwargs={"imported_transaction_id": imported_transaction.id},
+                ),
+                {"next": "review-page"},
+                follow=True,
+            )
+
+        messages = [str(m) for m in response.context["messages"]]
+        self.assertEqual(messages, ["Valor invalido."])

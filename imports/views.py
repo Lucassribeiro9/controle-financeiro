@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from accounts.models import FinancialAccount
 from categories.models import Category
 from core.auth import api_login_required
+from core.errors import validation_error_response, validation_error_text
 from core.forms import normalize_decimal
 from core.forms import parse_br_date
 from transactions.models import Transaction
@@ -230,11 +231,13 @@ def confirm_import(request: HttpRequest, imported_transaction_id: int) -> JsonRe
             date=transaction_date,
         )
     except (ValueError, ValidationError) as exc:
-        error = " ".join(exc.messages) if isinstance(exc, ValidationError) else str(exc)
         if _should_redirect_to_review(request):
+            error = validation_error_text(exc) if isinstance(exc, ValidationError) else str(exc)
             messages.error(request, error)
             return _redirect_to_review(request)
-        return JsonResponse({"error": error}, status=400)
+        if isinstance(exc, ValidationError):
+            return validation_error_response(exc)
+        return JsonResponse({"error": str(exc)}, status=400)
 
     if _should_redirect_to_review(request):
         if already_confirmed:

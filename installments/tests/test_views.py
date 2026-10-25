@@ -1,5 +1,8 @@
 """Tests das views do app installments."""
 
+from unittest.mock import patch
+
+from django.core.exceptions import ValidationError
 from datetime import date
 from decimal import Decimal
 
@@ -165,3 +168,22 @@ class InstallmentViewTests(AuthenticatedTestCase):
         
         messages = list(response.context["messages"])
         self.assertEqual(str(messages[0]), "Parcelamento cancelado com sucesso.")
+
+    def test_post_cancel_completed_plan_shows_readable_message(self):
+        plan = create_installment_plan(
+            description="Notebook",
+            total_amount=Decimal("1000.00"),
+            total_installments=10,
+            first_installment_date=date(2026, 5, 8),
+            card=self.card,
+            category=self.category,
+        )
+        plan.status = InstallmentPlan.Status.COMPLETED
+        plan.save(update_fields=["status"])
+
+        response = self.client.post(
+            reverse("installments:cancel", kwargs={"plan_id": plan.id}), follow=True
+        )
+
+        messages = [str(m) for m in response.context["messages"]]
+        self.assertEqual(messages, ["Parcelamento concluído não pode ser cancelado."])

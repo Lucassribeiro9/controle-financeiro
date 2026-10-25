@@ -1,5 +1,6 @@
 """Tests das views do app cards."""
 
+from unittest.mock import patch
 from datetime import timedelta
 from decimal import Decimal
 
@@ -610,3 +611,16 @@ class StatementViewTests(AuthenticatedTestCase):
         )
 
         return close_statement(statement=statement)
+
+    def test_close_canceled_statement_keeps_readable_message(self):
+        statement = self._create_statement()
+        statement.status = CardStatement.StatementStatus.CANCELED
+        statement.save(update_fields=["status"])
+
+        response = self.client.post(
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id}),
+            follow=True,
+        )
+
+        messages = [str(m) for m in response.context["messages"]]
+        self.assertEqual(messages, ["Fatura cancelada nao pode ser fechada."])

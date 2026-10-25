@@ -1,5 +1,8 @@
 """Tests das views do app insights."""
 
+from unittest.mock import patch
+
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 
 from core.testing import AuthenticatedTestCase
@@ -230,3 +233,25 @@ class InsightViewTests(AuthenticatedTestCase):
         self.assertEqual(Goal.objects.count(), 0)
         messages = [str(message) for message in response.context["messages"]]
         self.assertEqual(messages, ["A categoria deste insight não existe mais."])
+
+    def test_decision_views_show_readable_message_for_dict_errors(self):
+        error = ValidationError({"amount": ["Meta invalida."], "__all__": ["Erro geral."]})
+        cases = {
+            "approve": "insights.views.approve_insight",
+            "ignore": "insights.views.ignore_insight",
+            "silence": "insights.views.silence_insight",
+        }
+        for name, target in cases.items():
+            with self.subTest(view=name), patch(target, side_effect=error):
+                response = self.client.post(
+                    reverse(f"insights:{name}", kwargs={"insight_id": self.insight.id}),
+                    follow=True,
+                )
+
+                self.assertRedirects(response, reverse("insights:page"))
+                messages = [str(m) for m in response.context["messages"]]
+                self.assertEqual(len(messages), 1)
+                self.assertIn("Meta invalida.", messages[0])
+                self.assertIn("Erro geral.", messages[0])
+                self.assertNotIn("{", messages[0])
+                self.assertNotIn("[", messages[0])
