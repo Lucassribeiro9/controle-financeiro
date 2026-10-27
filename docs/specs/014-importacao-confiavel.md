@@ -2,7 +2,7 @@
 
 Herda a baseline da spec 000 e as regras de importacao da spec 006. Entrega 1.3 da Etapa 1 do plano-mestre (Confluence, espaco FIN, pagina 950274). Segue a ADR-012 (padroes de arquitetura) e a ADR-008 (SQLite com `transaction_mode=IMMEDIATE` em producao).
 
-Issues: #234 (FIN-24), #235, #222, #223.
+Issues: #234 (FIN-24), #235, #222, #223, #266 (FIN-43).
 
 ## Contexto
 
@@ -135,6 +135,28 @@ Nenhuma mudanca de schema. `ImportedTransaction` ja tem `import_hash` indexado, 
 
 **Teste independente:** importar duas linhas `PADARIA X` de R$ 5,00 na mesma data gera duas pendencias; reimportar o mesmo arquivo marca as duas como duplicadas.
 
+### P2: Revisao abre nas pendentes, com abas e contadores (#266)
+
+**Historia:** Como usuario, quero abrir a revisao e ver so o que falta tratar, separado pelo que falta, sem perder o acesso ao que ja foi tratado.
+
+Cinco abas com contador acima da lista: Pendentes, Sem categoria, Sem conta, Duplicadas e Tratadas. Os filtros de arquivo, origem, conta, categoria, tipo, texto e periodo valem dentro da aba. O select de status sai da tela; o parametro `status` continua aceito como filtro adicional dentro da aba.
+
+**Criterios de Aceite:**
+
+1. QUANDO a revisao e aberta sem `tab` ENTAO o sistema DEVE mostrar so linhas `PENDING` e `DUPLICATE` (aba Pendentes), na tela e na API JSON `/imports/review/`.
+2. QUANDO `tab=sem-categoria` ENTAO o sistema DEVE listar `PENDING` e `DUPLICATE` sem `suggested_category`; QUANDO `tab=sem-conta`, as sem `suggested_account`.
+3. QUANDO `tab=duplicadas` ENTAO o sistema DEVE listar so as `DUPLICATE`; QUANDO `tab=tratadas`, as `CONFIRMED` e `DISCARDED`.
+4. SE `tab` tem valor desconhecido ENTAO o sistema DEVE usar Pendentes, sem erro.
+5. O sistema DEVE mostrar o contador das cinco abas, calculado com os filtros ativos (exceto a aba) numa unica consulta agregada.
+6. QUANDO uma linha e confirmada ou descartada, individual ou em lote ENTAO o sistema DEVE redirecionar para a mesma aba, com os mesmos filtros e a mesma pagina, e a linha deixa de aparecer na aba atual.
+7. QUANDO a aba nao tem linhas ENTAO o sistema DEVE mostrar mensagem de estado vazio propria da aba.
+8. QUANDO a linha esta `CONFIRMED` ou `DISCARDED` ENTAO o sistema NAO DEVE mostrar "Editar e confirmar" nem "Descartar"; na aba Tratadas a barra de acoes em lote nao aparece.
+9. QUANDO o usuario muda de aba ou de pagina ENTAO o sistema DEVE manter os filtros ativos nos links.
+10. QUANDO a home conta importacoes pendentes de revisao ENTAO o sistema DEVE contar `PENDING` e `DUPLICATE`, igual a aba Pendentes.
+11. O sistema DEVE manter o GET da revisao sem escrita no banco (ADR-012) e sem migration.
+
+**Teste independente:** importar um OFX sintetico, confirmar e descartar linhas e conferir que elas saem de Pendentes e aparecem em Tratadas, com contadores atualizados.
+
 ### P1: Conciliacao de um mes real (teste de aceite da Etapa 1)
 
 **Historia:** Como usuario, quero importar um mes real de extrato e ver saldo e fatura batendo com o banco, para comecar o uso real.
@@ -213,6 +235,8 @@ flowchart LR
 - View: confirmar linha descartada responde 400; confirmar com dado invalido responde 400; descartar linha confirmada responde 400.
 - Service: duas linhas identicas no mesmo arquivo viram duas pendencias; reimportacao marca as duas como duplicadas; uma importacao anterior e duas linhas iguais gera uma duplicada e uma pendente; `external_id` mantem a regra atual; contagem contra lancamentos cadastrados.
 - Service: `suggest_category` sugere Transporte para `99 POP` e `99*CORRIDA`, nao para `LOJA 1999 LTDA` nem `PAG*AMAZON 99,90`.
+- Selector (#266): cada aba, `tab` invalido, contadores com e sem filtros, numero fixo de consultas, combinacao com `status`.
+- View (#266): aba padrao na tela e na API; redirect de confirmar, descartar e lote preserva aba, filtros e pagina; links de aba mantem filtros; estado vazio por aba; linhas tratadas sem acoes; contador da home inclui duplicadas.
 - `python manage.py check`, `python manage.py makemigrations --check --dry-run`, `python manage.py test`.
 
 ## Ordem de Entrega
@@ -222,6 +246,8 @@ flowchart LR
 3. #222 - confirmacao e descarte individuais. Independente das anteriores; maior risco de saldo.
 4. #223 - duplicidade e categoria. Muda o staging; por ultimo para nao conflitar com a #235 em `stage_imported_transactions`.
 5. Teste de aceite, com as quatro mergeadas.
+
+A #266 (revisao por abas) nasce da homologacao com OFX reais e entra na Etapa 1 antes do aceite; nao depende das demais.
 
 ## Rastreabilidade
 
@@ -241,10 +267,16 @@ flowchart LR
 | DUP-01 | P1: Duplicidade - AC 1-3 | #223 | Pending |
 | DUP-02 | P1: Duplicidade - AC 4 | #223 | Pending |
 | CAT-01 | P1: Duplicidade e categoria - AC 5-6 | #223 | Pending |
+| REV-01 | P2: Revisao por abas - AC 1, 4 | #266 | Pending |
+| REV-02 | P2: Revisao por abas - AC 2-3 | #266 | Pending |
+| REV-03 | P2: Revisao por abas - AC 5, 9 | #266 | Pending |
+| REV-04 | P2: Revisao por abas - AC 6 | #266 | Pending |
+| REV-05 | P2: Revisao por abas - AC 7-8 | #266 | Pending |
+| REV-06 | P2: Revisao por abas - AC 10-11 | #266 | Pending |
 | ACE-01 | P1: Conciliacao - AC 1-2 | aceite | Pending |
 | ACE-02 | P1: Conciliacao - AC 3-4 | aceite | Pending |
 
-**Cobertura:** 16 requisitos; 14 ligados a uma issue, 2 ao teste de aceite; 0 verificados.
+**Cobertura:** 22 requisitos; 20 ligados a uma issue, 2 ao teste de aceite; 0 verificados.
 
 ## Criterios de Sucesso
 
