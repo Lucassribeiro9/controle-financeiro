@@ -9,6 +9,7 @@ from accounts.models import FinancialAccount
 from categories.models import Category
 from imports.models import ImportedTransaction
 from imports.selectors import IMPORT_REVIEW_PAGE_SIZE
+from imports.selectors import get_import_review_tab_counts
 from imports.selectors import get_imported_transactions_for_review
 from imports.selectors import paginate_imported_transactions_for_review
 from institutions.models import Institution
@@ -30,8 +31,8 @@ class ImportSelectorTests(TestCase):
         )
         self.category = Category.objects.create(name="Alimentacao")
 
-    def test_get_imported_transactions_for_review_returns_all_statuses_by_default(self):
-        """Deve listar todos os status por padrao."""
+    def test_get_imported_transactions_for_review_defaults_to_open_statuses(self):
+        """Deve listar so pendentes e duplicadas por padrao."""
 
         pending = ImportedTransaction.objects.create(
             source_file_name="extrato.csv",
@@ -64,7 +65,7 @@ class ImportSelectorTests(TestCase):
 
         imports = list(get_imported_transactions_for_review())
 
-        self.assertEqual(imports, [discarded, duplicate, pending])
+        self.assertEqual(imports, [duplicate, pending])
 
     def test_get_imported_transactions_for_review_filters_by_status(self):
         """Deve permitir filtro explicito por status."""
@@ -90,7 +91,8 @@ class ImportSelectorTests(TestCase):
 
         imports = list(
             get_imported_transactions_for_review(
-                status=ImportedTransaction.Status.DISCARDED
+                tab="tratadas",
+                status=ImportedTransaction.Status.DISCARDED,
             )
         )
 
@@ -250,3 +252,130 @@ class ImportSelectorTests(TestCase):
         self.assertEqual(len(first_page.object_list), IMPORT_REVIEW_PAGE_SIZE)
         self.assertEqual(len(second_page.object_list), 1)
         self.assertEqual(second_page.object_list[0], oldest)
+
+
+class ImportReviewTabsSelectorTests(TestCase):
+    """Garante abas e contadores da revisao de importacoes (#266)."""
+
+    def setUp(self):
+        """Cria um conjunto cobrindo todos os recortes das abas."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.category = Category.objects.create(name="Alimentacao")
+        Status = ImportedTransaction.Status
+        self.complete = self._create("completa", Status.PENDING, self.account, self.category)
+        self.no_category = self._create("sem-cat", Status.PENDING, self.account, None)
+        self.no_account = self._create("sem-conta", Status.PENDING, None, self.category)
+        self.duplicate = self._create("dup", Status.DUPLICATE, self.account, self.category)
+        self.duplicate_bare = self._create("dup-nua", Status.DUPLICATE, None, None)
+        self.confirmed = self._create("conf", Status.CONFIRMED, self.account, self.category)
+        self.discarded = self._create("desc", Status.DISCARDED, None, None)
+
+    def _create(self, name, status, account, category, file_name="extrato.ofx"):
+        return ImportedTransaction.objects.create(
+            source_file_name=file_name,
+            source_type=ImportedTransaction.SourceType.OFX,
+            raw_description=name,
+            normalized_description=name,
+            amount=Decimal("10.00"),
+            date=date(2026, 5, 10),
+            status=status,
+            suggested_account=account,
+            suggested_category=category,
+            import_hash=f"hash-{name}",
+        )
+
+    def _ids(self, **filters):
+        return set(
+            get_imported_transactions_for_review(**filters).values_list("id", flat=True)
+        )
+
+    def test_default_tab_is_pending_and_duplicate_only(self):
+        """Sem aba, lista PENDING e DUPLICATE."""
+
+        expected = {
+            self.complete.id,
+            self.no_category.id,
+            self.no_account.id,
+            self.duplicate.id,
+            self.duplicate_bare.id,
+        }
+        self.assertEqual(self._ids(), expected)
+        self.assertEqual(self._ids(tab="pendentes"), expected)
+
+    def test_unknown_tab_falls_back_to_pending(self):
+        """Aba invalida cai em Pendentes."""
+
+        self.assertEqual(self._ids(tab="xpto"), self._ids())
+
+    def test_each_tab_selects_expected_rows(self):
+        """Cada aba devolve o recorte esperado."""
+
+        self.assertEqual(
+            self._ids(tab="sem-categoria"),
+            {self.no_category.id, self.duplicate_bare.id},
+        )
+        self.assertEqual(
+            self._ids(tab="sem-conta"),
+            {self.no_account.id, self.duplicate_bare.id},
+        )
+        self.assertEqual(
+            self._ids(tab="duplicadas"),
+            {self.duplicate.id, self.duplicate_bare.id},
+        )
+        self.assertEqual(
+            self._ids(tab="tratadas"),
+            {self.confirmed.id, self.discarded.id},
+        )
+
+    def test_status_filter_applies_within_tab(self):
+        """O filtro status continua valendo dentro da aba."""
+
+        self.assertEqual(
+            self._ids(tab="tratadas", status="confirmed"), {self.confirmed.id}
+        )
+        self.assertEqual(self._ids(status="duplicate"), {self.duplicate.id, self.duplicate_bare.id})
+
+    def test_tab_counts_without_filters(self):
+        """Contadores das cinco abas."""
+
+        self.assertEqual(
+            get_import_review_tab_counts(),
+            {
+                "pendentes": 5,
+                "sem-categoria": 2,
+                "sem-conta": 2,
+                "duplicadas": 2,
+                "tratadas": 2,
+            },
+        )
+
+    def test_tab_counts_respect_filters_but_not_tab(self):
+        """Contadores respeitam filtros e ignoram a aba ativa."""
+
+        self._create("outro", ImportedTransaction.Status.PENDING, None, None, file_name="b.ofx")
+        counts = get_import_review_tab_counts(
+            source_file_name="b.ofx", tab="tratadas"
+        )
+        self.assertEqual(
+            counts,
+            {
+                "pendentes": 1,
+                "sem-categoria": 1,
+                "sem-conta": 1,
+                "duplicadas": 0,
+                "tratadas": 0,
+            },
+        )
+
+    def test_tab_counts_use_single_query(self):
+        """Os contadores saem de uma unica consulta."""
+
+        with self.assertNumQueries(1):
+            get_import_review_tab_counts(q="a")
