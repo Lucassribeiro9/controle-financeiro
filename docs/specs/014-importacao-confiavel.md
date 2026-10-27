@@ -34,6 +34,9 @@ A Etapa 1 termina quando um mes real de extrato concilia com o banco. Com esses 
 | Falso positivo de "mercado" (Mercado Livre, Mercado Pago) na categoria sugerida | Nao citado na #223 e a sugestao e revisavel; se aparecer no aceite, vira issue nova. |
 | Mudancas no importador OFX | O OFX ja tem formato fixo e nao tem defeito aberto; so herda a recusa de `NaN`/`Infinity`. |
 | Duplicidade entre origens diferentes (mesmo extrato em CSV e OFX) | O hash inclui a origem; fica para a deteccao contra lancamentos ja cadastrados. |
+| Conta sugerida automatica pelo historico | Fica na #269 (Etapa 2); a #267 sugere so a categoria. |
+| Sugestao pelo historico fora do staging (reaplicar nas pendentes ja gravadas, ao confirmar ou na revisao) | A sugestao acontece so ao gravar a linha; reaplicar vira issue derivada se a homologacao mostrar necessidade. |
+| Lancamentos manuais no historico | Fonte e so o que veio de importacao confirmada. |
 | Processamento assincrono de arquivos grandes | Fora de escopo desde a spec 006. |
 
 ## Schema
@@ -63,6 +66,13 @@ Nenhuma mudanca de schema. `ImportedTransaction` ja tem `import_hash` indexado, 
 | Mensagens de erro | Pelo helper que a view ja usa; `core/errors.py` ainda nao existe | Igual a spec 013 | s |
 | Extrato real | Nunca entra no repositorio; os testes usam fixtures sinteticas com o mesmo cabecalho, delimitador e formatos | Dado pessoal | n |
 | Registro do aceite | Resumo sem valores nem descricoes (data, banco, formato, numero de linhas, diferenca por conta e fatura) no PR que fecha a 1.3 e no plano-mestre | Rastro sem expor dados pessoais | n |
+| Chave do historico (#267) | `raw_description` exato (com caixa) do arquivo MAIS `suggested_transaction_type` igual ao da linha | Decisao do usuario; o tipo evita sugerir categoria de despesa para estorno com a mesma descricao | s |
+| Origem da categoria (#267) | `confirmed_transaction.category` (valor atual, reflete edicao posterior do lancamento), nao `suggested_category` | A categoria confirmada e a que o usuario aprovou | s |
+| Historico elegivel (#267) | So importacoes `CONFIRMED` com lancamento de categoria ativa; confirmacoes sem categoria ou com categoria inativa sao ignoradas | Evita sugerir categoria que nao pode mais ser usada | s |
+| "Mais recente" (#267) | Maior `confirmed_transaction_id`; vale a mais recente valida | Id imutavel e crescente na ordem de confirmacao | s |
+| Prioridade da sugestao (#267) | Historico, depois palavra-chave (`suggest_category`), depois nenhuma | O historico reflete a escolha do usuario | s |
+| Escopo da sugestao (#267) | So no staging; linhas ja gravadas nao sao reavaliadas | Decisao do usuario | s |
+| Ordem de importacao do historico (#267) | Importar mes a mes, do mais antigo ao mais novo, confirmando cada mes antes do seguinte | Sem isso o historico nao existe quando o mes seguinte e gravado | s |
 | Ordem de entrega | #234, #235, #222, #223 | #235 reusa o parse de valor da #234; #222 e o risco maior de saldo; #223 por ultimo | n |
 
 **Questoes abertas:** nenhuma - todas resolvidas ou registradas acima.
@@ -157,6 +167,22 @@ Cinco abas com contador acima da lista: Pendentes, Sem categoria, Sem conta, Dup
 
 **Teste independente:** importar um OFX sintetico, confirmar e descartar linhas e conferir que elas saem de Pendentes e aparecem em Tratadas, com contadores atualizados.
 
+### P2: Categoria sugerida pelo historico confirmado (#267)
+
+**Historia:** Como usuario, quero que a importacao sugira a categoria que eu ja usei para a mesma descricao, para nao categorizar a mesma coisa toda vez.
+
+**Criterios de Aceite:**
+
+1. QUANDO uma linha importada tem a mesma descricao original do arquivo (`raw_description`) e o mesmo tipo (`suggested_transaction_type`) de uma importacao `CONFIRMED` anterior ENTAO o sistema DEVE sugerir a categoria do lancamento confirmado (`confirmed_transaction.category`).
+2. SE ha varias confirmacoes para a mesma chave ENTAO o sistema DEVE usar a mais recente (maior `confirmed_transaction_id`) cuja categoria exista e esteja ativa.
+3. SE nenhuma confirmacao tem categoria ativa ENTAO o sistema DEVE cair na sugestao por palavra-chave e, sem ela, deixar sem categoria.
+4. SE o tipo da linha difere do tipo da confirmacao ENTAO o sistema NAO DEVE usar essa confirmacao.
+5. O sistema DEVE consultar o historico uma vez por arquivo, nao por linha.
+6. QUANDO a sugestao vem do historico ENTAO a categoria DEVE seguir editavel na confirmacao individual e no "aplicar categoria" em lote.
+7. O sistema DEVE manter a sugestao so no staging, sem GET que grave (ADR-012) e sem migration.
+
+**Teste independente:** confirmar uma linha `PADARIA X` como Alimentacao e importar outro arquivo com `PADARIA X`: a nova linha chega sugerida como Alimentacao.
+
 ### P1: Conciliacao de um mes real (teste de aceite da Etapa 1)
 
 **Historia:** Como usuario, quero importar um mes real de extrato e ver saldo e fatura batendo com o banco, para comecar o uso real.
@@ -184,6 +210,8 @@ Roda depois das quatro issues mergeadas, numa copia do banco de producao.
 8. Registrar o resultado sem valores nem descricoes: data, banco, formato, numero de linhas, diferenca por conta e por fatura, linhas recusadas e o motivo.
 
 **Passa quando:** diferenca R$ 0,00 em cada conta e na fatura, nenhuma linha com valor diferente do arquivo, reimportacao 100% duplicada. Se o extrato usar um formato fora de escopo, o aceite falha e o formato vira issue nova.
+
+**Nota (#267):** para a sugestao pelo historico funcionar, importar o historico mes a mes, do mais antigo ao mais novo, confirmando cada mes antes de importar o seguinte.
 
 **Limitacao conhecida:** o pagamento de fatura registrado no passo 4 recebe a data do dia da conciliacao (`timezone.localdate()`, spec 013); o saldo final nao muda.
 
@@ -235,6 +263,9 @@ flowchart LR
 - View: confirmar linha descartada responde 400; confirmar com dado invalido responde 400; descartar linha confirmada responde 400.
 - Service: duas linhas identicas no mesmo arquivo viram duas pendencias; reimportacao marca as duas como duplicadas; uma importacao anterior e duas linhas iguais gera uma duplicada e uma pendente; `external_id` mantem a regra atual; contagem contra lancamentos cadastrados.
 - Service: `suggest_category` sugere Transporte para `99 POP` e `99*CORRIDA`, nao para `LOJA 1999 LTDA` nem `PAG*AMAZON 99,90`.
+- Selector (#267): chave com descricao e tipo; tipo diferente nao casa; mais recente vence; categoria nula ou inativa ignorada; sem historico devolve vazio; uma unica consulta.
+- Service (#267): historico vence a palavra-chave; sem historico mantem a palavra-chave; consulta do historico uma vez por arquivo; regra do `99` preservada.
+- View (#267): categoria vinda do historico editavel na confirmacao individual e no lote.
 - Selector (#266): cada aba, `tab` invalido, contadores com e sem filtros, numero fixo de consultas, combinacao com `status`.
 - View (#266): aba padrao na tela e na API; redirect de confirmar, descartar e lote preserva aba, filtros e pagina; links de aba mantem filtros; estado vazio por aba; linhas tratadas sem acoes; contador da home inclui duplicadas.
 - `python manage.py check`, `python manage.py makemigrations --check --dry-run`, `python manage.py test`.
@@ -273,10 +304,14 @@ A #266 (revisao por abas) nasce da homologacao com OFX reais e entra na Etapa 1 
 | REV-04 | P2: Revisao por abas - AC 6 | #266 | Pending |
 | REV-05 | P2: Revisao por abas - AC 7-8 | #266 | Pending |
 | REV-06 | P2: Revisao por abas - AC 10-11 | #266 | Pending |
+| CAT-02 | P2: Categoria pelo historico - AC 1, 4 | #267 | Pending |
+| CAT-03 | P2: Categoria pelo historico - AC 2-3 | #267 | Pending |
+| CAT-04 | P2: Categoria pelo historico - AC 5, 7 | #267 | Pending |
+| CAT-05 | P2: Categoria pelo historico - AC 6 | #267 | Pending |
 | ACE-01 | P1: Conciliacao - AC 1-2 | aceite | Pending |
 | ACE-02 | P1: Conciliacao - AC 3-4 | aceite | Pending |
 
-**Cobertura:** 22 requisitos; 20 ligados a uma issue, 2 ao teste de aceite; 0 verificados.
+**Cobertura:** 26 requisitos; 24 ligados a uma issue, 2 ao teste de aceite; 0 verificados.
 
 ## Criterios de Sucesso
 
