@@ -327,12 +327,21 @@ def _get_due_statement_alerts(*, today) -> list[dict]:
     ]
 
 
+def _count_imports_awaiting_review() -> int:
+    """Conta importacoes pendentes e duplicadas, como a aba Pendentes da revisao."""
+
+    return ImportedTransaction.objects.filter(
+        status__in=(
+            ImportedTransaction.Status.PENDING,
+            ImportedTransaction.Status.DUPLICATE,
+        )
+    ).count()
+
+
 def _get_pending_import_alerts() -> list[dict]:
     """Retorna alerta agregado para importacoes pendentes de revisao."""
 
-    pending_count = ImportedTransaction.objects.filter(
-        status=ImportedTransaction.Status.PENDING
-    ).count()
+    pending_count = _count_imports_awaiting_review()
 
     if pending_count == 0:
         return []
@@ -398,9 +407,7 @@ def _build_pending_items(*, year: int, month: int) -> list[dict]:
 
     items = []
 
-    pending_imports = ImportedTransaction.objects.filter(
-        status=ImportedTransaction.Status.PENDING
-    ).count()
+    pending_imports = _count_imports_awaiting_review()
     if pending_imports:
         items.append(
             {

@@ -333,6 +333,30 @@ class OperationalHomeSelectorTests(TestCase):
 
         self.assertEqual(pending_items, [])
 
+    def test_import_counters_count_pending_and_duplicate_only(self):
+        """Contador de importacoes da home segue a aba Pendentes da revisao."""
+
+        Status = ImportedTransaction.Status
+        for index, status in enumerate(
+            (Status.PENDING, Status.DUPLICATE, Status.CONFIRMED, Status.DISCARDED)
+        ):
+            ImportedTransaction.objects.create(
+                source_file_name="extrato.csv",
+                source_type=ImportedTransaction.SourceType.CSV,
+                raw_description=f"Linha {index}",
+                normalized_description=f"linha {index}",
+                amount=Decimal("10.00"),
+                date=date(2026, 5, 20),
+                status=status,
+            )
+
+        context = get_operational_home_context(today=self.today)
+
+        alert = next(a for a in context["alerts"] if a["type"] == "imports")
+        item = next(i for i in context["pending_items"] if i["type"] == "imports")
+        self.assertEqual(alert["count"], 2)
+        self.assertEqual(item["count"], 2)
+
     def test_quick_actions_point_to_existing_flows(self):
         """Atalhos fixos devem apontar para rotas existentes."""
 
