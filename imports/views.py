@@ -16,8 +16,11 @@ from transactions.models import Transaction
 
 from .importers import get_importer_for_source_type
 from .models import ImportedTransaction
+from .selectors import IMPORT_REVIEW_TABS
 from .selectors import get_imported_transactions_for_review
 from .selectors import get_import_review_filter_options
+from .selectors import get_import_review_tab_counts
+from .selectors import normalize_review_tab
 from .selectors import paginate_imported_transactions_for_review
 from .services import (
     apply_account_to_imports,
@@ -32,6 +35,14 @@ from .services import (
 
 REVIEW_NEXT_VALUE = "review-page"
 
+REVIEW_EMPTY_MESSAGES = {
+    "pendentes": "Nada pendente nesta importação.",
+    "sem-categoria": "Nenhuma importação sem categoria.",
+    "sem-conta": "Nenhuma importação sem conta.",
+    "duplicadas": "Nenhuma possível duplicidade para revisar.",
+    "tratadas": "Nenhuma importação tratada ainda.",
+}
+
 
 def _review_filters_from_request(request: HttpRequest) -> dict:
     """Extrai filtros da revisao sem incluir valores vazios."""
@@ -39,6 +50,7 @@ def _review_filters_from_request(request: HttpRequest) -> dict:
     return {
         key: value
         for key, value in {
+            "tab": request.GET.get("tab"),
             "status": request.GET.get("status"),
             "source_file_name": request.GET.get("source_file_name"),
             "source_type": request.GET.get("source_type"),
@@ -59,6 +71,26 @@ def _query_string_without_page(request: HttpRequest) -> str:
     query_params = request.GET.copy()
     query_params.pop("page", None)
     return query_params.urlencode()
+
+
+def _build_review_tabs(request: HttpRequest, counts: dict, active_tab: str) -> list[dict]:
+    """Monta as abas com contador e link que preserva filtros, sem a pagina."""
+
+    tabs = []
+    for key, label in IMPORT_REVIEW_TABS:
+        query_params = request.GET.copy()
+        query_params.pop("page", None)
+        query_params["tab"] = key
+        tabs.append(
+            {
+                "key": key,
+                "label": label,
+                "count": counts[key],
+                "query_string": query_params.urlencode(),
+                "is_active": key == active_tab,
+            }
+        )
+    return tabs
 
 
 def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -> dict:
@@ -324,6 +356,9 @@ def review_imports_page(request: HttpRequest):
         page_number=request.GET.get("page"),
     )
     filter_options = get_import_review_filter_options()
+    review_filters = _review_filters_from_request(request)
+    active_tab = normalize_review_tab(review_filters.get("tab"))
+    tab_counts = get_import_review_tab_counts(**review_filters)
     return render(
         request,
         "imports/review.html",
@@ -331,6 +366,10 @@ def review_imports_page(request: HttpRequest):
             "imported_transactions": page_obj.object_list,
             "page_obj": page_obj,
             "filter_options": filter_options,
+            "active_tab": active_tab,
+            "is_treated_tab": active_tab == "tratadas",
+            "empty_message": REVIEW_EMPTY_MESSAGES[active_tab],
+            "review_tabs": _build_review_tabs(request, tab_counts, active_tab),
             "active_filters": request.GET,
             "review_query_string": request.GET.urlencode(),
             "pagination_query_string": _query_string_without_page(request),

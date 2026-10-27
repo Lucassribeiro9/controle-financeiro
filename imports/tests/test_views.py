@@ -209,10 +209,17 @@ class ImportViewTests(AuthenticatedTestCase):
         response = self.client.get(reverse("imports:review"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["count"], 2)
+        self.assertEqual(response.json()["count"], 1)
         self.assertEqual(
             {item["raw_description"] for item in response.json()["results"]},
-            {"Mercado Dia", "Descartado"},
+            {"Mercado Dia"},
+        )
+
+        treated = self.client.get(reverse("imports:review"), data={"tab": "tratadas"})
+
+        self.assertEqual(
+            {item["raw_description"] for item in treated.json()["results"]},
+            {"Descartado"},
         )
 
     def test_review_imports_filters_by_status_and_period(self):
@@ -331,7 +338,7 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertNotContains(response, "Padaria")
 
     def test_review_imports_page_filters_by_status_and_period(self):
-        """Deve aplicar e preservar filtros de status e periodo na tela."""
+        """Deve aplicar e preservar filtros de status e periodo na tela, sem o select de status."""
 
         ImportedTransaction.objects.create(
             source_file_name="extrato.csv",
@@ -374,11 +381,7 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertContains(response, "Mercado Dia")
         self.assertNotContains(response, "Descartado")
         self.assertNotContains(response, "Antigo")
-        self.assertContains(
-            response,
-            f'<option value="{ImportedTransaction.Status.PENDING}" selected>',
-            html=False,
-        )
+        self.assertNotContains(response, '<select name="status">', html=False)
         self.assertContains(response, 'name="start_date" type="date" value="2026-05-01"', html=False)
         self.assertContains(response, 'name="end_date" type="date" value="2026-05-31"', html=False)
 
@@ -431,6 +434,204 @@ class ImportViewTests(AuthenticatedTestCase):
             "?status=pending&amp;start_date=2026-05-01&amp;end_date=2026-05-31&amp;page=1",
             html=False,
         )
+
+    def _import(self, name, status=ImportedTransaction.Status.PENDING, *, account=None,
+                category=None, file_name="extrato.ofx", day=10):
+        """Cria uma importacao para testes das abas."""
+
+        return ImportedTransaction.objects.create(
+            source_file_name=file_name,
+            source_type=ImportedTransaction.SourceType.OFX,
+            raw_description=name,
+            normalized_description=name,
+            amount=Decimal("10.00"),
+            date=date(2026, 5, day),
+            status=status,
+            suggested_account=account,
+            suggested_category=category,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+    def _review_tab_fixture(self):
+        Status = ImportedTransaction.Status
+        self._import("Pronta", account=self.account, category=self.category)
+        self._import("SemCategoria", account=self.account)
+        self._import("SemConta", category=self.category)
+        self._import("Duplicada", Status.DUPLICATE, account=self.account, category=self.category)
+        self._import("Confirmada", Status.CONFIRMED, account=self.account)
+        self._import("Descartada", Status.DISCARDED)
+
+    def test_review_page_opens_on_pending_tab_with_counters(self):
+        """A revisao abre em Pendentes e mostra os contadores das cinco abas."""
+
+        self._review_tab_fixture()
+
+        response = self.client.get(reverse("imports:review-page"))
+
+        self.assertContains(response, "Pronta")
+        self.assertContains(response, "Duplicada")
+        self.assertNotContains(response, "Confirmada<")
+        self.assertNotContains(response, "Descartada")
+        self.assertEqual(response.context["active_tab"], "pendentes")
+        self.assertEqual(
+            [(tab["key"], tab["count"]) for tab in response.context["review_tabs"]],
+            [
+                ("pendentes", 4),
+                ("sem-categoria", 1),
+                ("sem-conta", 1),
+                ("duplicadas", 1),
+                ("tratadas", 2),
+            ],
+        )
+        self.assertContains(response, 'aria-current="page"', html=False)
+
+    def test_review_page_tab_param_selects_rows_and_invalid_falls_back(self):
+        """O parametro tab escolhe a aba; valor invalido cai em Pendentes."""
+
+        self._review_tab_fixture()
+
+        treated = self.client.get(reverse("imports:review-page"), {"tab": "tratadas"})
+        self.assertContains(treated, "Descartada")
+        self.assertNotContains(treated, "SemConta")
+
+        invalid = self.client.get(reverse("imports:review-page"), {"tab": "xpto"})
+        self.assertEqual(invalid.status_code, 200)
+        self.assertEqual(invalid.context["active_tab"], "pendentes")
+        self.assertContains(invalid, "SemConta")
+
+    def test_review_page_counters_respect_filters_and_tab_links_keep_them(self):
+        """Contadores respeitam filtros e os links de aba mantem os filtros."""
+
+        self._import("Em outro arquivo", file_name="outro.ofx")
+        self._review_tab_fixture()
+
+        response = self.client.get(
+            reverse("imports:review-page"),
+            {"source_file_name": "outro.ofx", "page": "3"},
+        )
+
+        counts = {tab["key"]: tab["count"] for tab in response.context["review_tabs"]}
+        self.assertEqual(counts["pendentes"], 1)
+        self.assertEqual(counts["tratadas"], 0)
+        self.assertContains(
+            response,
+            "?source_file_name=outro.ofx&amp;tab=tratadas",
+            html=False,
+        )
+        self.assertNotContains(response, "page=3&amp;tab")
+
+    def test_review_page_empty_state_is_per_tab(self):
+        """Cada aba vazia mostra a propria mensagem."""
+
+        response = self.client.get(reverse("imports:review-page"))
+        self.assertContains(response, "Nada pendente nesta importação")
+
+        treated = self.client.get(reverse("imports:review-page"), {"tab": "tratadas"})
+        self.assertNotContains(treated, "Nada pendente nesta importação")
+        self.assertContains(treated, "Nenhuma importação tratada ainda")
+
+    def test_review_page_treated_rows_have_no_actions(self):
+        """Linhas tratadas nao mostram editar/descartar e a aba esconde o lote."""
+
+        self._review_tab_fixture()
+
+        treated = self.client.get(reverse("imports:review-page"), {"tab": "tratadas"})
+        self.assertNotContains(treated, "Editar e confirmar")
+        self.assertNotContains(treated, ">Descartar<", html=False)
+        self.assertNotContains(treated, 'class="bulk-action-bar"', html=False)
+
+        pending = self.client.get(reverse("imports:review-page"))
+        self.assertContains(pending, "Editar e confirmar")
+        self.assertContains(pending, 'class="bulk-action-bar"', html=False)
+
+    def test_review_page_forms_carry_tab_filters_and_page(self):
+        """Os formularios de acao devolvem a query completa da tela."""
+
+        self._import("Pronta", account=self.account)
+
+        response = self.client.get(
+            reverse("imports:review-page"),
+            {"tab": "sem-categoria", "source_file_name": "extrato.ofx", "page": "1"},
+        )
+
+        self.assertContains(
+            response,
+            'name="review_query" value="tab=sem-categoria&amp;source_file_name=extrato.ofx&amp;page=1"',
+            html=False,
+        )
+
+    def test_review_page_get_does_not_write(self):
+        """GET da revisao nao grava (ADR-012)."""
+
+        self._review_tab_fixture()
+        before = list(ImportedTransaction.objects.values_list("id", "status", "updated_at"))
+
+        for tab in ("pendentes", "sem-categoria", "sem-conta", "duplicadas", "tratadas"):
+            self.client.get(reverse("imports:review-page"), {"tab": tab})
+            self.client.get(reverse("imports:review"), {"tab": tab})
+
+        after = list(ImportedTransaction.objects.values_list("id", "status", "updated_at"))
+        self.assertEqual(before, after)
+
+    def test_confirm_from_page_redirect_keeps_tab_filters_and_page(self):
+        """Confirmar pela tela volta para a mesma aba, filtros e pagina."""
+
+        item = self._import("Pronta", account=self.account)
+        query = "tab=sem-categoria&source_file_name=extrato.ofx&page=2"
+
+        response = self.client.post(
+            reverse("imports:confirm", kwargs={"imported_transaction_id": item.id}),
+            {"next": "review-page", "review_query": query, "transaction_type": "expense"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"{reverse('imports:review-page')}?{query}")
+
+    def test_discard_from_page_redirect_keeps_tab_filters_and_page(self):
+        """Descartar pela tela volta para a mesma aba, filtros e pagina."""
+
+        item = self._import("Pronta", account=self.account)
+        query = "tab=duplicadas&q=Pronta&page=2"
+
+        response = self.client.post(
+            reverse("imports:discard", kwargs={"imported_transaction_id": item.id}),
+            {"next": "review-page", "review_query": query},
+        )
+
+        self.assertEqual(response.url, f"{reverse('imports:review-page')}?{query}")
+
+    def test_bulk_review_redirect_keeps_tab_filters_and_page(self):
+        """Acoes em lote voltam para a mesma aba, filtros e pagina."""
+
+        item = self._import("Pronta", account=self.account)
+        query = "tab=sem-categoria&q=Pronta&page=2"
+
+        for payload in (
+            {"bulk_action": "discard", "selected_imports": [item.id]},
+            {"bulk_action": "confirm", "selected_imports": [item.id]},
+            {"bulk_action": "apply_account"},
+        ):
+            response = self.client.post(
+                reverse("imports:bulk-review"), {**payload, "review_query": query}
+            )
+            self.assertEqual(response.url, f"{reverse('imports:review-page')}?{query}")
+
+    def test_confirmed_row_leaves_pending_tab_and_counters_update(self):
+        """Depois de confirmar, a linha sai de Pendentes e entra em Tratadas."""
+
+        item = self._import("Pronta", account=self.account, category=self.category)
+        self.client.post(
+            reverse("imports:confirm", kwargs={"imported_transaction_id": item.id}),
+            {"next": "review-page", "transaction_type": "expense"},
+        )
+
+        pending = self.client.get(reverse("imports:review-page"))
+        treated = self.client.get(reverse("imports:review-page"), {"tab": "tratadas"})
+
+        self.assertNotContains(pending, "Pronta")
+        self.assertContains(treated, "Pronta")
+        counts = {tab["key"]: tab["count"] for tab in pending.context["review_tabs"]}
+        self.assertEqual((counts["pendentes"], counts["tratadas"]), (0, 1))
 
     def test_confirm_import_creates_transaction(self):
         """Deve confirmar importacao e criar transacao real."""

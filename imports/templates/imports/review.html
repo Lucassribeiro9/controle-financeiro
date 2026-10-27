@@ -12,17 +12,17 @@
         <a class="button" href="{% url 'imports:upload-page' %}">Novo upload</a>
     </header>
 
-    <form class="filter-bar import-filter-bar" method="get" action="{% url 'imports:review-page' %}">
-        <label class="form-field">
-            <span>Status</span>
-            <select name="status">
-                <option value="">Todas</option>
-                {% for value, label in filter_options.statuses %}
-                    <option value="{{ value }}" {% if active_filters.status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </label>
+    <nav class="review-tabs" aria-label="Abas da revisão">
+        {% for tab in review_tabs %}
+            <a class="review-tab{% if tab.is_active %} is-active{% endif %}" href="?{{ tab.query_string }}"{% if tab.is_active %} aria-current="page"{% endif %}>
+                <span>{{ tab.label }}</span>
+                <span class="review-tab-count">{{ tab.count }}</span>
+            </a>
+        {% endfor %}
+    </nav>
 
+    <form class="filter-bar import-filter-bar" method="get" action="{% url 'imports:review-page' %}">
+        <input type="hidden" name="tab" value="{{ active_tab }}">
         <label class="form-field">
             <span>Arquivo</span>
             <select name="source_file_name">
@@ -91,6 +91,7 @@
         <button class="button" type="submit">Filtrar</button>
     </form>
 
+    {% if active_tab != "tratadas" %}
     <form id="bulk-imports-form" class="bulk-action-bar" method="post" action="{% url 'imports:bulk-review' %}">
         {% csrf_token %}
         <input type="hidden" name="review_query" value="{{ review_query_string }}">
@@ -119,21 +120,26 @@
             <button class="button button-danger" type="submit" name="bulk_action" value="discard">Descartar selecionadas</button>
         </div>
     </form>
+    {% endif %}
 
     <div class="item-list">
         {% for imported_transaction in imported_transactions %}
             <article class="import-card">
                 <div>
                     <div class="card-title-row">
-                        <label class="checkbox-row">
-                            <input
-                                form="bulk-imports-form"
-                                type="checkbox"
-                                name="selected_imports"
-                                value="{{ imported_transaction.id }}"
-                            >
-                            <span>{{ imported_transaction.raw_description }}</span>
-                        </label>
+                        {% if is_treated_tab %}
+                            <strong>{{ imported_transaction.raw_description }}</strong>
+                        {% else %}
+                            <label class="checkbox-row">
+                                <input
+                                    form="bulk-imports-form"
+                                    type="checkbox"
+                                    name="selected_imports"
+                                    value="{{ imported_transaction.id }}"
+                                >
+                                <span>{{ imported_transaction.raw_description }}</span>
+                            </label>
+                        {% endif %}
                         <span class="{{ imported_transaction.status|status_badge_class }}">{{ imported_transaction.get_status_display }}</span>
                     </div>
 
@@ -171,6 +177,7 @@
                     {% endif %}
                 </div>
 
+                {% if imported_transaction.status == "pending" or imported_transaction.status == "duplicate" %}
                 <details class="import-edit-details">
                     <summary>Editar e confirmar</summary>
 
@@ -236,10 +243,11 @@
                     <input type="hidden" name="review_query" value="{{ review_query_string }}">
                     <button class="button button-danger" type="submit">Descartar</button>
                 </form>
+                {% endif %}
             </article>
         {% empty %}
             <section class="panel">
-                <p class="empty">Nenhuma importação pendente no momento.</p>
+                <p class="empty">{{ empty_message }}</p>
             </section>
         {% endfor %}
     </div>
