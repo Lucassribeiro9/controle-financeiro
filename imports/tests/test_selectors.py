@@ -9,6 +9,7 @@ from accounts.models import FinancialAccount
 from categories.models import Category
 from imports.models import ImportedTransaction
 from imports.selectors import IMPORT_REVIEW_PAGE_SIZE
+from imports.selectors import get_category_history
 from imports.selectors import get_import_review_tab_counts
 from imports.selectors import get_imported_transactions_for_review
 from imports.selectors import paginate_imported_transactions_for_review
@@ -379,3 +380,140 @@ class ImportReviewTabsSelectorTests(TestCase):
 
         with self.assertNumQueries(1):
             get_import_review_tab_counts(q="a")
+
+
+class CategoryHistorySelectorTests(TestCase):
+    """Garante a consulta de categoria pelo historico confirmado (#267)."""
+
+    def setUp(self):
+        """Cria categorias e uma conta para os lancamentos confirmados."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.food = Category.objects.create(name="Alimentacao")
+        self.transport = Category.objects.create(name="Transporte")
+
+    def _confirmed(
+        self,
+        *,
+        description="PADARIA X",
+        category=None,
+        transaction_type=Transaction.TransactionType.EXPENSE,
+        suggested_type=None,
+    ):
+        """Cria uma importacao confirmada com o lancamento correspondente."""
+
+        transaction = Transaction.objects.create(
+            description=description,
+            amount=Decimal("10.00"),
+            transaction_type=transaction_type,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=category,
+            date=date(2026, 5, 10),
+        )
+        return ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description=description,
+            normalized_description=description,
+            amount=Decimal("10.00"),
+            date=date(2026, 5, 10),
+            suggested_transaction_type=suggested_type or transaction_type,
+            status=ImportedTransaction.Status.CONFIRMED,
+            confirmed_transaction=transaction,
+        )
+
+    def _key(self, description="PADARIA X", transaction_type=Transaction.TransactionType.EXPENSE):
+        return (description, transaction_type)
+
+    def test_returns_category_for_description_and_type(self):
+        """Deve devolver a categoria do lancamento confirmado para a chave."""
+
+        self._confirmed(category=self.food)
+
+        result = get_category_history([self._key()])
+
+        self.assertEqual(result, {self._key(): self.food})
+
+    def test_different_type_does_not_match(self):
+        """Deve ignorar confirmacao de outro tipo, mesmo com a mesma descricao."""
+
+        self._confirmed(category=self.food, transaction_type=Transaction.TransactionType.INCOME)
+
+        result = get_category_history([self._key()])
+
+        self.assertEqual(result, {})
+
+    def test_description_match_is_exact(self):
+        """Deve comparar a descricao original sem normalizar caixa."""
+
+        self._confirmed(category=self.food)
+
+        result = get_category_history([self._key("padaria x")])
+
+        self.assertEqual(result, {})
+
+    def test_most_recent_confirmation_wins(self):
+        """Deve usar a categoria do lancamento confirmado mais recentemente."""
+
+        self._confirmed(category=self.food)
+        self._confirmed(category=self.transport)
+
+        result = get_category_history([self._key()])
+
+        self.assertEqual(result[self._key()], self.transport)
+
+    def test_ignores_missing_or_inactive_category_and_falls_back_to_older(self):
+        """Deve pular confirmacoes sem categoria ou com categoria inativa."""
+
+        inactive = Category.objects.create(name="Antiga", is_active=False)
+        self._confirmed(category=self.food)
+        self._confirmed(category=inactive)
+        self._confirmed(category=None)
+
+        result = get_category_history([self._key()])
+
+        self.assertEqual(result[self._key()], self.food)
+
+    def test_ignores_unconfirmed_imports(self):
+        """Deve ignorar importacoes que nao estao confirmadas."""
+
+        confirmed = self._confirmed(category=self.food)
+        ImportedTransaction.objects.filter(pk=confirmed.pk).update(
+            status=ImportedTransaction.Status.DISCARDED, confirmed_transaction=None
+        )
+
+        self.assertEqual(get_category_history([self._key()]), {})
+
+    def test_uses_current_transaction_category(self):
+        """Deve refletir a categoria atual do lancamento, nao a do momento da confirmacao."""
+
+        confirmed = self._confirmed(category=self.food)
+        Transaction.objects.filter(pk=confirmed.confirmed_transaction_id).update(
+            category=self.transport
+        )
+
+        self.assertEqual(get_category_history([self._key()])[self._key()], self.transport)
+
+    def test_empty_keys_do_not_query(self):
+        """Deve devolver vazio sem consultar o banco."""
+
+        with self.assertNumQueries(0):
+            self.assertEqual(get_category_history([]), {})
+
+    def test_runs_single_query_for_many_keys(self):
+        """Deve resolver todas as chaves numa unica consulta."""
+
+        self._confirmed(description="A", category=self.food)
+        self._confirmed(description="B", category=self.transport)
+
+        with self.assertNumQueries(1):
+            result = get_category_history([self._key("A"), self._key("B"), self._key("C")])
+
+        self.assertEqual(len(result), 2)
