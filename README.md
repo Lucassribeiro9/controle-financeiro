@@ -96,6 +96,7 @@ curta/padrao, com `DJANGO_DEBUG` verdadeiro ou sem `DJANGO_ALLOWED_HOSTS`.
    | `DJANGO_CSRF_TRUSTED_ORIGINS` | nao | Origens HTTPS confiaveis, separadas por virgula |
    | `DJANGO_SECURE_HSTS_SECONDS` | nao | Padrao 3600; suba so depois de validar o HTTPS |
    | `DJANGO_SECURE_PROXY_SSL_HEADER` | nao | `true` se um proxy termina o TLS e envia `X-Forwarded-Proto` |
+   | `MAINTENANCE_INTERVAL_SECONDS` | nao | Intervalo da rotina diaria (servico `scheduler`); padrao 3600 |
 
 2. Suba com o compose de producao (gunicorn, estaticos via WhiteNoise, usuario sem privilegios):
 
@@ -112,6 +113,35 @@ Observacoes:
 - A producao exige HTTPS (cookies seguros e redirect). Atras de um proxy, defina `DJANGO_SECURE_PROXY_SSL_HEADER=true`.
 - HSTS comeca em 1 hora; `includeSubDomains`/`preload` (W005/W021) ficam silenciados ate haver um deploy HTTPS validado.
 - Se for necessario, o Nginx pode assumir `/static/` no futuro; hoje o WhiteNoise serve os estaticos.
+
+### Rotina diaria (previsoes, faturas, metas e insights)
+
+Telas (GET) nunca gravam no banco (ADR-012). O que antes acontecia ao abrir uma tela
+passou para o comando `daily_maintenance` (ADR-013), que e idempotente e faz, nesta ordem:
+
+1. gera as previsoes das recorrencias ativas do mes corrente;
+2. fecha faturas abertas ou previstas cuja data de fechamento chegou;
+3. marca como atrasadas as faturas vencidas sem pagamento total;
+4. recalcula `current_amount` e `status` das metas mensais do mes corrente;
+5. gera os insights do mes **anterior** (o comando manual `generate_insights` continua usando o mes corrente por padrao).
+
+Cada passo roda em transacao propria: se um falhar, os outros continuam e o comando
+termina com erro listando os passos com falha. A saida mostra a contagem por passo.
+
+No compose de producao, o servico `scheduler` (mesma imagem, mesmo volume) espera as
+migrations, roda a rotina ao subir e repete a cada `MAINTENANCE_INTERVAL_SECONDS`
+(padrao 3600 s). Se a rotina falhar, o servico registra e tenta de novo no proximo ciclo.
+
+```bash
+# logs do agendador
+docker compose -f docker-compose.prod.yml logs scheduler
+# execucao manual
+docker compose -f docker-compose.prod.yml exec scheduler python manage.py daily_maintenance
+```
+
+Em desenvolvimento nao ha agendador: rode `python manage.py daily_maintenance`
+(ou `docker compose run --rm web python manage.py daily_maintenance`) quando quiser
+atualizar faturas, metas e previsoes. O backup continua no cron do host (proxima secao).
 
 ### Backup e restauracao do banco
 

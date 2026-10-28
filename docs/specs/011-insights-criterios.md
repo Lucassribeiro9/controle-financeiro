@@ -24,7 +24,7 @@ Tornar a geracao executavel, corrigir os defeitos encontrados e documentar regra
 
 ## Comportamento Esperado
 
-- `python manage.py generate_insights [--year AAAA --month MM]` gera os insights do mes (padrao: mes corrente) e informa quantos foram criados.
+- `python manage.py generate_insights [--year AAAA --month MM]` gera os insights do mes (padrao: mes corrente) e informa quantos foram criados. A rotina diaria `daily_maintenance` (ADR-013) gera os insights do mes **anterior**, de forma idempotente (chave mensal evita duplicar).
 - A geracao e idempotente: rodar de novo no mesmo mes cria 0.
 - Insight nunca aplica mudanca sozinho; so a aprovacao explicita cria meta.
 
@@ -36,7 +36,7 @@ Tornar a geracao executavel, corrigir os defeitos encontrados e documentar regra
 - Insights exige ainda categoria e o mes informado.
 - Ficam fora: sem categoria, `statement_payment` (a compra no cartao ja foi contada), transferencias e receitas.
 - O `Goal` de reducao criado na aprovacao usa a mesma definicao, entao o progresso da meta e o limite sugerido batem para o mesmo mes.
-- Metas existentes: sem backfill. `MonthlyGoal.current_amount` e `status` sao recalculados quando a pagina de metas do periodo e aberta, entao meses passados podem mudar de status ao serem reabertos.
+- Metas existentes: sem backfill. `MonthlyGoal.current_amount` e `status` sao persistidos pela rotina diaria `daily_maintenance` (ADR-013), que recalcula so as metas do mes corrente; meses passados mantem o ultimo valor gravado. A pagina de metas apenas calcula para exibir, sem gravar (ADR-012).
 
 ### Criterios por tipo
 
