@@ -13,7 +13,7 @@ Os dados financeiros sobrevivem a rebuild, recriacao e `down`/`up`, com backup c
 ## Fora de Escopo
 
 - Postgres (ADR-008 escolheu SQLite).
-- Agendamento automatico do backup (ADR-013, Etapa 2); aqui so se documenta o cron no host.
+- Agendamento automatico do backup: o agendador do ADR-013 (servico `scheduler`, rotina `daily_maintenance`) cobre previsoes, faturas, metas e insights; o backup segue no cron do host por ora.
 - Copia de backup para fora da maquina.
 - Mudanca de schema ou migrations.
 - Mudanca no banco de desenvolvimento.

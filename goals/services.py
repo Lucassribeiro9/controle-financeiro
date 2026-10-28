@@ -125,8 +125,8 @@ def create_monthly_goal(goal, year, month, target_amount=None):
     )
 
 
-def update_monthly_goal_status(monthly_goal: MonthlyGoal) -> MonthlyGoal:
-    """Atualiza valor atual e status de uma meta mensal."""
+def calculate_monthly_goal_status(monthly_goal: MonthlyGoal) -> tuple[Decimal, str]:
+    """Calcula valor atual e status da meta mensal sem gravar nada."""
 
     progress = calculate_goal_progress(
         goal=monthly_goal.goal,
@@ -150,12 +150,33 @@ def update_monthly_goal_status(monthly_goal: MonthlyGoal) -> MonthlyGoal:
         else:
             status = MonthlyGoal.Status.ON_TRACK
 
-    monthly_goal.current_amount = current_amount
-    monthly_goal.status = status
-    monthly_goal.full_clean()
-    monthly_goal.save(update_fields=["current_amount", "status"])
+    return current_amount, status
 
+
+def update_monthly_goal_status(monthly_goal: MonthlyGoal) -> MonthlyGoal:
+    """Recalcula e persiste valor atual e status de uma meta mensal."""
+
+    with transaction.atomic():
+        locked = MonthlyGoal.objects.select_for_update().get(pk=monthly_goal.pk)
+        current_amount, status = calculate_monthly_goal_status(locked)
+        locked.current_amount = current_amount
+        locked.status = status
+        locked.full_clean()
+        locked.save(update_fields=["current_amount", "status"])
+
+    monthly_goal.current_amount = locked.current_amount
+    monthly_goal.status = locked.status
     return monthly_goal
+
+
+def refresh_monthly_goals(*, year: int, month: int) -> int:
+    """Recalcula e persiste todas as metas mensais do periodo."""
+
+    count = 0
+    for monthly_goal in MonthlyGoal.objects.filter(year=year, month=month).order_by("pk"):
+        update_monthly_goal_status(monthly_goal)
+        count += 1
+    return count
 
 
 @transaction.atomic

@@ -14,6 +14,8 @@ from goals.services import (
     calculate_goal_progress,
     create_monthly_goal_from_goal,
     create_reduction_goal_for_category,
+    calculate_monthly_goal_status,
+    refresh_monthly_goals,
     update_monthly_goal_status,
 )
 from institutions.models import Institution
@@ -421,4 +423,59 @@ class CreateReductionGoalForCategoryTests(TestCase):
             ctx.exception.messages,
             ["Já existe uma meta para Alimentacao em Julho/2026."],
         )
+        self.assertEqual(MonthlyGoal.objects.count(), 1)
+
+
+class MonthlyGoalRefreshTests(TestCase):
+    """Garante calculo puro e recalculo em lote das metas mensais."""
+
+    def setUp(self):
+        self.category = Category.objects.create(name="Delivery")
+        self.goal = Goal.objects.create(
+            name="Reduzir delivery",
+            goal_type=Goal.GoalType.REDUCTION,
+            category=self.category,
+            target_amount=Decimal("300.00"),
+            start_date=date(2026, 5, 1),
+        )
+        self.monthly_goal = MonthlyGoal.objects.create(
+            goal=self.goal, year=2026, month=5, target_amount=Decimal("300.00")
+        )
+        Transaction.objects.create(
+            description="Pizza",
+            amount=Decimal("250.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            category=self.category,
+            date=date(2026, 5, 10),
+        )
+
+    def test_calculate_monthly_goal_status_does_not_write(self):
+        current, status = calculate_monthly_goal_status(self.monthly_goal)
+
+        self.assertEqual(current, Decimal("250.00"))
+        self.assertEqual(status, MonthlyGoal.Status.AT_RISK)
+        self.monthly_goal.refresh_from_db()
+        self.assertEqual(self.monthly_goal.current_amount, Decimal("0.00"))
+        self.assertEqual(self.monthly_goal.status, MonthlyGoal.Status.ON_TRACK)
+
+    def test_refresh_monthly_goals_persists_only_requested_period(self):
+        other = MonthlyGoal.objects.create(
+            goal=self.goal, year=2026, month=6, target_amount=Decimal("300.00")
+        )
+
+        count = refresh_monthly_goals(year=2026, month=5)
+
+        self.monthly_goal.refresh_from_db()
+        other.refresh_from_db()
+        self.assertEqual(count, 1)
+        self.assertEqual(self.monthly_goal.status, MonthlyGoal.Status.AT_RISK)
+        self.assertEqual(other.current_amount, Decimal("0.00"))
+
+    def test_refresh_monthly_goals_is_idempotent(self):
+        refresh_monthly_goals(year=2026, month=5)
+        refresh_monthly_goals(year=2026, month=5)
+
+        self.monthly_goal.refresh_from_db()
+        self.assertEqual(self.monthly_goal.current_amount, Decimal("250.00"))
         self.assertEqual(MonthlyGoal.objects.count(), 1)

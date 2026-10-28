@@ -16,8 +16,8 @@ from cards.services import (
     debit_benefit_card_balance,
     get_or_create_card_statement,
     pay_statement,
+    mark_late_statements,
     refresh_statement_amounts,
-    update_statement_status,
 )
 from institutions.models import Institution
 from transactions.models import Transaction
@@ -358,22 +358,64 @@ class CardStatementServiceTests(TestCase):
         )
         self.assertEqual(payment_transaction.date, date(2026, 10, 31))
 
-    def test_update_statement_status_uses_local_date_by_default(self):
+    def test_mark_late_statements_uses_local_date_by_default(self):
         """Sem `today`, o vencimento deve ser comparado com a data local (DAT-01)."""
 
         statement = self._create_closed_statement(amount=Decimal("350.00"))
         due_date = statement.due_date
 
         with patch("cards.services.timezone.localdate", return_value=due_date):
-            on_due_date = update_statement_status(statement=statement)
-        self.assertNotEqual(on_due_date.status, CardStatement.StatementStatus.LATE)
+            on_due_count = mark_late_statements()
+        statement.refresh_from_db()
+        self.assertEqual(on_due_count, 0)
+        self.assertNotEqual(statement.status, CardStatement.StatementStatus.LATE)
 
         with patch(
             "cards.services.timezone.localdate",
             return_value=due_date + timedelta(days=1),
         ):
-            after_due_date = update_statement_status(statement=statement)
-        self.assertEqual(after_due_date.status, CardStatement.StatementStatus.LATE)
+            after_due_count = mark_late_statements()
+        statement.refresh_from_db()
+        self.assertEqual(after_due_count, 1)
+        self.assertEqual(statement.status, CardStatement.StatementStatus.LATE)
+
+    def test_mark_late_statements_is_idempotent(self):
+        """Segunda execucao nao deve remarcar fatura ja atrasada."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        today = statement.due_date + timedelta(days=1)
+
+        first = mark_late_statements(today=today)
+        second = mark_late_statements(today=today)
+
+        self.assertEqual((first, second), (1, 0))
+
+    def test_mark_late_statements_ignores_paid_and_fully_paid(self):
+        """Fatura paga ou cancelada nunca vira atrasada."""
+
+        statement = self._create_closed_statement(amount=Decimal("350.00"))
+        pay_statement(statement=statement)
+        today = statement.due_date + timedelta(days=30)
+
+        self.assertEqual(mark_late_statements(today=today), 0)
+        statement.refresh_from_db()
+        self.assertEqual(statement.status, CardStatement.StatementStatus.PAID)
+
+    def test_auto_close_skips_statement_closed_by_another_flow(self):
+        """Fatura fechada por outro fluxo apos a consulta deve ser pulada sem abortar."""
+
+        statement = self._create_open_statement_for_auto_close()
+
+        def closed_meanwhile(*, statement):
+            CardStatement.objects.filter(pk=statement.pk).update(
+                status=CardStatement.StatementStatus.PENDING
+            )
+            raise ValidationError("Fatura ja foi fechada.")
+
+        with patch("cards.services.close_statement", side_effect=closed_meanwhile):
+            closed_count = auto_close_due_statements(today=date(2026, 5, 20))
+
+        self.assertEqual(closed_count, 0)
 
     def test_partial_payment_marks_statement_as_partially_paid(self):
         """Pagamento parcial deve marcar fatura como parcialmente paga."""
