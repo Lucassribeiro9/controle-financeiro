@@ -161,6 +161,37 @@ def paginate_imported_transactions_for_review(
     return paginator.get_page(page_number)
 
 
+def get_category_history(keys):
+    """Mapeia (descricao original, tipo) para a categoria do historico confirmado.
+
+    Usa a confirmacao mais recente cuja categoria existe e esta ativa. Uma
+    unica consulta, sem escrita.
+    """
+
+    keys = set(keys)
+    if not keys:
+        return {}
+
+    confirmed = (
+        ImportedTransaction.objects.filter(
+            status=ImportedTransaction.Status.CONFIRMED,
+            raw_description__in={description for description, _type in keys},
+            confirmed_transaction__category__isnull=False,
+            confirmed_transaction__category__is_active=True,
+        )
+        .select_related("confirmed_transaction__category")
+        .order_by("-confirmed_transaction_id")
+    )
+
+    history = {}
+    for imported in confirmed:
+        transaction = imported.confirmed_transaction
+        key = (imported.raw_description, transaction.transaction_type)
+        if key in keys and key not in history:
+            history[key] = transaction.category
+    return history
+
+
 def get_import_review_filter_options():
     """Retorna opcoes disponiveis para filtros da tela de revisao."""
 

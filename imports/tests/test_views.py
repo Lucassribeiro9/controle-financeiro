@@ -727,6 +727,69 @@ class ImportViewTests(AuthenticatedTestCase):
             data or {},
         )
 
+    def _upload_with_history_category(self):
+        """Confirma uma linha com Lazer e importa outro arquivo com a mesma descricao."""
+
+        leisure = Category.objects.create(name="Lazer")
+        previous = self.client.post(
+            reverse("imports:upload"),
+            {
+                "source_type": ImportedTransaction.SourceType.CSV,
+                "account_id": self.account.id,
+                "file": self._csv_file("date,description,amount\n2026-04-10,Cinema X,-30.00\n"),
+            },
+        )
+        self.assertEqual(previous.status_code, 201)
+        first = ImportedTransaction.objects.get()
+        self.client.post(
+            reverse("imports:confirm", kwargs={"imported_transaction_id": first.id}),
+            {"account_id": self.account.id, "category_id": leisure.id},
+        )
+        self.client.post(
+            reverse("imports:upload"),
+            {
+                "source_type": ImportedTransaction.SourceType.CSV,
+                "account_id": self.account.id,
+                "file": self._csv_file("date,description,amount\n2026-05-10,Cinema X,-35.00\n"),
+            },
+        )
+        return leisure, ImportedTransaction.objects.get(
+            status=ImportedTransaction.Status.PENDING
+        )
+
+    def test_history_category_is_editable_on_individual_confirm(self):
+        """Deve permitir trocar a categoria sugerida pelo historico ao confirmar."""
+
+        leisure, suggested = self._upload_with_history_category()
+        self.assertEqual(suggested.suggested_category, leisure)
+
+        response = self.client.post(
+            reverse("imports:confirm", kwargs={"imported_transaction_id": suggested.id}),
+            {"account_id": self.account.id, "category_id": self.category.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        suggested.refresh_from_db()
+        self.assertEqual(suggested.confirmed_transaction.category, self.category)
+
+    def test_history_category_is_editable_on_bulk_apply(self):
+        """Deve permitir sobrescrever a categoria do historico no aplicar em lote."""
+
+        leisure, suggested = self._upload_with_history_category()
+        self.assertEqual(suggested.suggested_category, leisure)
+
+        self.client.post(
+            reverse("imports:bulk-review"),
+            {
+                "bulk_action": "apply_category",
+                "bulk_category_id": self.category.id,
+                "selected_imports": [suggested.id],
+            },
+        )
+
+        suggested.refresh_from_db()
+        self.assertEqual(suggested.suggested_category, self.category)
+
     def test_confirm_import_twice_creates_one_transaction(self):
         """Deve devolver 200 e manter um lancamento ao repetir o POST."""
 

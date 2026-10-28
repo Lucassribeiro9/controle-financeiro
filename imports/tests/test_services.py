@@ -3,6 +3,7 @@
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -11,6 +12,7 @@ from accounts.models import FinancialAccount
 from categories.models import Category
 from imports.importers import ImportedTransactionRow
 from imports.models import ImportedTransaction
+from imports.selectors import get_category_history
 from imports.services import (
     apply_account_to_imports,
     apply_category_to_imports,
@@ -502,3 +504,119 @@ class ImportServiceTests(TestCase):
         self.assertEqual(invalid.status, ImportedTransaction.Status.PENDING)
         self.assertEqual(invalid.review_error, "Informe uma conta para confirmar.")
         self.assertEqual(Transaction.objects.count(), 1)
+
+
+class CategoryHistoryStagingTests(TestCase):
+    """Garante a sugestao de categoria pelo historico no staging (#267)."""
+
+    def setUp(self):
+        """Cria conta e categorias, com uma confirmacao previa de PADARIA X."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.food = Category.objects.create(name="Alimentacao")
+        self.transport = Category.objects.create(name="Transporte")
+        self.leisure = Category.objects.create(name="Lazer")
+
+    def _row(self, description, transaction_type=Transaction.TransactionType.EXPENSE, day=10):
+        return ImportedTransactionRow(
+            date=date(2026, 5, day),
+            raw_description=description,
+            normalized_description=description,
+            amount=Decimal("12.00"),
+            suggested_transaction_type=transaction_type,
+            external_id="",
+        )
+
+    def _stage(self, rows, file_name="extrato.csv"):
+        return stage_imported_transactions(
+            file_name=file_name,
+            source_type=ImportedTransaction.SourceType.CSV,
+            rows=rows,
+            suggested_account=self.account,
+        )
+
+    def _confirm(self, description, category):
+        imported = self._stage([self._row(description, day=1)], file_name="anterior.csv")[0]
+        confirm_imported_transaction(
+            imported_transaction=imported, account=self.account, category=category
+        )
+
+    def test_history_category_is_suggested(self):
+        """Deve sugerir a categoria usada na confirmacao anterior."""
+
+        self._confirm("PADARIA X", self.leisure)
+
+        imported = self._stage([self._row("PADARIA X", day=20)], file_name="novo.csv")
+
+        self.assertEqual(imported[0].suggested_category, self.leisure)
+
+    def test_history_wins_over_keyword(self):
+        """Deve preferir o historico a palavra-chave."""
+
+        self._confirm("UBER TRIP", self.leisure)
+
+        imported = self._stage([self._row("UBER TRIP", day=20)], file_name="novo.csv")
+
+        self.assertEqual(imported[0].suggested_category, self.leisure)
+
+    def test_keyword_still_applies_without_history(self):
+        """Deve manter a palavra-chave quando nao ha historico."""
+
+        imported = self._stage([self._row("UBER TRIP")])
+
+        self.assertEqual(imported[0].suggested_category, self.transport)
+
+    def test_no_history_and_no_keyword_leaves_category_empty(self):
+        """Deve deixar sem categoria quando nada casa."""
+
+        imported = self._stage([self._row("LOJA QUALQUER")])
+
+        self.assertIsNone(imported[0].suggested_category)
+
+    def test_other_type_does_not_use_history(self):
+        """Deve ignorar historico de outro tipo."""
+
+        self._confirm("PADARIA X", self.leisure)
+
+        imported = self._stage(
+            [self._row("PADARIA X", Transaction.TransactionType.INCOME, day=20)],
+            file_name="novo.csv",
+        )
+
+        self.assertIsNone(imported[0].suggested_category)
+
+    def test_history_is_queried_once_per_file(self):
+        """Deve consultar o historico uma vez por arquivo, nao por linha."""
+
+        self._confirm("PADARIA X", self.leisure)
+        rows = [self._row("PADARIA X", day=day) for day in (11, 12, 13, 14)]
+
+        with patch(
+            "imports.services.get_category_history", wraps=get_category_history
+        ) as spy:
+            self._stage(rows, file_name="novo.csv")
+
+        self.assertEqual(spy.call_count, 1)
+
+    def test_manual_transactions_are_not_history(self):
+        """Deve ignorar lancamentos manuais com a mesma descricao."""
+
+        Transaction.objects.create(
+            description="PADARIA X",
+            amount=Decimal("5.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.leisure,
+            date=date(2026, 5, 2),
+        )
+
+        imported = self._stage([self._row("PADARIA X")])
+
+        self.assertIsNone(imported[0].suggested_category)

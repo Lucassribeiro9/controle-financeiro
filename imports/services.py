@@ -12,6 +12,7 @@ from transactions.models import Transaction
 from transactions.services import create_transaction
 
 from .models import ImportedTransaction
+from .selectors import get_category_history
 
 
 REVIEWABLE_IMPORT_STATUSES = [
@@ -129,6 +130,11 @@ def stage_imported_transactions(*, file_name, source_type, rows, suggested_accou
     seen_hashes = {}
     prior_counts = {}
     seen_transaction_keys = {}
+    # Historico confirmado: uma consulta por arquivo, nao por linha.
+    rows = list(rows)
+    category_history = get_category_history(
+        {(row.raw_description, row.suggested_transaction_type) for row in rows}
+    )
 
     with db_transaction.atomic():
         for row in rows:
@@ -148,7 +154,10 @@ def stage_imported_transactions(*, file_name, source_type, rows, suggested_accou
                 amount=row.amount,
                 date=row.date,
                 suggested_account=suggested_account,
-                suggested_category=suggest_category(row.normalized_description),
+                suggested_category=(
+                    category_history.get((row.raw_description, row.suggested_transaction_type))
+                    or suggest_category(row.normalized_description)
+                ),
                 suggested_transaction_type=row.suggested_transaction_type,
                 external_id=row.external_id,
                 import_hash=import_hash,
