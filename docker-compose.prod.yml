@@ -1,6 +1,15 @@
 # Ambiente de PRODUCAO. As variaveis abaixo sao obrigatorias: o compose nao sobe
 # se alguma estiver ausente ou vazia. Defina-as no ambiente ou em um .env local
 # (nunca versionado). Veja .env.example e o README.
+x-django-env: &django-env
+  DJANGO_SETTINGS_MODULE: project.settings.prod
+  DJANGO_DB_PATH: ${DJANGO_DB_PATH:-/data/db.sqlite3}
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?defina DJANGO_SECRET_KEY (veja .env.example)}
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?defina DJANGO_ALLOWED_HOSTS (veja .env.example)}
+  DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+  DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-3600}
+  DJANGO_SECURE_PROXY_SSL_HEADER: ${DJANGO_SECURE_PROXY_SSL_HEADER:-false}
+
 services:
   web:
     build:
@@ -10,14 +19,35 @@ services:
     command: sh -c "python manage.py migrate --noinput && gunicorn project.wsgi:application --bind 0.0.0.0:8000 --workers 2"
     ports:
       - "8000:8000"
+    environment: *django-env
+    volumes:
+      - controle-financeiro-data:/data
+    restart: unless-stopped
+
+  # Rotinas periodicas (ADR-013): previsoes, faturas, metas e insights.
+  # Mesma imagem, mesmo volume e mesmas variaveis do web. Espera as migrations,
+  # roda ao subir e repete a cada MAINTENANCE_INTERVAL_SECONDS (padrao 3600).
+  scheduler:
+    build:
+      context: .
+      dockerfile: DOCKERFILE
+    container_name: controle-financeiro-scheduler-prod
+    init: true
+    command:
+      - sh
+      - -c
+      - |
+        until python manage.py migrate --check >/dev/null 2>&1; do
+          echo "scheduler: aguardando migrations"; sleep 5
+        done
+        while true; do
+          echo "scheduler: rotina diaria $$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          python manage.py daily_maintenance || echo "scheduler: rotina falhou"
+          sleep "$${MAINTENANCE_INTERVAL_SECONDS:-3600}"
+        done
     environment:
-      DJANGO_SETTINGS_MODULE: project.settings.prod
-      DJANGO_DB_PATH: ${DJANGO_DB_PATH:-/data/db.sqlite3}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?defina DJANGO_SECRET_KEY (veja .env.example)}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?defina DJANGO_ALLOWED_HOSTS (veja .env.example)}
-      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
-      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-3600}
-      DJANGO_SECURE_PROXY_SSL_HEADER: ${DJANGO_SECURE_PROXY_SSL_HEADER:-false}
+      <<: *django-env
+      MAINTENANCE_INTERVAL_SECONDS: ${MAINTENANCE_INTERVAL_SECONDS:-3600}
     volumes:
       - controle-financeiro-data:/data
     restart: unless-stopped
