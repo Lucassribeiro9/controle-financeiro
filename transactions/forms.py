@@ -1,6 +1,7 @@
 """Forms do app transactions."""
 
 from django import forms
+from django.db.models import Q
 
 from accounts.models import FinancialAccount
 from cards.models import Card
@@ -12,39 +13,55 @@ from core.forms import BRIntegerField
 from .models import Transaction
 
 
-ALLOWED_TRANSACTION_TYPES = [
-    Transaction.TransactionType.INCOME,
-    Transaction.TransactionType.EXPENSE,
-    Transaction.TransactionType.CARD_PURCHASE,
-    Transaction.TransactionType.BENEFIT_PURCHASE,
+TYPE_INCOME = "income"
+TYPE_EXPENSE = "expense"
+TYPE_TRANSFER = "transfer"
+
+TYPE_CHOICES = [
+    (TYPE_INCOME, "Receita"),
+    (TYPE_EXPENSE, "Despesa"),
+    (TYPE_TRANSFER, "Transferência"),
 ]
 
-PAYMENT_METHODS = [
-    ("debit", "Débito"),
-    ("credit", "Crédito"),
-    ("benefit", "Benefício"),
-    ("cash", "Dinheiro/outro"),
-    ("transfer", "Transferência"),
-]
+SOURCE_GROUP_ACCOUNTS = "Contas"
+SOURCE_GROUP_CREDIT = "Cartões de crédito"
+SOURCE_GROUP_BALANCE = "Cartões de saldo"
+
+KIND_ACCOUNT = "account"
+KIND_CREDIT = "credit"
+KIND_BALANCE = "balance"
+
+
+class SourceSelect(forms.Select):
+    """Select de origem que marca cada opcao com o tipo (conta, credito, saldo)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.kinds = {}
+
+    def create_option(self, name, value, *args, **kwargs):
+        option = super().create_option(name, value, *args, **kwargs)
+        kind = self.kinds.get(value)
+        if kind:
+            option["attrs"]["data-kind"] = kind
+        return option
 
 
 class TransactionForm(forms.Form):
-    """Form para criar lancamentos financeiros usando services."""
+    """Form de lancamento: tipo e origem unica; a forma de pagamento deriva da origem (ADR-015)."""
 
     description = forms.CharField(label="Descrição", max_length=255)
-    payment_method = forms.ChoiceField(
-        label="Forma de pagamento",
-        choices=PAYMENT_METHODS,
-    )
-    amount = BRDecimalField(label="Valor", max_digits=14, decimal_places=2)
     transaction_type = forms.ChoiceField(
         label="Tipo",
-        choices=[
-            choice
-            for choice in Transaction.TransactionType.choices
-            if choice[0] in ALLOWED_TRANSACTION_TYPES
-        ],
+        choices=TYPE_CHOICES,
+        initial=TYPE_EXPENSE,
     )
+    source = forms.ChoiceField(
+        label="Pagar com / Receber em",
+        required=False,
+        widget=SourceSelect,
+    )
+    amount = BRDecimalField(label="Valor", max_digits=14, decimal_places=2)
     status = forms.ChoiceField(
         label="Status",
         choices=[
@@ -53,11 +70,6 @@ class TransactionForm(forms.Form):
             if choice[0] != Transaction.PaymentStatus.FORECASTED
         ],
         initial=Transaction.PaymentStatus.PENDING,
-    )
-    account = forms.ModelChoiceField(
-        label="Conta",
-        queryset=FinancialAccount.objects.none(),
-        required=False,
     )
     from_account = forms.ModelChoiceField(
         label="Conta origem",
@@ -74,11 +86,6 @@ class TransactionForm(forms.Form):
         queryset=Category.objects.none(),
         required=False,
     )
-    card = forms.ModelChoiceField(
-        label="Cartão",
-        queryset=Card.objects.none(),
-        required=False,
-    )
     total_installments = BRIntegerField(
         label="Total de parcelas",
         required=False,
@@ -92,37 +99,34 @@ class TransactionForm(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
-        """Configura querysets dos campos relacionais."""
+        """Configura querysets e as opcoes agrupadas da origem."""
 
         self.allow_transfer = kwargs.pop("allow_transfer", True)
+        self.transaction = kwargs.pop("transaction", None)
         super().__init__(*args, **kwargs)
 
-        self.fields["account"].queryset = FinancialAccount.objects.filter(
-            is_active=True
-        ).order_by("name")
-        self.fields["from_account"].queryset = FinancialAccount.objects.filter(
-            is_active=True
-        ).order_by("name")
-        self.fields["destination_account"].queryset = FinancialAccount.objects.filter(
-            is_active=True
-        ).order_by("name")
+        accounts = FinancialAccount.objects.filter(is_active=True).order_by("name")
+        self.fields["from_account"].queryset = accounts
+        self.fields["destination_account"].queryset = accounts
         self.fields["category"].queryset = Category.objects.filter(
             is_active=True
         ).order_by("name")
-        self.fields["card"].queryset = Card.objects.filter(
-            is_active=True
-        ).order_by("name")
+
+        if not self.allow_transfer:
+            self.fields["transaction_type"].choices = [
+                choice for choice in TYPE_CHOICES if choice[0] != TYPE_TRANSFER
+            ]
+
+        self._configure_source_field()
         self.fields["transaction_type"].widget.attrs.update(
             {"data-conditional-source": "transaction-type"}
         )
-        self.fields["payment_method"].widget.attrs.update(
-            {"data-conditional-source": "payment-method"}
-        )
-        self.fields["account"].widget.attrs.update(
-            {"data-conditional-field": "payment-account"}
-        )
-        self.fields["card"].widget.attrs.update(
-            {"data-conditional-field": "payment-card"}
+        self.fields["source"].widget.attrs.update(
+            {
+                "data-conditional-field": "payment-source",
+                "data-label-income": "Receber em",
+                "data-label-expense": "Pagar com",
+            }
         )
         self.fields["total_installments"].widget.attrs.update(
             {"data-conditional-field": "payment-installments"}
@@ -134,44 +138,84 @@ class TransactionForm(forms.Form):
             {"data-conditional-field": "payment-transfer"}
         )
 
+    def _configure_source_field(self):
+        """Monta o select unico de origem com grupos de contas e cartoes."""
+
+        saved_account_id = self.transaction.account_id if self.transaction else None
+        saved_card_id = self.transaction.card_id if self.transaction else None
+
+        accounts = (
+            FinancialAccount.objects.filter(
+                Q(is_active=True) | Q(pk=saved_account_id)
+            )
+            .select_related("institution")
+            .order_by("name")
+        )
+        cards = Card.objects.filter(
+            Q(is_active=True) | Q(pk=saved_card_id)
+        ).order_by("name")
+
+        kinds = {}
+        account_options = []
+        for account in accounts:
+            value = f"account:{account.pk}"
+            kinds[value] = KIND_ACCOUNT
+            account_options.append((value, str(account)))
+
+        credit_options = []
+        balance_options = []
+        for card in cards:
+            value = f"card:{card.pk}"
+            label = f"{card.name} ({card.get_card_type_display().lower()})"
+            if card.card_type == Card.CardType.CREDIT:
+                kinds[value] = KIND_CREDIT
+                credit_options.append((value, label))
+            elif card.is_balance_card:
+                kinds[value] = KIND_BALANCE
+                balance_options.append((value, label))
+
+        choices = [("", "---------")]
+        for group_label, options in (
+            (SOURCE_GROUP_ACCOUNTS, account_options),
+            (SOURCE_GROUP_CREDIT, credit_options),
+            (SOURCE_GROUP_BALANCE, balance_options),
+        ):
+            if options:
+                choices.append((group_label, options))
+
+        self.fields["source"].choices = choices
+        self.fields["source"].widget.kinds = kinds
+        self._source_objects = {
+            **{f"account:{account.pk}": account for account in accounts},
+            **{f"card:{card.pk}": card for card in cards},
+        }
+
     @classmethod
     def from_transaction(cls, transaction):
         """Cria um form inicializado a partir de uma transacao existente."""
 
-        if (
-            transaction.transaction_type == Transaction.TransactionType.BENEFIT_PURCHASE
-            or (
-                transaction.transaction_type == Transaction.TransactionType.CARD_PURCHASE
-                and transaction.card
-                and transaction.card.card_type == Card.CardType.BENEFIT
-            )
-        ):
-            payment_method = "benefit"
-        elif transaction.transaction_type == Transaction.TransactionType.CARD_PURCHASE:
-            payment_method = "credit"
-        elif transaction.transaction_type == Transaction.TransactionType.INCOME:
-            payment_method = "debit"
-        elif transaction.transaction_type == Transaction.TransactionType.EXPENSE:
-            payment_method = "debit"
+        if transaction.transaction_type == Transaction.TransactionType.INCOME:
+            form_type = TYPE_INCOME
         else:
-            payment_method = "cash"
+            form_type = TYPE_EXPENSE
+
+        if transaction.card_id:
+            source = f"card:{transaction.card_id}"
+        elif transaction.account_id:
+            source = f"account:{transaction.account_id}"
+        else:
+            source = ""
 
         return cls(
+            allow_transfer=False,
+            transaction=transaction,
             initial={
                 "description": transaction.description,
-                "payment_method": payment_method,
                 "amount": transaction.amount,
-                "transaction_type": (
-                    Transaction.TransactionType.BENEFIT_PURCHASE
-                    if payment_method == "benefit"
-                    else transaction.transaction_type
-                ),
+                "transaction_type": form_type,
+                "source": source,
                 "status": transaction.status,
-                "account": transaction.account,
-                "from_account": None,
-                "destination_account": None,
                 "category": transaction.category,
-                "card": transaction.card,
                 "total_installments": (
                     transaction.installment_plan.total_installments
                     if transaction.installment_plan_id
@@ -179,7 +223,7 @@ class TransactionForm(forms.Form):
                 ),
                 "date": transaction.date,
                 "notes": transaction.notes,
-            }
+            },
         )
 
     def clean_amount(self):
@@ -191,76 +235,90 @@ class TransactionForm(forms.Form):
         return amount
 
     def clean(self):
-        """Aplica regras de campos obrigatorios por tipo de lancamento."""
+        """Deriva forma de pagamento, tipo, conta e cartao da origem escolhida."""
 
         cleaned_data = super().clean()
-        payment_method = cleaned_data.get("payment_method")
-        transaction_type = cleaned_data.get("transaction_type")
-        account = cleaned_data.get("account")
-        card = cleaned_data.get("card")
-        total_installments = cleaned_data.get("total_installments")
-        from_account = cleaned_data.get("from_account")
-        destination_account = cleaned_data.get("destination_account")
+        form_type = cleaned_data.get("transaction_type")
+        if form_type is None:
+            return cleaned_data
 
-        if payment_method == "transfer" and not self.allow_transfer:
-            self.add_error(
-                "payment_method",
-                "Transferência não pode ser editada por aqui; crie uma transferência.",
+        if form_type == TYPE_TRANSFER:
+            return self._clean_transfer(cleaned_data)
+
+        source = cleaned_data.get("source")
+        if "source" in self.errors:
+            return cleaned_data
+        if not source:
+            message = (
+                "Selecione a conta que recebe o dinheiro."
+                if form_type == TYPE_INCOME
+                else "Selecione de onde sai o dinheiro."
             )
+            self.add_error("source", message)
             return cleaned_data
 
-        if payment_method == "transfer":
-            if from_account is None:
-                self.add_error("from_account", "Transferência exige conta origem.")
-            if destination_account is None:
-                self.add_error("destination_account", "Transferência exige conta destino.")
-            if (
-                from_account is not None
-                and destination_account is not None
-                and from_account == destination_account
-            ):
-                self.add_error(
-                    "destination_account",
-                    "Conta de destino deve ser diferente da conta de origem.",
-                )
-            return cleaned_data
+        origin = self._source_objects.get(source)
+        total_installments = cleaned_data.get("total_installments")
+        is_account = isinstance(origin, FinancialAccount)
+        is_credit = isinstance(origin, Card) and origin.card_type == Card.CardType.CREDIT
 
-        if payment_method == "credit":
-            if card is None:
-                self.add_error("card", "Compra no cartão exige cartão vinculado.")
-            if transaction_type != Transaction.TransactionType.CARD_PURCHASE:
-                self.add_error(
-                    "transaction_type",
-                    "Crédito deve ser lançado como compra no cartão.",
-                )
+        if form_type == TYPE_INCOME:
+            if not is_account:
+                self.add_error("source", "Receita só pode ser recebida em uma conta.")
+                return cleaned_data
+            payment_method = "debit"
+            transaction_type = Transaction.TransactionType.INCOME
+        elif is_account:
+            payment_method = "debit"
+            transaction_type = Transaction.TransactionType.EXPENSE
+        elif is_credit:
+            payment_method = "credit"
+            transaction_type = Transaction.TransactionType.CARD_PURCHASE
+        else:
+            payment_method = "benefit"
+            transaction_type = Transaction.TransactionType.BENEFIT_PURCHASE
+
+        if is_credit:
             if total_installments is not None and total_installments <= 1:
                 self.add_error(
                     "total_installments",
                     "Parcela inválida deve ter ao menos 2 parcelas.",
                 )
-        elif payment_method == "benefit":
-            if card is None:
-                self.add_error("card", "Benefício exige cartão vinculado.")
-            elif card.card_type != Card.CardType.BENEFIT:
-                self.add_error("card", "Benefício exige cartão de benefício.")
-            if transaction_type != Transaction.TransactionType.BENEFIT_PURCHASE:
-                self.add_error(
-                    "transaction_type",
-                    "Benefício deve ser lançado como compra no benefício.",
-                )
-        else:
-            if account is None:
-                self.add_error("account", "Lançamento exige conta financeira.")
-
-        if payment_method == "credit" and card is not None and card.card_type != Card.CardType.CREDIT:
-            self.add_error("card", "Crédito exige cartão de crédito.")
-
-        if payment_method != "credit" and total_installments:
+        elif total_installments:
             self.add_error(
                 "total_installments",
                 "Parcelamento só pode ser usado em compras no crédito.",
             )
 
+        cleaned_data["payment_method"] = payment_method
+        cleaned_data["transaction_type"] = transaction_type
+        cleaned_data["account"] = origin if is_account else None
+        cleaned_data["card"] = None if is_account else origin
+        return cleaned_data
+
+    def _clean_transfer(self, cleaned_data):
+        """Valida contas de origem e destino de uma transferencia."""
+
+        from_account = cleaned_data.get("from_account")
+        destination_account = cleaned_data.get("destination_account")
+
+        if from_account is None:
+            self.add_error("from_account", "Transferência exige conta origem.")
+        if destination_account is None:
+            self.add_error("destination_account", "Transferência exige conta destino.")
+        if (
+            from_account is not None
+            and destination_account is not None
+            and from_account == destination_account
+        ):
+            self.add_error(
+                "destination_account",
+                "Conta de destino deve ser diferente da conta de origem.",
+            )
+
+        cleaned_data["payment_method"] = "transfer"
+        cleaned_data["account"] = None
+        cleaned_data["card"] = None
         return cleaned_data
 
 

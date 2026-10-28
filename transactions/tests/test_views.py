@@ -107,7 +107,7 @@ class TransactionViewTests(AuthenticatedTestCase):
                 "year": 2026,
                 "month": 5,
                 "status": Transaction.PaymentStatus.PAID,
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "expense",
             },
         )
 
@@ -155,12 +155,13 @@ class TransactionViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/form.html")
         self.assertContains(response, "Novo lançamento")
-        self.assertContains(response, "Forma de pagamento")
+        self.assertContains(response, "Pagar com / Receber em")
+        self.assertNotContains(response, "Forma de pagamento")
         self.assertContains(response, 'data-conditional-form="transaction"', html=False)
         self.assertContains(response, 'data-conditional-source="transaction-type"', html=False)
-        self.assertContains(response, 'data-conditional-source="payment-method"', html=False)
-        self.assertContains(response, 'data-conditional-field="payment-account"', html=False)
-        self.assertContains(response, 'data-conditional-field="payment-card"', html=False)
+        self.assertContains(response, 'data-conditional-field="payment-source"', html=False)
+        self.assertContains(response, '<optgroup label="Contas">', html=False)
+        self.assertContains(response, 'data-kind="credit"', html=False)
         self.assertContains(response, "js/app.js")
 
     def test_transaction_edit_page_returns_form_for_pending_transaction(self):
@@ -200,11 +201,10 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
             data={
                 "description": "Mercado maior",
-                "payment_method": "debit",
                 "amount": "300.00",
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PAID,
-                "account": self.account.id,
+                "source": f"account:{self.account.id}",
                 "category": self.category.id,
                 "date": "2026-05-09",
                 "notes": "Atualizado",
@@ -258,11 +258,10 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
             data={
                 "description": "Mercado maior",
-                "payment_method": "debit",
                 "amount": "300.00",
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PAID,
-                "account": self.account.id,
+                "source": f"account:{self.account.id}",
                 "category": self.category.id,
                 "date": "2026-05-09",
                 "notes": "Atualizado",
@@ -288,11 +287,10 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:create"),
             data={
                 "description": "Salario",
-                "payment_method": "debit",
                 "amount": "5000.00",
-                "transaction_type": Transaction.TransactionType.INCOME,
+                "transaction_type": "income",
                 "status": Transaction.PaymentStatus.PAID,
-                "account": self.account.id,
+                "source": f"account:{self.account.id}",
                 "category": self.category.id,
                 "date": "2026-05-08",
                 "notes": "",
@@ -313,11 +311,10 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:create"),
             data={
                 "description": "Mercado",
-                "payment_method": "debit",
                 "amount": "250.00",
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PAID,
-                "account": self.account.id,
+                "source": f"account:{self.account.id}",
                 "category": self.category.id,
                 "date": "2026-05-08",
                 "notes": "",
@@ -337,11 +334,10 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:create"),
             data={
                 "description": "Compra no cartao",
-                "payment_method": "credit",
                 "amount": "120.00",
-                "transaction_type": Transaction.TransactionType.CARD_PURCHASE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PENDING,
-                "card": self.card.id,
+                "source": f"card:{self.card.id}",
                 "category": self.category.id,
                 "date": "2026-05-08",
                 "notes": "",
@@ -363,11 +359,10 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:create"),
             data={
                 "description": "Almoco",
-                "payment_method": "benefit",
                 "amount": "35.00",
-                "transaction_type": Transaction.TransactionType.BENEFIT_PURCHASE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PENDING,
-                "card": self.benefit_card.id,
+                "source": f"card:{self.benefit_card.id}",
                 "category": self.category.id,
                 "date": "2026-05-08",
                 "notes": "",
@@ -384,6 +379,163 @@ class TransactionViewTests(AuthenticatedTestCase):
         self.assertIsNone(transaction.statement)
         self.assertEqual(self.benefit_card.balance, Decimal("265.00"))
 
+    def _balance_card(self, card_type, balance="50.00"):
+        return Card.objects.create(
+            name=f"Cartao {card_type}",
+            institution=self.institution,
+            card_type=card_type,
+            balance=Decimal(balance),
+        )
+
+    def _post_data(self, **overrides):
+        data = {
+            "description": "Passagem",
+            "amount": "20,00",
+            "transaction_type": "expense",
+            "status": Transaction.PaymentStatus.PENDING,
+            "category": self.category.id,
+            "date": "08/05/2026",
+            "notes": "",
+        }
+        data.update(overrides)
+        return data
+
+    def test_post_create_purchase_on_transport_and_prepaid_cards_debits_balance(self):
+        """Compra em cartao de transporte e pre-pago debita o saldo do cartao."""
+
+        for card_type in (Card.CardType.TRANSPORT, Card.CardType.PREPAID):
+            with self.subTest(card_type=card_type):
+                card = self._balance_card(card_type)
+
+                response = self.client.post(
+                    reverse("transactions:create"),
+                    data=self._post_data(
+                        description=f"Compra {card_type}", source=f"card:{card.id}"
+                    ),
+                )
+
+                card.refresh_from_db()
+                transaction = Transaction.objects.get(description=f"Compra {card_type}")
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(
+                    transaction.transaction_type,
+                    Transaction.TransactionType.BENEFIT_PURCHASE,
+                )
+                self.assertEqual(card.balance, Decimal("30.00"))
+
+    def test_post_create_balance_card_with_insufficient_balance_shows_error(self):
+        """Saldo insuficiente volta ao form com a mensagem e nao grava."""
+
+        card = self._balance_card(Card.CardType.TRANSPORT, balance="10.00")
+
+        response = self.client.post(
+            reverse("transactions:create"),
+            data=self._post_data(source=f"card:{card.id}"),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Saldo insuficiente no cartão de saldo.")
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_post_create_income_on_card_shows_message_on_source(self):
+        """Receita em cartao e recusada no servidor, mesmo sem JS."""
+
+        response = self.client.post(
+            reverse("transactions:create"),
+            data=self._post_data(
+                transaction_type="income", source=f"card:{self.benefit_card.id}"
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Receita só pode ser recebida em uma conta.")
+        self.assertEqual(Transaction.objects.count(), 0)
+
+    def test_post_create_installments_on_balance_card_is_rejected(self):
+        """Parcelas so valem para cartao de credito."""
+
+        response = self.client.post(
+            reverse("transactions:create"),
+            data=self._post_data(
+                source=f"card:{self.benefit_card.id}", total_installments="3"
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response, "Parcelamento só pode ser usado em compras no crédito."
+        )
+
+    def test_edit_balance_card_purchase_opens_with_saved_origin(self):
+        """A edicao abre com tipo e origem salvos."""
+
+        card = self._balance_card(Card.CardType.TRANSPORT)
+        self.client.post(
+            reverse("transactions:create"),
+            data=self._post_data(source=f"card:{card.id}"),
+        )
+        transaction = Transaction.objects.get(description="Passagem")
+
+        response = self.client.get(
+            reverse("transactions:edit", kwargs={"transaction_id": transaction.id})
+        )
+
+        form = response.context["form"]
+        self.assertEqual(form.initial["transaction_type"], "expense")
+        self.assertEqual(form.initial["source"], f"card:{card.id}")
+        self.assertNotContains(response, 'value="transfer"')
+
+    def test_post_edit_balance_card_purchase_reverts_and_reapplies_balance(self):
+        """Editar o valor devolve o saldo anterior e aplica o novo."""
+
+        card = self._balance_card(Card.CardType.PREPAID)
+        self.client.post(
+            reverse("transactions:create"),
+            data=self._post_data(source=f"card:{card.id}"),
+        )
+        transaction = Transaction.objects.get(description="Passagem")
+
+        response = self.client.post(
+            reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
+            data=self._post_data(source=f"card:{card.id}", amount="35,00"),
+        )
+
+        card.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(card.balance, Decimal("15.00"))
+
+    def test_post_edit_income_keeps_income_in_account(self):
+        """Receita editada continua receita na conta escolhida."""
+
+        self.client.post(
+            reverse("transactions:create"),
+            data=self._post_data(
+                description="Salario",
+                amount="100,00",
+                transaction_type="income",
+                source=f"account:{self.account.id}",
+                status=Transaction.PaymentStatus.PAID,
+            ),
+        )
+        transaction = Transaction.objects.get(description="Salario")
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal("1100.00"))
+
+        response = self.client.post(
+            reverse("transactions:edit", kwargs={"transaction_id": transaction.id}),
+            data=self._post_data(
+                description="Salario",
+                amount="150,00",
+                transaction_type="income",
+                source=f"account:{self.account.id}",
+                status=Transaction.PaymentStatus.PAID,
+            ),
+        )
+
+        self.account.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.account.balance, Decimal("1150.00"))
+
     def test_post_create_credit_purchase_with_installments_redirects_to_plan_detail(self):
         """Compra parcelada no credito deve redirecionar para o parcelamento criado."""
 
@@ -391,11 +543,10 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:create"),
             data={
                 "description": "Notebook",
-                "payment_method": "credit",
                 "amount": "1000.00",
-                "transaction_type": Transaction.TransactionType.CARD_PURCHASE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PENDING,
-                "card": self.card.id,
+                "source": f"card:{self.card.id}",
                 "total_installments": "10",
                 "category": self.category.id,
                 "date": "2026-05-08",
@@ -414,9 +565,8 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:create"),
             data={
                 "description": "Mercado",
-                "payment_method": "debit",
                 "amount": "250.00",
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PAID,
                 "category": self.category.id,
                 "date": "2026-05-08",
@@ -426,7 +576,7 @@ class TransactionViewTests(AuthenticatedTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "transactions/form.html")
-        self.assertContains(response, "Lançamento exige conta financeira.")
+        self.assertContains(response, "Selecione de onde sai o dinheiro.")
         self.assertEqual(Transaction.objects.count(), 0)
 
     def test_post_create_transfer_uses_transfer_service(self):
@@ -436,9 +586,9 @@ class TransactionViewTests(AuthenticatedTestCase):
             reverse("transactions:create"),
             data={
                 "description": "Aporte reserva",
-                "payment_method": "transfer",
+
                 "amount": "300.00",
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "transfer",
                 "status": Transaction.PaymentStatus.PENDING,
                 "from_account": self.account.id,
                 "destination_account": self.destination_account.id,
@@ -681,11 +831,10 @@ class TransactionGenericEditRestrictionTests(AuthenticatedTestCase):
                     self._edit_url(transaction),
                     data={
                         "description": "Alterado",
-                        "payment_method": "cash",
                         "amount": "1,00",
-                        "transaction_type": Transaction.TransactionType.EXPENSE,
+                        "transaction_type": "expense",
                         "status": Transaction.PaymentStatus.PAID,
-                        "account": self.account.id,
+                        "source": f"account:{self.account.id}",
                         "date": "08/05/2026",
                     },
                 )
@@ -727,11 +876,10 @@ class TransactionGenericEditRestrictionTests(AuthenticatedTestCase):
             self._edit_url(payment),
             data={
                 "description": "Despesa",
-                "payment_method": "cash",
                 "amount": "100,00",
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PAID,
-                "account": self.account.id,
+                "source": f"account:{self.account.id}",
                 "date": "08/05/2026",
             },
         )
@@ -773,9 +921,8 @@ class TransactionGenericEditRestrictionTests(AuthenticatedTestCase):
             self._edit_url(transaction),
             data={
                 "description": "Virou transferencia",
-                "payment_method": "transfer",
                 "amount": "100,00",
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "transfer",
                 "status": Transaction.PaymentStatus.PAID,
                 "from_account": self.account.id,
                 "destination_account": other.id,
@@ -784,9 +931,7 @@ class TransactionGenericEditRestrictionTests(AuthenticatedTestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(
-            response, "Transferência não pode ser editada por aqui; crie uma transferência."
-        )
+        self.assertIn("transaction_type", response.context["form"].errors)
         transaction.refresh_from_db()
         self.assertEqual(transaction.description, "Lancamento especial")
         self.assertEqual(Transfer.objects.count(), 0)
@@ -798,11 +943,10 @@ class TransactionGenericEditRestrictionTests(AuthenticatedTestCase):
             self._edit_url(transaction),
             data={
                 "description": "Mercado editado",
-                "payment_method": "debit",
                 "amount": "120,00",
-                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "transaction_type": "expense",
                 "status": Transaction.PaymentStatus.PAID,
-                "account": self.account.id,
+                "source": f"account:{self.account.id}",
                 "date": "08/05/2026",
             },
         )

@@ -41,37 +41,79 @@
         update();
     }
 
+    const KINDS_BY_TYPE = {
+        income: ["account"],
+        expense: ["account", "credit", "balance"],
+    };
+
     function setupTransactionForm(form) {
-        const paymentMethod = form.querySelector('[name="payment_method"]');
         const transactionType = form.querySelector('[name="transaction_type"]');
-        if (!paymentMethod || !transactionType) {
+        const source = form.querySelector('[name="source"]');
+        if (!transactionType || !source) {
             return;
         }
 
-        const update = function () {
-            const method = paymentMethod.value;
-            const isTransfer = method === "transfer";
-            const isCardPurchase = method === "credit" || method === "benefit";
-            const isCredit = method === "credit";
-            const usesAccount = method === "debit" || method === "cash" || method === "benefit";
+        // Guarda as opcoes originais; a cada troca de Tipo o select e remontado
+        // so com os grupos validos. Sem JS o servidor valida a combinacao.
+        const originalChildren = Array.from(source.children).map((node) => node.cloneNode(true));
+        const sourceLabel = fieldContainer(source).querySelector("span");
+        const sourceLabelText = sourceLabel ? sourceLabel.textContent : "";
 
-            fieldsFor(form, "payment-card").forEach((field) => {
-                setFieldVisible(field, isCardPurchase);
+        function rebuildSource(kind) {
+            const allowedKinds = KINDS_BY_TYPE[kind] || [];
+            const selected = source.value;
+
+            source.innerHTML = "";
+            originalChildren.forEach((node) => {
+                const copy = node.cloneNode(true);
+                if (copy.tagName === "OPTGROUP") {
+                    Array.from(copy.children).forEach((option) => {
+                        if (!allowedKinds.includes(option.dataset.kind)) {
+                            copy.removeChild(option);
+                        }
+                    });
+                    if (copy.children.length) {
+                        source.appendChild(copy);
+                    }
+                } else {
+                    source.appendChild(copy);
+                }
+            });
+
+            const stillAvailable = Array.from(source.options).some((option) => option.value === selected);
+            source.value = stillAvailable ? selected : "";
+        }
+
+        const update = function (shouldRebuild) {
+            const kind = transactionType.value;
+            const isTransfer = kind === "transfer";
+
+            if (shouldRebuild && !isTransfer) {
+                rebuildSource(kind);
+            }
+
+            const selectedOption = source.options[source.selectedIndex];
+            const isCredit = !isTransfer && selectedOption && selectedOption.dataset.kind === "credit";
+
+            if (sourceLabel) {
+                const labelText = source.dataset[kind === "income" ? "labelIncome" : "labelExpense"];
+                sourceLabel.textContent = labelText || sourceLabelText;
+            }
+
+            fieldsFor(form, "payment-source").forEach((field) => {
+                setFieldVisible(field, !isTransfer);
             });
             fieldsFor(form, "payment-installments").forEach((field) => {
                 setFieldVisible(field, isCredit);
-            });
-            fieldsFor(form, "payment-account").forEach((field) => {
-                setFieldVisible(field, usesAccount);
             });
             fieldsFor(form, "payment-transfer").forEach((field) => {
                 setFieldVisible(field, isTransfer);
             });
         };
 
-        paymentMethod.addEventListener("change", update);
-        transactionType.addEventListener("change", update);
-        update();
+        transactionType.addEventListener("change", () => update(true));
+        source.addEventListener("change", () => update(false));
+        update(true);
     }
 
     function setupConditionalForms() {

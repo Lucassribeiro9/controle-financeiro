@@ -128,8 +128,8 @@ class Transaction(models.Model):
         if self.transaction_type == self.TransactionType.BENEFIT_PURCHASE:
             if self.card is None:
                 raise ValidationError({"card": "Compra no benefício exige cartão vinculado."})
-            if self.card.card_type != "benefit":
-                raise ValidationError({"card": "Compra no benefício exige cartão de benefício."})
+            if not self.card.is_balance_card:
+                raise ValidationError({"card": "Compra no benefício exige cartão de saldo."})
 
         if self.transaction_type not in (
             self.TransactionType.CARD_PURCHASE,

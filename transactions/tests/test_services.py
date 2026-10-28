@@ -287,7 +287,7 @@ class TransactionServiceTests(TestCase):
 
         with self.assertRaisesMessage(
             ValidationError,
-            "Saldo insuficiente no cartão de benefício.",
+            "Saldo insuficiente no cartão de saldo.",
         ):
             create_transaction_by_payment_method(
                 payment_method="benefit",
@@ -747,6 +747,137 @@ class TransactionServiceTests(TestCase):
 
         statement.refresh_from_db()
         self.assertEqual(statement.closed_amount, Decimal("120.00"))
+
+
+class BalanceCardServiceTests(TestCase):
+    """Cartoes de transporte e pre-pago seguem o saldo proprio do beneficio (ADR-015)."""
+
+    def setUp(self):
+        """Cria cartoes de saldo de cada tipo."""
+
+        self.institution = Institution.objects.create(name="Inter", code="077")
+        self.category = Category.objects.create(name="Transporte")
+        self.cards = {
+            card_type: Card.objects.create(
+                name=f"Cartao {card_type}",
+                institution=self.institution,
+                card_type=card_type,
+                estimated_balance=Decimal("100.00")
+                if card_type == Card.CardType.BENEFIT
+                else None,
+                balance=Decimal("100.00"),
+            )
+            for card_type in (
+                Card.CardType.BENEFIT,
+                Card.CardType.PREPAID,
+                Card.CardType.TRANSPORT,
+            )
+        }
+
+    def _purchase(self, card, amount="30.00"):
+        return create_transaction_by_payment_method(
+            payment_method="benefit",
+            description="Compra",
+            amount=Decimal(amount),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            card=card,
+            category=self.category,
+            date=date(2026, 5, 8),
+        )
+
+    def test_purchase_debits_balance_for_every_balance_card_type(self):
+        """Beneficio, pre-pago e transporte debitam o saldo proprio."""
+
+        for card_type, card in self.cards.items():
+            with self.subTest(card_type=card_type):
+                transaction = self._purchase(card)
+                card.refresh_from_db()
+
+                self.assertEqual(
+                    transaction.transaction_type,
+                    Transaction.TransactionType.BENEFIT_PURCHASE,
+                )
+                self.assertEqual(card.balance, Decimal("70.00"))
+
+    def test_purchase_rejects_insufficient_balance_on_transport_card(self):
+        """Saldo insuficiente em cartao de transporte recusa e nao grava."""
+
+        card = self.cards[Card.CardType.TRANSPORT]
+
+        with self.assertRaisesMessage(
+            ValidationError, "Saldo insuficiente no cartão de saldo."
+        ):
+            self._purchase(card, amount="150.00")
+
+        card.refresh_from_db()
+        self.assertEqual(card.balance, Decimal("100.00"))
+        self.assertFalse(Transaction.objects.exists())
+
+    def test_purchase_rejects_credit_card(self):
+        """Cartao de credito nao e cartao de saldo."""
+
+        credit = Card.objects.create(
+            name="Gold",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("1000.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=FinancialAccount.objects.create(
+                name="Conta",
+                institution=self.institution,
+                account_type=FinancialAccount.AccountType.CHECKING,
+                balance=Decimal("10.00"),
+            ),
+        )
+
+        with self.assertRaises(ValidationError):
+            self._purchase(credit)
+
+    def test_update_reverts_and_reapplies_balance_on_prepaid_card(self):
+        """Editar valor devolve o saldo anterior e aplica o novo."""
+
+        card = self.cards[Card.CardType.PREPAID]
+        transaction = self._purchase(card, amount="30.00")
+
+        update_transaction(
+            transaction_id=transaction.id,
+            description="Compra",
+            amount=Decimal("45.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            card=card,
+            category=self.category,
+            status=Transaction.PaymentStatus.PENDING,
+            date=date(2026, 5, 8),
+            notes="",
+        )
+
+        card.refresh_from_db()
+        self.assertEqual(card.balance, Decimal("55.00"))
+
+    def test_update_moves_purchase_between_balance_cards(self):
+        """Trocar de cartao de saldo devolve ao antigo e debita o novo."""
+
+        transport = self.cards[Card.CardType.TRANSPORT]
+        prepaid = self.cards[Card.CardType.PREPAID]
+        transaction = self._purchase(transport, amount="30.00")
+
+        update_transaction(
+            transaction_id=transaction.id,
+            description="Compra",
+            amount=Decimal("30.00"),
+            transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+            card=prepaid,
+            category=self.category,
+            status=Transaction.PaymentStatus.PENDING,
+            date=date(2026, 5, 8),
+            notes="",
+        )
+
+        transport.refresh_from_db()
+        prepaid.refresh_from_db()
+        self.assertEqual(transport.balance, Decimal("100.00"))
+        self.assertEqual(prepaid.balance, Decimal("70.00"))
 
 
 class TransferServiceTests(TestCase):

@@ -15,6 +15,8 @@ class Card(models.Model):
         TRANSPORT = "transport", "Transporte"
         PREPAID = "prepaid", "Pré-pago"
 
+    BALANCE_CARD_TYPES = (CardType.BENEFIT, CardType.PREPAID, CardType.TRANSPORT)
+
     name = models.CharField("Nome", max_length=120)
     institution = models.ForeignKey(
         "institutions.Institution",
@@ -136,6 +138,12 @@ class Card(models.Model):
 
         if self.balance is not None and self.balance < Decimal("0"):
             raise ValidationError({"balance": "Saldo não pode ser negativo."})
+
+    @property
+    def is_balance_card(self) -> bool:
+        """Indica cartao de saldo proprio (beneficio, pre-pago ou transporte)."""
+
+        return self.card_type in self.BALANCE_CARD_TYPES
 
     def __str__(self) -> str:
         """Retorna o nome amigavel do cartao para exibicao."""
