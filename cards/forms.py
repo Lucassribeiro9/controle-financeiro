@@ -88,7 +88,7 @@ class CardForm(forms.ModelForm):
         if (
             not self.is_bound
             and self.instance.pk
-            and self.instance.card_type == Card.CardType.BENEFIT
+            and self.instance.is_balance_card
         ):
             self.fields["estimated_balance"].initial = self.instance.balance
 
@@ -123,14 +123,11 @@ class CardForm(forms.ModelForm):
         return cleaned_data
 
     def save(self, commit=True):
-        """Inicializa saldo real de beneficio a partir do saldo informado."""
+        """Inicializa o saldo real do cartao de saldo a partir do saldo informado."""
 
         card = super().save(commit=False)
 
-        if (
-            card.card_type == Card.CardType.BENEFIT
-            and card.estimated_balance is not None
-        ):
+        if card.is_balance_card and card.estimated_balance is not None:
             card.balance = card.estimated_balance
 
         if commit:

@@ -240,6 +240,28 @@ class TransactionModelTests(TestCase):
         with self.assertRaises(ValidationError):
             transaction.full_clean()
 
+    def test_benefit_purchase_accepts_transport_and_prepaid_cards(self):
+        """Compra em cartao de saldo aceita transporte e pre-pago."""
+
+        for card_type in (Card.CardType.TRANSPORT, Card.CardType.PREPAID):
+            with self.subTest(card_type=card_type):
+                card = Card.objects.create(
+                    name=f"Cartao {card_type}",
+                    institution=self.institution,
+                    card_type=card_type,
+                    balance=Decimal("50.00"),
+                )
+                transaction = Transaction(
+                    description="Passagem",
+                    amount=Decimal("5.00"),
+                    transaction_type=Transaction.TransactionType.BENEFIT_PURCHASE,
+                    card=card,
+                    category=self.category,
+                    date=date(2026, 5, 8),
+                )
+
+                transaction.full_clean()
+
     def test_benefit_purchase_cannot_be_linked_to_statement(self):
         """Compra de beneficio nao deve entrar em fatura de cartao."""
 

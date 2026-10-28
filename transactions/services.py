@@ -58,12 +58,12 @@ def _apply_account_delta(*, account_id, delta):
 
 
 def _get_benefit_card_purchase_amount(transaction):
-    """Retorna impacto em saldo proprio de beneficio, quando aplicavel."""
+    """Retorna impacto em saldo proprio de cartao de saldo, quando aplicavel."""
 
     if (
         transaction.transaction_type == Transaction.TransactionType.BENEFIT_PURCHASE
         and transaction.card_id
-        and transaction.card.card_type == Card.CardType.BENEFIT
+        and transaction.card.is_balance_card
     ):
         return transaction.amount
 
@@ -71,18 +71,18 @@ def _get_benefit_card_purchase_amount(transaction):
 
 
 def _apply_benefit_card_delta(*, card_id, delta):
-    """Aplica ajuste no saldo proprio do cartao de beneficio."""
+    """Aplica ajuste no saldo proprio do cartao de saldo."""
 
     if not card_id or delta == Decimal("0.00"):
         return
 
     card = Card.objects.select_for_update().get(pk=card_id)
-    if card.card_type != Card.CardType.BENEFIT:
-        raise ValidationError("Benefício exige cartão de benefício.")
+    if not card.is_balance_card:
+        raise ValidationError("Compra em cartão de saldo exige cartão de saldo.")
 
     card.balance += delta
     if card.balance < Decimal("0.00"):
-        raise ValidationError("Saldo insuficiente no cartão de benefício.")
+        raise ValidationError("Saldo insuficiente no cartão de saldo.")
 
     card.full_clean()
     card.save(update_fields=["balance", "updated_at"])
@@ -146,18 +146,18 @@ def _create_benefit_purchase(
     status=Transaction.PaymentStatus.PENDING,
     notes="",
 ):
-    """Cria compra em beneficio debitando saldo e transacao atomicamente."""
+    """Cria compra em cartao de saldo debitando saldo e transacao atomicamente."""
 
     if amount <= Decimal("0.00"):
         raise ValidationError("Valor deve ser maior que zero.")
 
     with db_transaction.atomic():
         card = Card.objects.select_for_update().get(pk=card.pk)
-        if card.card_type != Card.CardType.BENEFIT:
-            raise ValidationError("Benefício exige cartão de benefício.")
+        if not card.is_balance_card:
+            raise ValidationError("Compra em cartão de saldo exige cartão de saldo.")
 
         if card.balance < amount:
-            raise ValidationError("Saldo insuficiente no cartão de benefício.")
+            raise ValidationError("Saldo insuficiente no cartão de saldo.")
 
         card.balance -= amount
         card.full_clean()
@@ -286,9 +286,9 @@ def create_transaction_by_payment_method(
 
     if payment_method == "benefit":
         if card is None:
-            raise ValidationError("Benefício exige cartão vinculado.")
-        if card.card_type != Card.CardType.BENEFIT:
-            raise ValidationError("Benefício exige cartão de benefício.")
+            raise ValidationError("Compra em cartão de saldo exige cartão vinculado.")
+        if not card.is_balance_card:
+            raise ValidationError("Compra em cartão de saldo exige cartão de saldo.")
 
         return _create_benefit_purchase(
             description=description,
@@ -352,7 +352,7 @@ def update_transaction(
         elif transaction_type == Transaction.TransactionType.BENEFIT_PURCHASE:
             new_statement = None
 
-        if card and card.card_type in (Card.CardType.CREDIT, Card.CardType.BENEFIT):
+        if card and (card.card_type == Card.CardType.CREDIT or card.is_balance_card):
             account = None
 
         _apply_account_delta(

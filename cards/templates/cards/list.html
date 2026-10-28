@@ -81,7 +81,7 @@
                                 <td class="cell-count">{{ card.statement_due_day|default:"Não informado" }}</td>
                                 <td>{{ card.payment_account|default:"Não vinculada" }}</td>
                                 <td class="cell-amount">
-                                    {% if card.card_type == "benefit" %}
+                                    {% if card.is_balance_card %}
                                         {{ card.balance|brl }}
                                     {% else %}
                                         {{ card.estimated_balance|brl }}

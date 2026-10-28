@@ -273,6 +273,64 @@ class CardViewTests(AuthenticatedTestCase):
         self.assertEqual(card.balance, Decimal("90.00"))
 
 
+    def test_post_create_transport_and_prepaid_cards_copy_balance(self):
+        """Transporte e pre-pago guardam o saldo informado em balance."""
+
+        for card_type in (Card.CardType.TRANSPORT, Card.CardType.PREPAID):
+            with self.subTest(card_type=card_type):
+                response = self.client.post(
+                    reverse("cards:create"),
+                    data={
+                        "name": f"Cartao {card_type}",
+                        "institution": self.institution.id,
+                        "card_type": card_type,
+                        "credit_limit": "",
+                        "statement_closing_day": "",
+                        "statement_due_day": "",
+                        "payment_account": "",
+                        "estimated_balance": "80,50",
+                        "is_active": "on",
+                    },
+                )
+                card = Card.objects.get(name=f"Cartao {card_type}")
+
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(card.balance, Decimal("80.50"))
+
+    def test_edit_form_shows_own_balance_for_transport_card(self):
+        """Edicao de cartao de transporte abre com o saldo atual."""
+
+        card = Card.objects.create(
+            name="VT",
+            institution=self.institution,
+            card_type=Card.CardType.TRANSPORT,
+            balance=Decimal("42.00"),
+        )
+
+        response = self.client.get(reverse("cards:update", kwargs={"card_id": card.id}))
+
+        self.assertEqual(
+            response.context["form"].fields["estimated_balance"].initial,
+            Decimal("42.00"),
+        )
+
+    def test_list_shows_balance_for_transport_and_prepaid_cards(self):
+        """A lista mostra o saldo proprio do grupo de saldo."""
+
+        Card.objects.create(
+            name="VT",
+            institution=self.institution,
+            card_type=Card.CardType.TRANSPORT,
+            balance=Decimal("42.00"),
+            estimated_balance=Decimal("999.00"),
+        )
+
+        response = self.client.get(reverse("cards:list"))
+
+        self.assertContains(response, "42,00")
+        self.assertNotContains(response, "999,00")
+
+
 class StatementViewTests(AuthenticatedTestCase):
     """Garante telas de faturas e pagamento via service."""
 
