@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
+from cards.models import Card
 from institutions.models import Institution
 from recurrences.models import Recurrence
 from transactions.models import Transaction
@@ -294,3 +295,89 @@ class RecurrenceViewsTests(AuthenticatedTestCase):
 
         self.assertEqual(self._messages(response), [("error", "Valor invalido.")])
         self.assertEqual(self.forecast.amount, Decimal("120.00"))
+
+
+class ConfirmSubscriptionOnCardViewTests(AuthenticatedTestCase):
+    """Confirmar assinatura no cartao gera compra no cartao na fatura (#217)."""
+
+    def setUp(self):
+        self.institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.card = Card.objects.create(
+            name="Inter Gold",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=self.account,
+        )
+        self.recurrence = Recurrence.objects.create(
+            name="Streaming",
+            expected_day=10,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.SUBSCRIPTION,
+            expected_amount=Decimal("50.00"),
+            card=self.card,
+        )
+        self.forecast = Transaction.objects.create(
+            description="[REC] Streaming",
+            amount=Decimal("50.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            card=self.card,
+            date=date(2026, 6, 10),
+            recurrence=self.recurrence,
+        )
+        self.url = reverse(
+            "recurrences:confirm-forecast", kwargs={"transaction_id": self.forecast.id}
+        )
+
+    def test_confirm_subscription_creates_card_purchase_in_statement(self):
+        response = self.client.post(self.url, follow=True)
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(
+            self.forecast.transaction_type, Transaction.TransactionType.CARD_PURCHASE
+        )
+        self.assertIsNotNone(self.forecast.statement)
+        self.assertEqual(self.forecast.statement.expected_amount, Decimal("50.00"))
+        self.assertEqual(
+            [(m.level_tag, str(m)) for m in response.context["messages"]],
+            [("success", "Previsão confirmada com sucesso.")],
+        )
+
+    def test_confirm_twice_does_not_duplicate_statement_amount(self):
+        self.client.post(self.url)
+        self.client.post(self.url)
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(self.forecast.statement.expected_amount, Decimal("50.00"))
+
+    def test_confirm_with_balance_card_shows_error_and_keeps_forecast(self):
+        benefit = Card.objects.create(
+            name="Caju VA",
+            institution=self.institution,
+            card_type=Card.CardType.BENEFIT,
+            estimated_balance=Decimal("100.00"),
+            balance=Decimal("100.00"),
+        )
+        self.forecast.card = benefit
+        self.forecast.save()
+        self.recurrence.card = benefit
+        self.recurrence.save()
+
+        response = self.client.post(self.url, follow=True)
+        self.forecast.refresh_from_db()
+
+        self.assertEqual(response.redirect_chain[0][1], 302)
+        self.assertEqual(self.forecast.transaction_type, Transaction.TransactionType.FORECAST)
+        self.assertEqual(self.forecast.status, Transaction.PaymentStatus.FORECASTED)
+        self.assertEqual(
+            [m.level_tag for m in response.context["messages"]], ["error"]
+        )

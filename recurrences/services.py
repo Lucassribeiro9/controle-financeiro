@@ -6,6 +6,13 @@ from datetime import date
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 from calendar import monthrange
+
+from cards.models import Card
+from cards.services import (
+    ensure_statement_accepts_purchases,
+    get_or_create_card_statement,
+    refresh_statement_amounts,
+)
 from .models import Recurrence
 from transactions.models import Transaction
 
@@ -115,3 +122,49 @@ def has_relevant_amount_difference(
     """Indica se a diferenca entre valor esperado e real e relevante."""
 
     return abs(expected_amount - actual_amount) >= threshold
+
+
+def confirm_forecast(*, forecast: Transaction) -> Transaction:
+    """Converte uma previsao recorrente em lancamento real pendente.
+
+    Receita vira INCOME; recorrencia em cartao de credito vira CARD_PURCHASE
+    ligada a fatura do periodo (sem conta, como em `update_transaction`); os
+    demais viram EXPENSE. Deve rodar dentro de `transaction.atomic` com a
+    previsao travada: qualquer `ValidationError` deve desfazer tudo, inclusive
+    a fatura criada no caminho.
+    """
+
+    recurrence = forecast.recurrence
+    card = forecast.card or (recurrence.card if recurrence else None)
+    statement = None
+
+    if recurrence.recurrence_type == Recurrence.RecurrenceType.INCOME:
+        tx_type = Transaction.TransactionType.INCOME
+        card = None
+    elif card is not None:
+        if card.card_type != Card.CardType.CREDIT:
+            raise ValidationError(
+                "Recorrência em cartão de saldo ainda não pode ser confirmada: "
+                "apenas cartões de crédito são aceitos."
+            )
+        tx_type = Transaction.TransactionType.CARD_PURCHASE
+        statement = get_or_create_card_statement(
+            card=card, transaction_date=forecast.date
+        )
+        ensure_statement_accepts_purchases(statement)
+    else:
+        tx_type = Transaction.TransactionType.EXPENSE
+
+    forecast.transaction_type = tx_type
+    forecast.status = Transaction.PaymentStatus.PENDING
+    forecast.card = card
+    forecast.statement = statement
+    if tx_type == Transaction.TransactionType.CARD_PURCHASE:
+        forecast.account = None
+    forecast.full_clean()
+    forecast.save()
+
+    if statement is not None:
+        refresh_statement_amounts(statement=statement)
+
+    return forecast

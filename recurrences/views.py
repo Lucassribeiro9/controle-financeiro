@@ -12,16 +12,8 @@ from core.auth import api_login_required
 from core.errors import map_service_errors_to_view
 from core.forms import normalize_decimal
 
-from .models import Recurrence
+from .services import confirm_forecast as confirm_forecast_service
 from transactions.models import Transaction
-
-
-def _get_transaction_type_from_recurrence(recurrence: Recurrence) -> str:
-    """Converte tipo de recorrencia para tipo real de transacao."""
-
-    if recurrence.recurrence_type == Recurrence.RecurrenceType.INCOME:
-        return Transaction.TransactionType.INCOME
-    return Transaction.TransactionType.EXPENSE
 
 
 def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
@@ -118,19 +110,21 @@ def _lock_forecast_or_404(transaction_id: int) -> Transaction:
 def confirm_forecast(request: HttpRequest, transaction_id: int) -> HttpResponse:
     """Confirma previsao para virar transacao real pendente."""
 
-    with transaction.atomic():
-        forecast = _lock_forecast_or_404(transaction_id)
-        if forecast.transaction_type != Transaction.TransactionType.FORECAST:
-            messages.info(request, "Esta previsão já foi confirmada.")
-            return _redirect_to_forecasts_month(forecast)
+    try:
+        with transaction.atomic():
+            forecast = _lock_forecast_or_404(transaction_id)
+            if forecast.transaction_type != Transaction.TransactionType.FORECAST:
+                messages.info(request, "Esta previsão já foi confirmada.")
+                return _redirect_to_forecasts_month(forecast)
 
-        recurrence = forecast.recurrence
-        if recurrence is None:
-            raise Http404("Previsao sem recorrencia de origem.")
+            if forecast.recurrence is None:
+                raise Http404("Previsao sem recorrencia de origem.")
 
-        forecast.transaction_type = _get_transaction_type_from_recurrence(recurrence)
-        forecast.status = Transaction.PaymentStatus.PENDING
-        forecast.save(update_fields=["transaction_type", "status", "updated_at"])
+            confirm_forecast_service(forecast=forecast)
+    except ValidationError as exc:
+        # O atomic ja desfez tudo; a previsao segue intacta para nova tentativa.
+        map_service_errors_to_view(request, exc)
+        return _redirect_to_forecasts_month(forecast)
 
     messages.success(request, "Previsão confirmada com sucesso.")
     return _redirect_to_forecasts_month(forecast)
