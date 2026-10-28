@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from .selectors import get_active_goals, get_goal_detail, get_monthly_goals_for_period
-from .services import update_monthly_goal_status
+from .services import calculate_monthly_goal_status
 
 
 def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
@@ -39,10 +39,11 @@ def monthly_goals_page(request: HttpRequest) -> HttpResponse:
 
     year, month = _get_period_from_request(request)
     monthly_goals = list(get_monthly_goals_for_period(year=year, month=month))
-    monthly_goals = [
-        update_monthly_goal_status(monthly_goal)
-        for monthly_goal in monthly_goals
-    ]
+    for monthly_goal in monthly_goals:
+        # Apenas exibicao: a persistencia fica com a rotina diaria (ADR-013).
+        monthly_goal.current_amount, monthly_goal.status = (
+            calculate_monthly_goal_status(monthly_goal)
+        )
 
     return render(
         request,

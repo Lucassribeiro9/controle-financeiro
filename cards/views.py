@@ -11,10 +11,8 @@ from .forms import CardForm, StatementPaymentForm
 from .models import Card, CardStatement
 from .selectors import get_card_limits, get_statement_summary
 from .services import (
-    auto_close_due_statements,
     close_statement,
     pay_statement,
-    update_statement_status,
 )
 from decimal import Decimal, InvalidOperation
 
@@ -91,8 +89,7 @@ def card_update_page(request: HttpRequest, card_id: int) -> HttpResponse:
 def statement_list_page(request: HttpRequest) -> HttpResponse:
     """Renderiza a lista de faturas."""
 
-    auto_close_due_statements()
-    statements = (
+    statements = list(
         CardStatement.objects.select_related(
             "card",
             "card__institution",
@@ -100,10 +97,6 @@ def statement_list_page(request: HttpRequest) -> HttpResponse:
         )
         .order_by("-year", "-month", "card__name")
     )
-    statements = [
-        update_statement_status(statement=statement)
-        for statement in statements
-    ]
     for statement in statements:
         statement.summary = get_statement_summary(statement)
 
@@ -129,7 +122,6 @@ def statement_detail_page(request: HttpRequest, statement_id: int) -> HttpRespon
 
         return redirect("cards:statement-detail", statement_id=statement.id)
 
-    statement = update_statement_status(statement=statement)
     payment_form = StatementPaymentForm(statement=statement)
     statement_summary = get_statement_summary(statement)
 

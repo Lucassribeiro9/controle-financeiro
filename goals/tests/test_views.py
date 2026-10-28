@@ -94,23 +94,27 @@ class GoalViewTests(AuthenticatedTestCase):
         self.assertIn("progress", first_summary)
         self.assertContains(response, "75,00%")
 
-    def test_monthly_goals_page_lists_period_items_and_updates_status(self):
-        """Deve listar metas mensais do periodo com status atualizado."""
+    def test_monthly_goals_page_shows_calculated_status_without_saving(self):
+        """GET calcula o status para exibir, mas nao grava (ADR-012)."""
+
+        before = MonthlyGoal.objects.values().get(pk=self.monthly_goal.pk)
 
         response = self.client.get(
             reverse("goals:monthly-goals"),
             data={"year": 2026, "month": 5},
         )
 
-        self.monthly_goal.refresh_from_db()
-
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "goals/monthly_goals.html")
         self.assertContains(response, "Reduzir delivery")
-        self.assertEqual(response.context["monthly_goals"], [self.monthly_goal])
-        self.assertEqual(self.monthly_goal.current_amount, Decimal("250.00"))
-        self.assertEqual(self.monthly_goal.status, MonthlyGoal.Status.AT_RISK)
+        shown = response.context["monthly_goals"]
+        self.assertEqual([goal.pk for goal in shown], [self.monthly_goal.pk])
+        self.assertEqual(shown[0].current_amount, Decimal("250.00"))
+        self.assertEqual(shown[0].status, MonthlyGoal.Status.AT_RISK)
         self.assertContains(response, 'class="badge badge-danger"', html=False)
+        self.assertEqual(
+            MonthlyGoal.objects.values().get(pk=self.monthly_goal.pk), before
+        )
 
     def test_goal_detail_page_returns_goal_monthly_goals_and_progress(self):
         """Deve renderizar detalhe do objetivo com metas e progresso."""

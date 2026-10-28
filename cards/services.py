@@ -195,7 +195,20 @@ def auto_close_due_statements(*, today=None) -> int:
 
     closed_count = 0
     for statement in statements:
-        close_statement(statement=statement)
+        try:
+            close_statement(statement=statement)
+        except ValidationError:
+            # Outra execucao ou o usuario ja fechou/cancelou a fatura apos o lock.
+            still_closable = CardStatement.objects.filter(
+                pk=statement.pk,
+                status__in=[
+                    CardStatement.StatementStatus.OPEN,
+                    CardStatement.StatementStatus.FORECASTED,
+                ],
+            ).exists()
+            if still_closable:
+                raise
+            continue
         closed_count += 1
 
     return closed_count
@@ -287,20 +300,45 @@ def _sync_statement_purchase_statuses(*, statement):
     ).update(status=Transaction.PaymentStatus.PAID, updated_at=timezone.now())
 
 
-def update_statement_status(*, statement, today=None):
-    """Atualiza a fatura para atrasada quando passou do vencimento sem pagamento total."""
+def mark_late_statements(*, today=None) -> int:
+    """Marca como atrasadas as faturas vencidas sem pagamento total.
+
+    Idempotente: faturas ja atrasadas, pagas ou canceladas sao ignoradas.
+    """
 
     today = today or timezone.localdate()
-    statement = CardStatement.objects.get(pk=statement.pk)
+    candidate_ids = list(
+        CardStatement.objects.filter(due_date__lt=today)
+        .exclude(
+            status__in=[
+                CardStatement.StatementStatus.CANCELED,
+                CardStatement.StatementStatus.PAID,
+                CardStatement.StatementStatus.LATE,
+            ]
+        )
+        .order_by("due_date", "pk")
+        .values_list("pk", flat=True)
+    )
 
-    if statement.status in (
-        CardStatement.StatementStatus.CANCELED,
-        CardStatement.StatementStatus.PAID,
-    ):
-        return statement
+    marked_count = 0
+    for statement_id in candidate_ids:
+        with db_transaction.atomic():
+            statement = CardStatement.objects.select_for_update().get(pk=statement_id)
+            if statement.status in (
+                CardStatement.StatementStatus.CANCELED,
+                CardStatement.StatementStatus.PAID,
+                CardStatement.StatementStatus.LATE,
+            ):
+                continue
+            if not (
+                today > statement.due_date
+                and statement.paid_amount < statement.closed_amount
+            ):
+                continue
 
-    if today > statement.due_date and statement.paid_amount < statement.closed_amount:
-        statement.status = CardStatement.StatementStatus.LATE
-        statement.save(update_fields=["status", "updated_at"])
+            statement.status = CardStatement.StatementStatus.LATE
+            statement.full_clean()
+            statement.save(update_fields=["status", "updated_at"])
+            marked_count += 1
 
-    return statement
+    return marked_count
