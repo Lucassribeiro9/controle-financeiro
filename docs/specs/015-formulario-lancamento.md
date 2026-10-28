@@ -107,17 +107,17 @@ Nenhuma mudanca de schema (P1 e P2). A compra em cartao de saldo reutiliza o tip
 | FRM-02 | P1: Campos condicionais - AC 2-3 | #239 | Verified |
 | FRM-03 | P1: Campos condicionais - AC 4 | #239 | Verified |
 | FRM-04 | P1: Campos condicionais - AC 5 | #239 | Verified |
-| FRM-05 | P2: Origem do lancamento - AC 1-4 | #265 | Planned |
-| FRM-06 | P2: Origem do lancamento - AC 5 | #265 | Planned |
-| FRM-07 | P2: Origem do lancamento - AC 6 | #265 | Planned |
-| FRM-08 | P2: Origem do lancamento - AC 7 | #265 | Planned |
-| FRM-09 | P2: Origem do lancamento - AC 8 | #265 | Planned |
-| FRM-10 | P2: Origem do lancamento - AC 9 | #265 | Planned |
+| FRM-05 | P2: Origem do lancamento - AC 1-4 | #265 | Verified |
+| FRM-06 | P2: Origem do lancamento - AC 5 | #265 | Verified |
+| FRM-07 | P2: Origem do lancamento - AC 6 | #265 | Verified |
+| FRM-08 | P2: Origem do lancamento - AC 7 | #265 | Verified |
+| FRM-09 | P2: Origem do lancamento - AC 8 | #265 | Verified |
+| FRM-10 | P2: Origem do lancamento - AC 9 | #265 | Verified |
 
-**Cobertura:** 10 requisitos; 4 ligados a #239 (verificados); 6 ligados a #265.
+**Cobertura:** 10 requisitos; 4 ligados a #239 (verificados); 6 ligados a #265 (verificados).
 
 ## Criterios de Sucesso
 
 - [x] Nenhum campo com atributo `hidden` aparece nos formularios de lancamento e de cartao.
 - [x] `check`, `makemigrations --check --dry-run` e `test` passam.
-- [ ] P2: receita so em conta; despesa em conta, credito ou cartao de saldo; saldo do cartao de saldo debitado; sem JS o formulario recusa combinacoes invalidas.
+- [x] P2: receita so em conta; despesa em conta, credito ou cartao de saldo; saldo do cartao de saldo debitado; sem JS o formulario recusa combinacoes invalidas.
