@@ -170,7 +170,9 @@ def transaction_edit_page(request: HttpRequest, transaction_id: int) -> HttpResp
         return redirect("transactions:detail", transaction_id=transaction.id)
 
     if request.method == "POST":
-        form = TransactionForm(request.POST, allow_transfer=False)
+        form = TransactionForm(
+            request.POST, allow_transfer=False, transaction=transaction
+        )
         if form.is_valid():
             try:
                 updated_transaction = update_transaction(
