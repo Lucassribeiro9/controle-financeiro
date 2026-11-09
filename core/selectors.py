@@ -13,6 +13,7 @@ from goals.models import MonthlyGoal
 from imports.models import ImportedTransaction
 from insights.models import Insight
 from recurrences.models import Recurrence
+from recurrences.selectors import get_recurring_forecasts_for_period
 from transactions.constants import SPENDING_TRANSACTION_TYPES
 from transactions.models import Transaction, Transfer
 
@@ -274,16 +275,16 @@ def _classify_recurring_forecasts(
 
 
 def _get_generated_recurring_forecasts(*, year: int, month: int) -> list[Transaction]:
-    """Lista previsoes vinculadas a uma recorrencia existente."""
+    """Lista previsoes vinculadas a uma recorrencia existente.
+
+    Usa o mesmo criterio da tela de previsoes (#218), restrito a status
+    FORECASTED para nao contar previsoes ja confirmadas ou ignoradas.
+    """
 
     return list(
-        Transaction.objects.filter(
-            date__year=year,
-            date__month=month,
-            transaction_type=Transaction.TransactionType.FORECAST,
-            status=Transaction.PaymentStatus.FORECASTED,
-            recurrence__isnull=False,
-        ).select_related("recurrence")
+        get_recurring_forecasts_for_period(
+            year=year, month=month, statuses=FORECAST_STATUSES
+        )
     )
 
 

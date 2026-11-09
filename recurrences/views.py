@@ -12,6 +12,7 @@ from core.auth import api_login_required
 from core.errors import map_service_errors_to_view
 from core.forms import normalize_decimal
 
+from .selectors import get_recurring_forecasts_for_period
 from .services import confirm_forecast as confirm_forecast_service
 from transactions.models import Transaction
 
@@ -26,13 +27,13 @@ def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
 
 
 def _get_forecasts_for_period(*, year: int, month: int):
-    """Lista previsoes recorrentes de um periodo."""
+    """Lista previsoes recorrentes de um periodo.
 
-    return Transaction.objects.filter(
-        transaction_type=Transaction.TransactionType.FORECAST,
-        date__year=year,
-        date__month=month,
-    ).order_by("date", "description")
+    Usa o mesmo criterio do resumo da home (#218): so previsoes vinculadas a
+    uma recorrencia existente entram na listagem.
+    """
+
+    return get_recurring_forecasts_for_period(year=year, month=month)
 
 
 @api_login_required
