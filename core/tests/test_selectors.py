@@ -9,11 +9,13 @@ from django.urls import reverse
 from accounts.models import FinancialAccount
 from cards.models import Card, CardStatement
 from core.selectors import get_operational_home_context
+from core.testing import AuthenticatedTestCase
 from goals.models import Goal, MonthlyGoal
 from imports.models import ImportedTransaction
 from insights.models import Insight
 from institutions.models import Institution
 from recurrences.models import Recurrence
+from recurrences.selectors import get_recurring_forecasts_for_period
 from recurrences.services import generate_monthly_recurrences_forecasts
 from transactions.models import Transaction, Transfer
 
@@ -383,3 +385,106 @@ class OperationalHomeSelectorTests(TestCase):
                 },
             ],
         )
+
+
+class HomeAndForecastsPageAlignmentTests(AuthenticatedTestCase):
+    """Garante que a home e a tela de previsoes usam o mesmo criterio (#218)."""
+
+    def setUp(self):
+        self.today = date(2026, 5, 27)
+        self.institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.expense_recurrence = Recurrence.objects.create(
+            name="Internet residencial",
+            expected_day=10,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.FIXED_BILL,
+            expected_amount=Decimal("120.00"),
+            account=self.account,
+        )
+        self.income_recurrence = Recurrence.objects.create(
+            name="Aluguel recebido",
+            expected_day=12,
+            frequency=Recurrence.Frequency.MONTHLY,
+            recurrence_type=Recurrence.RecurrenceType.INCOME,
+            expected_amount=Decimal("1500.00"),
+            account=self.account,
+        )
+        generate_monthly_recurrences_forecasts(year=2026, month=5)
+
+        # Previsao orfa: recorrencia apagada, nao deve contar em nenhuma tela.
+        Transaction.objects.create(
+            description="[REC] Recorrencia removida",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 5, 15),
+            recurrence=None,
+        )
+
+        # Previsao vinculada ja ignorada: continua listada na tela de
+        # previsoes, mas nao soma no resumo previsto (criterio de status).
+        ignored_expense = Transaction.objects.get(
+            recurrence=self.expense_recurrence, date__year=2026, date__month=5
+        )
+        ignored_expense.status = Transaction.PaymentStatus.IGNORED
+        ignored_expense.save(update_fields=["status"])
+
+        # Nova previsao vinculada de despesa, FORECASTED, para comparar somas.
+        Transaction.objects.create(
+            description="[REC] Outra despesa prevista",
+            amount=Decimal("40.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 5, 16),
+            recurrence=self.expense_recurrence,
+        )
+
+    def test_home_forecasted_summary_matches_forecasts_page_totals(self):
+        """O previsto da home soma exatamente o que a tela de previsoes lista como FORECASTED."""
+
+        summary = get_operational_home_context(today=self.today)["summary"]["forecasted"]
+
+        listed = get_recurring_forecasts_for_period(
+            year=2026, month=5, statuses=[Transaction.PaymentStatus.FORECASTED]
+        )
+        expected_income = sum(
+            (
+                forecast.amount
+                for forecast in listed
+                if forecast.recurrence.recurrence_type == Recurrence.RecurrenceType.INCOME
+            ),
+            Decimal("0.00"),
+        )
+        expected_expenses = sum(
+            (
+                forecast.amount
+                for forecast in listed
+                if forecast.recurrence.recurrence_type != Recurrence.RecurrenceType.INCOME
+            ),
+            Decimal("0.00"),
+        )
+
+        self.assertEqual(summary["income"], expected_income)
+        self.assertEqual(summary["expenses"], expected_expenses)
+
+    def test_pending_items_count_matches_forecasts_page_selector(self):
+        """A contagem de 'Revisar recorrencias previstas' bate com o selector novo."""
+
+        pending_items = get_operational_home_context(today=self.today)["pending_items"]
+        recurrences_item = next(
+            item for item in pending_items if item["type"] == "recurrences"
+        )
+
+        listed_count = get_recurring_forecasts_for_period(
+            year=2026, month=5, statuses=[Transaction.PaymentStatus.FORECASTED]
+        ).count()
+
+        self.assertEqual(recurrences_item["count"], listed_count)

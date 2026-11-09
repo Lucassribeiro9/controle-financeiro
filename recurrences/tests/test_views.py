@@ -90,6 +90,92 @@ class RecurrenceViewsTests(AuthenticatedTestCase):
         self.assertEqual(response.context["year"], today.year)
         self.assertEqual(response.context["month"], today.month)
 
+    def test_forecasts_page_excludes_orphan_forecast(self):
+        """Previsao sem recorrencia (apagada) nao aparece na tela (#218)."""
+
+        orphan = Transaction.objects.create(
+            description="[REC] Recorrencia removida",
+            amount=Decimal("55.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 6, 12),
+            recurrence=None,
+        )
+
+        response = self.client.get(
+            reverse("recurrences:forecasts-page", kwargs={"year": 2026, "month": 6})
+        )
+
+        self.assertNotIn(orphan, response.context["forecasts"])
+        self.assertNotContains(response, "Recorrencia removida")
+        self.assertNotContains(
+            response,
+            reverse("recurrences:confirm-forecast", kwargs={"transaction_id": orphan.id}),
+        )
+
+    def test_monthly_forecasts_excludes_orphan_forecast(self):
+        """A API JSON tambem exclui a previsao orfa e ajusta o count (#218)."""
+
+        Transaction.objects.create(
+            description="[REC] Recorrencia removida",
+            amount=Decimal("55.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 6, 12),
+            recurrence=None,
+        )
+
+        response = self.client.get(
+            reverse("recurrences:monthly-forecasts", kwargs={"year": 2026, "month": 6})
+        )
+
+        body = response.json()
+        self.assertEqual(body["count"], 1)
+        self.assertEqual(body["results"][0]["id"], self.forecast.id)
+
+    def test_forecasts_page_keeps_ignored_linked_forecast(self):
+        """Previsao vinculada com status IGNORED continua listada (regressao)."""
+
+        self.forecast.status = Transaction.PaymentStatus.IGNORED
+        self.forecast.save(update_fields=["status"])
+
+        response = self.client.get(
+            reverse("recurrences:forecasts-page", kwargs={"year": 2026, "month": 6})
+        )
+
+        self.assertIn(self.forecast, response.context["forecasts"])
+        self.assertContains(response, "Internet residencial")
+
+    def test_ignore_forecast_on_orphan_still_works_as_defense_in_depth(self):
+        """POST direto em ignore-forecast de orfa continua funcionando (#218, criterio 3).
+
+        A UI nao oferece mais essa acao para previsoes orfas, mas o guard de
+        `_lock_forecast_or_404` so bloqueia transacoes que nunca foram
+        previsao; uma orfa segue sendo defendida apenas contra reprocessar
+        uma previsao ja confirmada.
+        """
+
+        orphan = Transaction.objects.create(
+            description="[REC] Recorrencia removida",
+            amount=Decimal("55.00"),
+            transaction_type=Transaction.TransactionType.FORECAST,
+            status=Transaction.PaymentStatus.FORECASTED,
+            account=self.account,
+            date=date(2026, 6, 12),
+            recurrence=None,
+        )
+
+        response = self.client.post(
+            reverse("recurrences:ignore-forecast", kwargs={"transaction_id": orphan.id}),
+            follow=True,
+        )
+        orphan.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(orphan.status, Transaction.PaymentStatus.IGNORED)
+
     def _url(self, name, forecast=None):
         forecast = forecast or self.forecast
         return reverse(f"recurrences:{name}-forecast", kwargs={"transaction_id": forecast.id})
