@@ -209,6 +209,74 @@ class InsightServiceTests(TestCase):
         self.assertEqual(approved.status, Insight.Status.APPROVED)
         self.assertFalse(IgnoredPattern.objects.exists())
 
+    def test_ignore_and_silence_reject_non_pending_states(self):
+        """Decisao so vale sobre PENDING: trocar IGNORED/SILENCED por outra acao e erro."""
+
+        ignored = ignore_insight(insight=self._limit_insight(source_key="a:1:2026-05"))
+        silenced = silence_insight(insight=self._limit_insight(source_key="b:2:2026-05"))
+        patterns_before = IgnoredPattern.objects.count()
+
+        with self.assertRaises(ValidationError):
+            silence_insight(insight=ignored)
+        with self.assertRaises(ValidationError):
+            ignore_insight(insight=silenced)
+
+        ignored.refresh_from_db()
+        silenced.refresh_from_db()
+        self.assertEqual(ignored.status, Insight.Status.IGNORED)
+        self.assertEqual(silenced.status, Insight.Status.SILENCED)
+        self.assertEqual(IgnoredPattern.objects.count(), patterns_before)
+
+    def test_repeating_same_decision_is_idempotent(self):
+        ignored = ignore_insight(insight=self._limit_insight(source_key="a:1:2026-05"))
+        silenced = silence_insight(insight=self._limit_insight(source_key="b:2:2026-05"))
+        patterns_before = IgnoredPattern.objects.count()
+
+        again_ignored = ignore_insight(insight=ignored)
+        again_silenced = silence_insight(insight=silenced)
+
+        self.assertEqual(again_ignored.status, Insight.Status.IGNORED)
+        self.assertEqual(again_silenced.status, Insight.Status.SILENCED)
+        self.assertEqual(IgnoredPattern.objects.count(), patterns_before)
+
+    def test_approve_reactivates_inactive_reduction_goal(self):
+        goal = Goal.objects.create(
+            name="Limite: Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("300.00"),
+            start_date=date(2026, 1, 1),
+            category=self.category,
+            is_active=False,
+        )
+
+        approved = approve_insight(insight=self._limit_insight())
+
+        goal.refresh_from_db()
+        self.assertTrue(goal.is_active)
+        self.assertEqual(approved.monthly_goal.goal_id, goal.pk)
+        self.assertEqual(Goal.objects.count(), 1)
+
+    def test_approve_keep_reactivates_goal_of_existing_monthly_goal(self):
+        goal = Goal.objects.create(
+            name="Limite: Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("300.00"),
+            start_date=date(2026, 1, 1),
+            category=self.category,
+            is_active=False,
+        )
+        today = date(2026, 5, 10)
+        MonthlyGoal.objects.create(
+            goal=goal, year=today.year, month=today.month,
+            target_amount=Decimal("300.00"),
+        )
+
+        with patch("insights.services.timezone.localdate", return_value=today):
+            approve_insight(insight=self._limit_insight(amount="300.00"))
+
+        goal.refresh_from_db()
+        self.assertTrue(goal.is_active)
+
     def test_approve_rejects_unknown_existing_goal_action(self):
         with self.assertRaises(ValidationError):
             approve_insight(insight=self._limit_insight(), existing_goal_action="x")

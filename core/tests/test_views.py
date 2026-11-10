@@ -380,6 +380,46 @@ class HomeViewTests(AuthenticatedTestCase):
         self.assertContains(response, "Em risco")
         self.assertContains(response, "R$ 410,00 de R$ 500,00")
 
+    def test_home_shows_spending_equal_to_limit_as_at_risk_not_exceeded(self):
+        """Gasto igual ao limite usa o card de risco, nao o de excedido."""
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        category = Category.objects.create(name="Lazer")
+        goal = Goal.objects.create(
+            name="Limite Lazer",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date.today(),
+            category=category,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=date.today().year,
+            month=date.today().month,
+            target_amount=Decimal("500.00"),
+        )
+        Transaction.objects.create(
+            description="Cinema",
+            amount=Decimal("500.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=account,
+            category=category,
+            date=date.today(),
+        )
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertContains(response, "Lazer")
+        self.assertContains(response, "home-alert-card-medium")
+        self.assertNotContains(response, "home-alert-card-high")
+        self.assertNotContains(response, "Excedido")
+
     def test_home_shows_empty_categories_at_risk_state(self):
         """A home deve exibir mensagem de sucesso quando nao ha limites em risco."""
         response = self.client.get(reverse("core:home"))

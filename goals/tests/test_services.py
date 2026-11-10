@@ -328,6 +328,68 @@ class GoalServiceTests(TestCase):
         self.assertEqual(updated.current_amount, Decimal("260.00"))
         self.assertEqual(updated.status, MonthlyGoal.Status.MISSED)
 
+    def _reduction_monthly_goal(self, *, limit, spent):
+        goal = Goal.objects.create(
+            name="Reduzir delivery",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal(limit),
+            start_date=date(2026, 5, 1),
+            category=self.category,
+        )
+        Transaction.objects.create(
+            description="Delivery",
+            amount=Decimal(spent),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.spending_account,
+            category=self.category,
+            date=date(2026, 5, 10),
+        )
+        return MonthlyGoal.objects.create(
+            goal=goal, year=2026, month=5, target_amount=Decimal(limit)
+        )
+
+    def test_reduction_spending_equal_to_limit_is_at_risk(self):
+        """Gasto igual ao limite ainda cabe no limite: em risco, nao excedido."""
+
+        monthly_goal = self._reduction_monthly_goal(limit="250.00", spent="250.00")
+
+        _, status = calculate_monthly_goal_status(monthly_goal)
+        updated = update_monthly_goal_status(monthly_goal)
+
+        self.assertEqual(status, MonthlyGoal.Status.AT_RISK)
+        self.assertEqual(updated.status, MonthlyGoal.Status.AT_RISK)
+
+    def test_reduction_spending_one_cent_above_limit_is_missed(self):
+        monthly_goal = self._reduction_monthly_goal(limit="250.00", spent="250.01")
+
+        _, status = calculate_monthly_goal_status(monthly_goal)
+
+        self.assertEqual(status, MonthlyGoal.Status.MISSED)
+
+    def test_reduction_spending_below_eighty_percent_is_on_track(self):
+        monthly_goal = self._reduction_monthly_goal(limit="250.00", spent="199.99")
+
+        _, status = calculate_monthly_goal_status(monthly_goal)
+
+        self.assertEqual(status, MonthlyGoal.Status.ON_TRACK)
+
+    def test_accumulation_reaching_target_is_still_achieved(self):
+        goal = Goal.objects.create(
+            name="Reserva",
+            goal_type=Goal.GoalType.ACCUMULATION,
+            target_amount=Decimal("2000.00"),
+            start_date=date(2026, 5, 1),
+        )
+        goal.accounts.set([self.account, self.extra_account])
+        monthly_goal = MonthlyGoal.objects.create(
+            goal=goal, year=2026, month=5, target_amount=Decimal("2000.00")
+        )
+
+        _, status = calculate_monthly_goal_status(monthly_goal)
+
+        self.assertEqual(status, MonthlyGoal.Status.ACHIEVED)
+
 
 class CreateReductionGoalForCategoryTests(TestCase):
     """Garante o service de criacao de meta de reducao por categoria."""
@@ -424,6 +486,59 @@ class CreateReductionGoalForCategoryTests(TestCase):
             ["Já existe uma meta para Alimentacao em Julho/2026."],
         )
         self.assertEqual(MonthlyGoal.objects.count(), 1)
+
+
+class InactiveReductionGoalTests(TestCase):
+    """Garante reativacao do unico Goal de reducao inativo da categoria (D4-A)."""
+
+    def setUp(self):
+        self.category = Category.objects.create(name="Alimentacao")
+        self.goal = Goal.objects.create(
+            name="Limite - Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            category=self.category,
+            target_amount=Decimal("400.00"),
+            start_date=date(2026, 1, 1),
+            is_active=False,
+        )
+
+    def test_create_limit_reactivates_inactive_goal_without_second_goal(self):
+        monthly_goal = create_reduction_goal_for_category(
+            category=self.category,
+            year=2026,
+            month=7,
+            target_amount=Decimal("500.00"),
+        )
+
+        self.goal.refresh_from_db()
+        self.assertTrue(self.goal.is_active)
+        self.assertEqual(monthly_goal.goal_id, self.goal.pk)
+        self.assertEqual(
+            Goal.objects.filter(
+                goal_type=Goal.GoalType.REDUCTION, category=self.category
+            ).count(),
+            1,
+        )
+
+    def test_create_limit_prefers_active_goal_and_keeps_inactive_untouched(self):
+        active = Goal.objects.create(
+            name="Limite ativo",
+            goal_type=Goal.GoalType.REDUCTION,
+            category=self.category,
+            target_amount=Decimal("300.00"),
+            start_date=date(2026, 2, 1),
+        )
+
+        monthly_goal = create_reduction_goal_for_category(
+            category=self.category,
+            year=2026,
+            month=7,
+            target_amount=Decimal("500.00"),
+        )
+
+        self.goal.refresh_from_db()
+        self.assertEqual(monthly_goal.goal_id, active.pk)
+        self.assertFalse(self.goal.is_active)
 
 
 class MonthlyGoalRefreshTests(TestCase):

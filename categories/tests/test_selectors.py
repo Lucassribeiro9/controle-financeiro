@@ -270,7 +270,7 @@ class CategoryMonthlySpentSelectorTests(TestCase):
         self.assertEqual(food.limit_progress_percent, Decimal("80.0"))
 
     def test_limit_status_calculates_exceeded(self):
-        """Garante status 'exceeded' quando o gasto esta >= 100% do limite."""
+        """Garante status 'exceeded' somente quando o gasto passa de 100% do limite."""
         goal = Goal.objects.create(
             name="Limite Alimentacao",
             goal_type=Goal.GoalType.REDUCTION,
@@ -285,10 +285,10 @@ class CategoryMonthlySpentSelectorTests(TestCase):
             target_amount=Decimal("500.00"),
         )
 
-        # 500.00 / 500.00 = 100.0% (>= 100%)
+        # 500.01 / 500.00 > 100%
         Transaction.objects.create(
             description="Mercado",
-            amount=Decimal("500.00"),
+            amount=Decimal("500.01"),
             transaction_type=Transaction.TransactionType.EXPENSE,
             status=Transaction.PaymentStatus.PAID,
             account=self.account,
@@ -300,7 +300,6 @@ class CategoryMonthlySpentSelectorTests(TestCase):
         food = next(c for c in result if c.name == "Alimentacao")
 
         self.assertEqual(food.limit_status, "exceeded")
-        self.assertEqual(food.limit_progress_percent, Decimal("100.0"))
 
     def test_limit_status_is_none_when_no_limit(self):
         """Garante que limit_amount e limit_status sao None quando nao ha limite cadastrado."""
@@ -370,3 +369,98 @@ class CategoryMonthlySpentSelectorTests(TestCase):
         self.assertEqual(result_list[0].name, "Alimentacao")
 
 
+
+
+class CategoryLimitRuleTests(TestCase):
+    """Garante a regra unica de limite: <80% ok, 80-100% risco, >100% excedido."""
+
+    def setUp(self):
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=Institution.objects.create(name="Inter", code="077"),
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.category = Category.objects.create(name="Alimentacao")
+        self.reference_date = date(2026, 7, 1)
+
+    def _goal(self, *, target="500.00", is_active=True, category=None):
+        return Goal.objects.create(
+            name="Limite",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal(target),
+            start_date=date(2026, 7, 1),
+            category=category or self.category,
+            is_active=is_active,
+        )
+
+    def _monthly(self, goal, target="500.00"):
+        return MonthlyGoal.objects.create(
+            goal=goal, year=2026, month=7, target_amount=Decimal(target)
+        )
+
+    def _spend(self, amount):
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal(amount),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 7, 10),
+        )
+
+    def _category(self):
+        return get_categories_with_monthly_spent(self.reference_date).get(
+            pk=self.category.pk
+        )
+
+    def test_spending_equal_to_limit_is_at_risk(self):
+        self._monthly(self._goal())
+        self._spend("500.00")
+
+        category = self._category()
+
+        self.assertEqual(category.limit_status, "at_risk")
+        self.assertEqual(category.limit_progress_percent, Decimal("100"))
+
+    def test_spending_above_limit_is_exceeded(self):
+        self._monthly(self._goal())
+        self._spend("500.01")
+
+        self.assertEqual(self._category().limit_status, "exceeded")
+
+    def test_category_at_exact_limit_is_listed_as_at_risk(self):
+        self._monthly(self._goal())
+        self._spend("500.00")
+
+        result = get_categories_at_risk(self.reference_date)
+
+        self.assertEqual([c.pk for c in result], [self.category.pk])
+
+    def test_inactive_goal_monthly_goal_is_not_displayed_as_limit(self):
+        self._monthly(self._goal(is_active=False))
+        self._spend("450.00")
+
+        category = self._category()
+
+        self.assertIsNone(category.limit_amount)
+        self.assertIsNone(category.limit_status)
+        self.assertEqual(list(get_categories_at_risk(self.reference_date)), [])
+
+    def test_active_goal_wins_over_inactive_one_in_same_month(self):
+        inactive = self._goal(target="100.00", is_active=False)
+        active = self._goal(target="500.00")
+        self._monthly(inactive, target="100.00")
+        self._monthly(active, target="500.00")
+
+        self.assertEqual(self._category().limit_amount, Decimal("500.00"))
+
+    def test_lowest_goal_id_wins_among_active_goals(self):
+        first = self._goal(target="300.00")
+        second = self._goal(target="900.00")
+        # criada fora de ordem para nao depender da ordem de insercao
+        self._monthly(second, target="900.00")
+        self._monthly(first, target="300.00")
+
+        self.assertEqual(self._category().limit_amount, Decimal("300.00"))

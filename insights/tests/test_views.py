@@ -181,6 +181,22 @@ class InsightViewTests(AuthenticatedTestCase):
         self.assertEqual(self.insight.status, Insight.Status.APPROVED)
         self.assertFalse(IgnoredPattern.objects.exists())
 
+    def test_changing_decision_of_non_pending_insight_shows_error_without_500(self):
+        self.client.post(
+            reverse("insights:ignore", kwargs={"insight_id": self.insight.id})
+        )
+
+        response = self.client.post(
+            reverse("insights:silence", kwargs={"insight_id": self.insight.id}),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue([str(m) for m in response.context["messages"]])
+        self.insight.refresh_from_db()
+        self.assertEqual(self.insight.status, Insight.Status.IGNORED)
+        self.assertFalse(IgnoredPattern.objects.exists())
+
     def test_ignore_insight_marks_item_as_ignored(self):
         response = self.client.post(
             reverse("insights:ignore", kwargs={"insight_id": self.insight.id}),
