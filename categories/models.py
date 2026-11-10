@@ -74,7 +74,7 @@ class Category(models.Model):
             return None
         if percent < 80:
             return "ok"
-        elif percent < 100:
+        elif percent <= 100:
             return "at_risk"
         else:
             return "exceeded"
