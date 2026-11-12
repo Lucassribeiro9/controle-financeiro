@@ -2,7 +2,6 @@
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import Count
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -13,17 +12,13 @@ from goals.services import create_reduction_goal_for_category
 
 from .forms import CategoryForm, GoalForCategoryForm
 from .models import Category
-from .selectors import get_categories_with_monthly_spent
+from .selectors import get_categories_for_list
 
 
 def category_list_page(request: HttpRequest) -> HttpResponse:
     """Renderiza a lista de categorias e subcategorias."""
 
-    categories = (
-        get_categories_with_monthly_spent(timezone.localdate())
-        .annotate(children_count=Count("children"))
-        .order_by("parent__name", "name")
-    )
+    categories = get_categories_for_list(timezone.localdate())
 
     return render(
         request,
