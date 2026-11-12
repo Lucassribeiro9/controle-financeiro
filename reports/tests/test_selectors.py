@@ -456,6 +456,40 @@ class ReportSelectorTests(TestCase):
         self.assertEqual(goals, [monthly_goal])
         self.assertEqual(goals[0].goal, goal)
 
+    def test_goal_summary_calculates_status_without_visiting_goals_page(self):
+        """Painel mostra status calculado e nao grava (ADR-016)."""
+
+        category = Category.objects.create(name="Delivery")
+        goal = Goal.objects.create(
+            name="Reduzir delivery",
+            goal_type=Goal.GoalType.REDUCTION,
+            category=category,
+            target_amount=Decimal("1.00"),
+            start_date=date(2026, 5, 1),
+        )
+        monthly_goal = MonthlyGoal.objects.create(
+            goal=goal,
+            year=2026,
+            month=5,
+            target_amount=Decimal("1.00"),
+            status=MonthlyGoal.Status.ON_TRACK,
+        )
+        Transaction.objects.create(
+            description="Pizza",
+            amount=Decimal("400.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            category=category,
+            date=date(2026, 5, 10),
+        )
+        before = MonthlyGoal.objects.values().get(pk=monthly_goal.pk)
+
+        goals = list(get_goal_summary(year=2026, month=5))
+
+        self.assertEqual(goals[0].status, MonthlyGoal.Status.MISSED)
+        self.assertEqual(goals[0].current_amount, Decimal("400.00"))
+        self.assertEqual(MonthlyGoal.objects.values().get(pk=monthly_goal.pk), before)
+
     def test_monthly_dashboard_returns_expected_payload(self):
         """Deve montar payload consolidado do painel mensal."""
 

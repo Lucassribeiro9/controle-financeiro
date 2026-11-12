@@ -104,6 +104,9 @@ Criar ou evoluir:
 - O limite exibido da categoria e a `MonthlyGoal` do mes cujo `Goal` de reducao esta ativo; havendo mais de uma, vale a de menor `goal_id`. Meta de `Goal` inativo nao aparece como limite.
 - Criar ou aprovar limite numa categoria cujo unico `Goal` de reducao esta inativo reativa esse `Goal` (`is_active=True`, com `full_clean`); nunca cria um segundo `Goal` (ADR-010).
 - Limite mensal deve alertar e orientar decisao, nunca bloquear lancamento por padrao.
+- Status e valor atual de `MonthlyGoal` sao calculados na leitura, sem gravar (ADR-012), por um unico selector (`goals.selectors.get_monthly_goals_with_status`) usado pela tela de metas mensais, pelo detalhe do objetivo e pelo painel de relatorios. A rotina diaria (ADR-013) continua gravando o mes corrente; a home le o valor gravado ate ser migrada (pode divergir por ate 1 h). A ordem de exibicao e status, depois nome, pelo status calculado (ADR-016).
+- Meta de reducao e sempre calculada por competencia (mes da meta). Meta de acumulo de mes anterior ao corrente (`timezone.localdate()`) nao e recalculada, nem na leitura nem em `update_monthly_goal_status`/`refresh_monthly_goals`: o valor gravado e o snapshot do ultimo calculo da rotina no mes (ADR-016).
+- Objetivo de acumulo aceita contas de uma unica moeda, validado em `validate_goal_accounts_currency` e no admin. Dado antigo com moedas misturadas nao quebra a leitura (mantem o valor gravado); a rotina reporta o erro no passo `metas` (ADR-016).
 
 ## Backlog
 

@@ -4,8 +4,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
-from .selectors import get_active_goals, get_goal_detail, get_monthly_goals_for_period
-from .services import calculate_monthly_goal_status
+from .selectors import get_active_goals, get_goal_detail, get_monthly_goals_with_status
 
 
 def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
@@ -38,12 +37,8 @@ def monthly_goals_page(request: HttpRequest) -> HttpResponse:
     """Renderiza metas mensais do periodo informado."""
 
     year, month = _get_period_from_request(request)
-    monthly_goals = list(get_monthly_goals_for_period(year=year, month=month))
-    for monthly_goal in monthly_goals:
-        # Apenas exibicao: a persistencia fica com a rotina diaria (ADR-013).
-        monthly_goal.current_amount, monthly_goal.status = (
-            calculate_monthly_goal_status(monthly_goal)
-        )
+    # Apenas leitura: a persistencia fica com a rotina diaria (ADR-013/016).
+    monthly_goals = get_monthly_goals_with_status(year=year, month=month)
 
     return render(
         request,

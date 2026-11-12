@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -17,6 +18,7 @@ from goals.services import (
     calculate_monthly_goal_status,
     refresh_monthly_goals,
     update_monthly_goal_status,
+    validate_goal_accounts_currency,
 )
 from institutions.models import Institution
 from transactions.models import Transaction
@@ -28,6 +30,11 @@ class GoalServiceTests(TestCase):
     def setUp(self):
         """Cria dados base para cenarios de objetivos."""
 
+        patcher = mock.patch(
+            "goals.services.timezone.localdate", return_value=date(2026, 5, 20)
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.institution = Institution.objects.create(name="Inter", code="077")
         self.account = FinancialAccount.objects.create(
             name="Porquinho reserva",
@@ -594,3 +601,158 @@ class MonthlyGoalRefreshTests(TestCase):
         self.monthly_goal.refresh_from_db()
         self.assertEqual(self.monthly_goal.current_amount, Decimal("250.00"))
         self.assertEqual(MonthlyGoal.objects.count(), 1)
+
+
+class ClosedMonthAccumulationTests(TestCase):
+    """Acumulacao de mes fechado e snapshot; nunca recalculada (ADR-016)."""
+
+    def setUp(self):
+        patcher = mock.patch(
+            "goals.services.timezone.localdate", return_value=date(2026, 6, 15)
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Reserva",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("2500.00"),
+        )
+        self.goal = Goal.objects.create(
+            name="Reserva de emergencia",
+            goal_type=Goal.GoalType.ACCUMULATION,
+            target_amount=Decimal("2000.00"),
+            start_date=date(2026, 1, 1),
+        )
+        self.goal.accounts.add(self.account)
+
+    def _snapshot(self, *, month):
+        return MonthlyGoal.objects.create(
+            goal=self.goal,
+            year=2026,
+            month=month,
+            target_amount=Decimal("2000.00"),
+            current_amount=Decimal("2500.00"),
+            status=MonthlyGoal.Status.ACHIEVED,
+        )
+
+    def test_update_keeps_closed_month_after_balance_change(self):
+        monthly_goal = self._snapshot(month=3)
+        self.account.balance = Decimal("100.00")
+        self.account.save(update_fields=["balance"])
+
+        update_monthly_goal_status(monthly_goal)
+
+        monthly_goal.refresh_from_db()
+        self.assertEqual(monthly_goal.current_amount, Decimal("2500.00"))
+        self.assertEqual(monthly_goal.status, MonthlyGoal.Status.ACHIEVED)
+
+    def test_refresh_keeps_closed_month_after_balance_change(self):
+        monthly_goal = self._snapshot(month=3)
+        self.account.balance = Decimal("100.00")
+        self.account.save(update_fields=["balance"])
+
+        refresh_monthly_goals(year=2026, month=3)
+
+        monthly_goal.refresh_from_db()
+        self.assertEqual(monthly_goal.current_amount, Decimal("2500.00"))
+        self.assertEqual(monthly_goal.status, MonthlyGoal.Status.ACHIEVED)
+
+    def test_current_month_uses_current_balance(self):
+        monthly_goal = MonthlyGoal.objects.create(
+            goal=self.goal, year=2026, month=6, target_amount=Decimal("2000.00")
+        )
+        self.account.balance = Decimal("100.00")
+        self.account.save(update_fields=["balance"])
+
+        update_monthly_goal_status(monthly_goal)
+
+        monthly_goal.refresh_from_db()
+        self.assertEqual(monthly_goal.current_amount, Decimal("100.00"))
+        self.assertEqual(monthly_goal.status, MonthlyGoal.Status.ON_TRACK)
+
+    def test_explicit_today_decides_which_month_is_closed(self):
+        monthly_goal = MonthlyGoal.objects.create(
+            goal=self.goal, year=2026, month=6, target_amount=Decimal("2000.00")
+        )
+
+        update_monthly_goal_status(monthly_goal, today=date(2026, 7, 1))
+
+        monthly_goal.refresh_from_db()
+        self.assertEqual(monthly_goal.current_amount, Decimal("0.00"))
+
+    def test_reduction_of_closed_month_is_still_recalculated(self):
+        category = Category.objects.create(name="Delivery")
+        goal = Goal.objects.create(
+            name="Reduzir delivery",
+            goal_type=Goal.GoalType.REDUCTION,
+            category=category,
+            target_amount=Decimal("300.00"),
+            start_date=date(2026, 1, 1),
+        )
+        monthly_goal = MonthlyGoal.objects.create(
+            goal=goal, year=2026, month=3, target_amount=Decimal("300.00")
+        )
+        Transaction.objects.create(
+            description="Pizza",
+            amount=Decimal("350.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            category=category,
+            date=date(2026, 3, 31),
+        )
+
+        update_monthly_goal_status(monthly_goal)
+
+        monthly_goal.refresh_from_db()
+        self.assertEqual(monthly_goal.current_amount, Decimal("350.00"))
+        self.assertEqual(monthly_goal.status, MonthlyGoal.Status.MISSED)
+
+
+class SingleCurrencyAccumulationTests(TestCase):
+    """Objetivo de acumulacao nao soma moedas diferentes (ADR-016)."""
+
+    def setUp(self):
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.brl = FinancialAccount.objects.create(
+            name="Real",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("1000.00"),
+        )
+        self.brl2 = FinancialAccount.objects.create(
+            name="Real 2",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("500.00"),
+        )
+        self.usd = FinancialAccount.objects.create(
+            name="Dolar",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("300.00"),
+            currency=FinancialAccount.Currency.USD,
+        )
+
+    def test_validate_accepts_single_currency(self):
+        validate_goal_accounts_currency([self.brl, self.brl2])
+        validate_goal_accounts_currency([])
+
+    def test_validate_rejects_mixed_currencies_with_readable_message(self):
+        with self.assertRaises(ValidationError) as ctx:
+            validate_goal_accounts_currency([self.brl, self.usd])
+
+        self.assertIn("uma unica moeda", " ".join(ctx.exception.messages))
+
+    def test_progress_with_mixed_currencies_raises_instead_of_summing(self):
+        goal = Goal.objects.create(
+            name="Misto",
+            goal_type=Goal.GoalType.ACCUMULATION,
+            target_amount=Decimal("1000.00"),
+            start_date=date(2026, 1, 1),
+        )
+        goal.accounts.add(self.brl, self.usd)
+
+        with self.assertRaises(ValidationError):
+            calculate_goal_progress(goal=goal)

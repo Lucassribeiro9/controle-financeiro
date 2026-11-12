@@ -116,6 +116,41 @@ class GoalViewTests(AuthenticatedTestCase):
             MonthlyGoal.objects.values().get(pk=self.monthly_goal.pk), before
         )
 
+    def test_goal_detail_page_shows_calculated_status_without_saving(self):
+        before = MonthlyGoal.objects.values().get(pk=self.monthly_goal.pk)
+
+        response = self.client.get(
+            reverse("goals:detail", kwargs={"goal_id": self.reduction_goal.id}),
+            data={"year": 2026, "month": 5},
+        )
+
+        shown = response.context["goal_summary"]["monthly_goals"]
+        self.assertEqual(shown[0].status, MonthlyGoal.Status.AT_RISK)
+        self.assertEqual(shown[0].current_amount, Decimal("250.00"))
+        self.assertEqual(
+            MonthlyGoal.objects.values().get(pk=self.monthly_goal.pk), before
+        )
+
+    def test_monthly_goals_page_orders_by_calculated_status(self):
+        other = Goal.objects.create(
+            name="Aaa outra",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("300.00"),
+            start_date=date(2026, 5, 1),
+            category=Category.objects.create(name="Lazer"),
+        )
+        MonthlyGoal.objects.create(
+            goal=other, year=2026, month=5, target_amount=Decimal("300.00")
+        )
+
+        response = self.client.get(
+            reverse("goals:monthly-goals"), data={"year": 2026, "month": 5}
+        )
+
+        names = [g.goal.name for g in response.context["monthly_goals"]]
+        # at_risk (Reduzir delivery) vem antes de on_track (Aaa outra).
+        self.assertEqual(names, ["Reduzir delivery", "Aaa outra"])
+
     def test_goal_detail_page_returns_goal_monthly_goals_and_progress(self):
         """Deve renderizar detalhe do objetivo com metas e progresso."""
 

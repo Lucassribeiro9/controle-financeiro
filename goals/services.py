@@ -34,11 +34,45 @@ def _percent(*, current_amount: Decimal, target_amount: Decimal) -> Decimal:
     )
 
 
+MIXED_CURRENCY_MESSAGE = (
+    "Objetivos de acumulo aceitam contas de uma unica moeda."
+)
+
+
+def validate_goal_accounts_currency(accounts) -> None:
+    """Rejeita contas de moedas diferentes num objetivo de acumulo (ADR-016)."""
+
+    currencies = {account.currency for account in accounts}
+    if len(currencies) > 1:
+        raise ValidationError({"accounts": MIXED_CURRENCY_MESSAGE})
+
+
+def is_closed_period(*, year: int, month: int, today: date | None = None) -> bool:
+    """Indica se o mes e anterior ao mes corrente (data local)."""
+
+    today = today or timezone.localdate()
+    return (year, month) < (today.year, today.month)
+
+
+def is_monthly_goal_frozen(
+    monthly_goal: MonthlyGoal, *, today: date | None = None
+) -> bool:
+    """Meta de acumulo de mes fechado e snapshot: nao e recalculada (ADR-016)."""
+
+    return monthly_goal.goal.goal_type == Goal.GoalType.ACCUMULATION and (
+        is_closed_period(
+            year=monthly_goal.year, month=monthly_goal.month, today=today
+        )
+    )
+
+
 def _get_accumulation_current_amount(goal: Goal) -> Decimal:
     """Soma o saldo das contas vinculadas ao objetivo de acumulo."""
 
-    total = goal.accounts.aggregate(total=Sum("balance"))["total"]
-    return total or _zero()
+    accounts = list(goal.accounts.all())
+    validate_goal_accounts_currency(accounts)
+    total = sum((account.balance for account in accounts), _zero())
+    return total
 
 
 def _get_reduction_current_amount(*, goal: Goal, year: int, month: int) -> Decimal:
@@ -125,8 +159,16 @@ def create_monthly_goal(goal, year, month, target_amount=None):
     )
 
 
-def calculate_monthly_goal_status(monthly_goal: MonthlyGoal) -> tuple[Decimal, str]:
-    """Calcula valor atual e status da meta mensal sem gravar nada."""
+def calculate_monthly_goal_status(
+    monthly_goal: MonthlyGoal, *, today: date | None = None
+) -> tuple[Decimal, str]:
+    """Calcula valor atual e status da meta mensal sem gravar nada.
+
+    Acumulo de mes fechado devolve o snapshot gravado (ADR-016).
+    """
+
+    if is_monthly_goal_frozen(monthly_goal, today=today):
+        return monthly_goal.current_amount, monthly_goal.status
 
     progress = calculate_goal_progress(
         goal=monthly_goal.goal,
@@ -153,12 +195,21 @@ def calculate_monthly_goal_status(monthly_goal: MonthlyGoal) -> tuple[Decimal, s
     return current_amount, status
 
 
-def update_monthly_goal_status(monthly_goal: MonthlyGoal) -> MonthlyGoal:
-    """Recalcula e persiste valor atual e status de uma meta mensal."""
+def update_monthly_goal_status(
+    monthly_goal: MonthlyGoal, *, today: date | None = None
+) -> MonthlyGoal:
+    """Recalcula e persiste valor atual e status de uma meta mensal.
+
+    Acumulo de mes fechado nao e alterado (ADR-016).
+    """
 
     with transaction.atomic():
         locked = MonthlyGoal.objects.select_for_update().get(pk=monthly_goal.pk)
-        current_amount, status = calculate_monthly_goal_status(locked)
+        if is_monthly_goal_frozen(locked, today=today):
+            monthly_goal.current_amount = locked.current_amount
+            monthly_goal.status = locked.status
+            return monthly_goal
+        current_amount, status = calculate_monthly_goal_status(locked, today=today)
         locked.current_amount = current_amount
         locked.status = status
         locked.full_clean()
@@ -169,12 +220,18 @@ def update_monthly_goal_status(monthly_goal: MonthlyGoal) -> MonthlyGoal:
     return monthly_goal
 
 
-def refresh_monthly_goals(*, year: int, month: int) -> int:
+def refresh_monthly_goals(
+    *, year: int, month: int, today: date | None = None
+) -> int:
     """Recalcula e persiste todas as metas mensais do periodo."""
 
     count = 0
-    for monthly_goal in MonthlyGoal.objects.filter(year=year, month=month).order_by("pk"):
-        update_monthly_goal_status(monthly_goal)
+    for monthly_goal in (
+        MonthlyGoal.objects.filter(year=year, month=month)
+        .select_related("goal")
+        .order_by("pk")
+    ):
+        update_monthly_goal_status(monthly_goal, today=today)
         count += 1
     return count
 
