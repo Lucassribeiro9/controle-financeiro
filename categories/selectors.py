@@ -24,7 +24,8 @@ def get_categories_with_monthly_spent(
     benefit_purchase) com status efetivo (exclui canceled, ignored,
     forecasted). Cada categoria recebe o atributo ``monthly_spent``
     com valor Decimal; categorias sem gasto retornam Decimal('0.00').
-    Tambem recebe ``limit_amount`` caso haja meta de reducao ativa.
+    Tambem recebe ``limit_amount`` caso haja meta de reducao ativa; com mais
+    de uma, vale a de menor ``goal_id`` (igual a ``get_reduction_monthly_goal``).
     """
 
     expense_filter = Q(
@@ -36,9 +37,10 @@ def get_categories_with_monthly_spent(
     monthly_goals_subquery = MonthlyGoal.objects.filter(
         goal__goal_type=Goal.GoalType.REDUCTION,
         goal__category=OuterRef("pk"),
+        goal__is_active=True,
         year=reference_date.year,
         month=reference_date.month,
-    )
+    ).order_by("goal_id")
 
     return (
         Category.objects.select_related("parent")

@@ -143,7 +143,7 @@ def calculate_monthly_goal_status(monthly_goal: MonthlyGoal) -> tuple[Decimal, s
             status = MonthlyGoal.Status.ON_TRACK
     else:
         risk_threshold = target_amount * Decimal("0.80")
-        if current_amount >= target_amount:
+        if current_amount > target_amount:
             status = MonthlyGoal.Status.MISSED
         elif current_amount >= risk_threshold:
             status = MonthlyGoal.Status.AT_RISK
@@ -179,22 +179,32 @@ def refresh_monthly_goals(*, year: int, month: int) -> int:
     return count
 
 
+def reactivate_goal(goal: Goal) -> Goal:
+    """Reativa um Goal inativo (com validacao); sem efeito se ja estiver ativo."""
+
+    if not goal.is_active:
+        goal.is_active = True
+        goal.full_clean()
+        goal.save(update_fields=["is_active"])
+    return goal
+
+
 @transaction.atomic
 def get_or_create_reduction_goal(*, category: Category, target_amount: Decimal) -> Goal:
     """Retorna o Goal de reducao da categoria, criando-o se nao existir.
 
     Trava a categoria para que duas chamadas concorrentes nao criem dois Goals.
-    Se houver duplicatas antigas, reutiliza a mais antiga em vez de falhar.
+    Se houver duplicatas antigas, reutiliza a ativa mais antiga; sem ativa,
+    reativa a mais antiga em vez de criar um segundo Goal.
     """
 
     Category.objects.select_for_update().get(pk=category.pk)
-    goal = (
-        Goal.objects.filter(goal_type=Goal.GoalType.REDUCTION, category=category)
-        .order_by("pk")
-        .first()
-    )
+    goals = Goal.objects.filter(
+        goal_type=Goal.GoalType.REDUCTION, category=category
+    ).order_by("pk")
+    goal = goals.filter(is_active=True).first() or goals.first()
     if goal is not None:
-        return goal
+        return reactivate_goal(goal)
 
     goal = Goal(
         name=f"Limite - {category.name}",

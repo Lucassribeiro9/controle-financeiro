@@ -18,7 +18,8 @@ Tornar a geracao executavel, corrigir os defeitos encontrados e documentar regra
 
 - `Insight` tem 5 tipos, mas so `category_limit` e `recurring_expense` possuem gerador.
 - Aprovar `category_limit` reutiliza o `Goal` de reducao da categoria (cria so se nao existir) e cria o `MonthlyGoal` no mes corrente (`timezone.localdate()`), nao no mes do insight. A aprovacao e atomica e idempotente (FIN-41).
-- Insight aprovado nao pode ser ignorado nem silenciado (`ValidationError`, mapeado para message na view; ADR-010).
+- Ignorar e silenciar so valem sobre insight `PENDING`. Qualquer outro estado (aprovado, ignorado, silenciado) recusa a mudanca de decisao com `ValidationError`, mapeado para message na view (ADR-010). Repetir a mesma decisao (ignorar um ignorado, silenciar um silenciado) e idempotente: devolve o insight sem novo efeito.
+- Aprovar `category_limit` cuja categoria tem `Goal` de reducao inativo reativa esse `Goal` em vez de criar outro.
 - Se ja existe `MonthlyGoal` da categoria no mes com valor diferente do sugerido, a view mostra a comparacao e pergunta se altera ou mantem; com o mesmo valor, apenas vincula ao insight.
 - A FK `Insight.category` e `SET_NULL`; aprovar um `category_limit` cuja categoria foi removida quebrava com `AttributeError`.
 

@@ -98,8 +98,11 @@ Criar ou evoluir:
 - Subcategorias nao entram automaticamente no limite da categoria pai.
 - Tendencia inicial deve ser baseada no percentual de uso do limite:
   - abaixo de 80%: ok;
-  - de 80% ate abaixo de 100%: em risco;
-  - maior ou igual a 100%: excedido.
+  - de 80% ate 100%, inclusive: em risco (gasto igual ao limite ainda cabe nele);
+  - acima de 100%: excedido.
+- A mesma regra vale para `MonthlyGoal` de reducao (`AT_RISK` ate o limite, `MISSED` so acima dele) e para `Category.limit_status`; metas de acumulo continuam `ACHIEVED` ao atingir o alvo (`>=`).
+- O limite exibido da categoria e a `MonthlyGoal` do mes cujo `Goal` de reducao esta ativo; havendo mais de uma, vale a de menor `goal_id`. Meta de `Goal` inativo nao aparece como limite.
+- Criar ou aprovar limite numa categoria cujo unico `Goal` de reducao esta inativo reativa esse `Goal` (`is_active=True`, com `full_clean`); nunca cria um segundo `Goal` (ADR-010).
 - Limite mensal deve alertar e orientar decisao, nunca bloquear lancamento por padrao.
 
 ## Backlog

@@ -158,6 +158,35 @@ class MonthlyDashboardViewTests(AuthenticatedTestCase):
         self.assertContains(response, "Em risco")
         self.assertContains(response, "R$ 410,00 de R$ 500,00")
 
+    def test_monthly_dashboard_shows_spending_equal_to_limit_as_at_risk(self):
+        """Gasto exatamente igual ao limite aparece como Em risco, nao Excedido."""
+        goal = Goal.objects.create(
+            name="Limite Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date(2026, 5, 1),
+            category=self.category,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal, year=2026, month=5, target_amount=Decimal("500.00")
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("500.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 10),
+        )
+
+        response = self.client.get(
+            reverse("reports:monthly-dashboard", kwargs={"year": 2026, "month": 5})
+        )
+
+        self.assertContains(response, "Em risco")
+        self.assertNotContains(response, "Excedido")
+
     def test_monthly_dashboard_displays_categories_exceeded(self):
         """Dashboard deve listar categorias excedidas no periodo selecionado."""
         goal = Goal.objects.create(
