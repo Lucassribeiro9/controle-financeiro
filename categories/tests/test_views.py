@@ -47,6 +47,42 @@ class CategoryViewTests(AuthenticatedTestCase):
         self.assertEqual(parent_summary.children_count, 2)
         self.assertContains(response, "Moradia")
 
+    def test_category_list_page_shows_correct_count_and_spent_with_expenses(self):
+        """Com despesas, a coluna Subcategorias mostra 2 e o gasto nao multiplica."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        parent = Category.objects.create(name="Moradia")
+        Category.objects.create(name="Aluguel", parent=parent)
+        Category.objects.create(name="Condominio", parent=parent)
+        for amount, day in (("100.00", 5), ("50.00", 6), ("25.00", 7)):
+            Transaction.objects.create(
+                description="Despesa",
+                amount=Decimal(amount),
+                transaction_type=Transaction.TransactionType.EXPENSE,
+                status=Transaction.PaymentStatus.PAID,
+                account=account,
+                category=parent,
+                date=date(2026, 7, day),
+            )
+
+        with patch(
+            "categories.views.timezone.localdate", return_value=date(2026, 7, 15)
+        ):
+            response = self.client.get(reverse("categories:list"))
+
+        parent_summary = next(
+            c for c in response.context["categories"] if c.name == "Moradia"
+        )
+        self.assertEqual(parent_summary.children_count, 2)
+        self.assertEqual(parent_summary.monthly_spent, Decimal("175.00"))
+        self.assertContains(response, "<td>2</td>", html=True)
+
     def test_category_create_page_returns_form(self):
         """Deve renderizar formulario de criacao."""
 

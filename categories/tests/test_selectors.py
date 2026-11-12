@@ -8,6 +8,7 @@ from django.test import TestCase
 from accounts.models import FinancialAccount
 from categories.models import Category
 from categories.selectors import (
+    get_categories_for_list,
     get_categories_with_monthly_spent,
     get_categories_at_risk,
 )
@@ -464,3 +465,100 @@ class CategoryLimitRuleTests(TestCase):
         self._monthly(first, target="300.00")
 
         self.assertEqual(self._category().limit_amount, Decimal("300.00"))
+
+
+class CategoryListSelectorTests(TestCase):
+    """Garante children_count e gasto corretos na listagem de categorias."""
+
+    def setUp(self):
+        """Cria instituicao, conta e data de referencia."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.reference_date = date(2026, 7, 1)
+
+    def _expense(self, category, amount, day=10, month=7):
+        return Transaction.objects.create(
+            description="Despesa",
+            amount=Decimal(amount),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=category,
+            date=date(2026, month, day),
+        )
+
+    def _get(self, category):
+        result = get_categories_for_list(self.reference_date)
+        return next(c for c in result if c.pk == category.pk)
+
+    def test_parent_with_two_children_counts_two_without_multiplying_spent(self):
+        """Pai com 2 filhos e 3 despesas deve contar 2 e somar 175."""
+
+        parent = Category.objects.create(name="Moradia")
+        Category.objects.create(name="Aluguel", parent=parent)
+        Category.objects.create(name="Condominio", parent=parent)
+        self._expense(parent, "100.00", day=5)
+        self._expense(parent, "50.00", day=6)
+        self._expense(parent, "25.00", day=7)
+
+        result = self._get(parent)
+
+        self.assertEqual(result.children_count, 2)
+        self.assertEqual(result.monthly_spent, Decimal("175.00"))
+
+    def test_parent_with_one_child_counts_one_with_many_expenses(self):
+        """Pai com 1 filho e varias despesas (inclusive de outro mes) conta 1."""
+
+        parent = Category.objects.create(name="Moradia")
+        Category.objects.create(name="Aluguel", parent=parent)
+        self._expense(parent, "100.00", day=5)
+        self._expense(parent, "50.00", day=6)
+        self._expense(parent, "70.00", day=6, month=6)
+
+        result = self._get(parent)
+
+        self.assertEqual(result.children_count, 1)
+        self.assertEqual(result.monthly_spent, Decimal("150.00"))
+
+    def test_category_without_children_counts_zero(self):
+        """Categoria sem filhos deve ter children_count 0 e gasto correto."""
+
+        category = Category.objects.create(name="Lazer")
+        self._expense(category, "40.00")
+        self._expense(category, "10.00", day=11)
+
+        result = self._get(category)
+
+        self.assertEqual(result.children_count, 0)
+        self.assertEqual(result.monthly_spent, Decimal("50.00"))
+
+    def test_monthly_spent_does_not_depend_on_children_count(self):
+        """O gasto do pai deve ser igual com 0, 1 e 2 subcategorias."""
+
+        spent = []
+        for n in range(3):
+            parent = Category.objects.create(name=f"Pai {n}")
+            for i in range(n):
+                Category.objects.create(name=f"Filho {n}-{i}", parent=parent)
+            self._expense(parent, "100.00", day=5)
+            self._expense(parent, "50.00", day=6)
+            spent.append(self._get(parent).monthly_spent)
+
+        self.assertEqual(spent, [Decimal("150.00")] * 3)
+
+    def test_orders_by_parent_name_then_name(self):
+        """Deve preservar a ordenacao por nome do pai e depois nome."""
+
+        parent = Category.objects.create(name="Moradia")
+        Category.objects.create(name="Zeta", parent=parent)
+        Category.objects.create(name="Aluguel", parent=parent)
+
+        names = [c.name for c in get_categories_for_list(self.reference_date)]
+
+        self.assertLess(names.index("Aluguel"), names.index("Zeta"))
