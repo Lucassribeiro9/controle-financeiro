@@ -12,7 +12,7 @@ from django.db.models.functions import ExtractYear
 from accounts.models import FinancialAccount
 from cards.models import CardStatement
 from categories.selectors import get_categories_at_risk
-from goals.models import MonthlyGoal
+from goals.selectors import get_monthly_goals_with_status
 from transactions.constants import (
     EXCLUDED_SPENDING_STATUSES,
     SPENDING_TRANSACTION_TYPES,
@@ -131,10 +131,7 @@ def get_card_statements(*, year: int, month: int):
 
 def get_goal_summary(*, year: int, month: int):
     """Mostrar metas com status e progresso."""
-    return(
-        MonthlyGoal.objects.filter(year=year, month=month)
-        .select_related("goal").order_by("status", "goal__name")
-    )
+    return get_monthly_goals_with_status(year=year, month=month)
 
 
 def get_monthly_cashflow_series(*, year: int, month: int, range_months: int = 12):

@@ -318,6 +318,25 @@ def _settle_statements(*, today, months):
     pay_statement(statement=statement)
 
 
+def _store_accumulation_snapshot(*, monthly_goal, goal):
+    """Grava o valor de exemplo de uma meta de acumulo.
+
+    Meses fechados nao sao recalculados pelo service (ADR-016), entao o dado
+    de exemplo grava o snapshot direto, com validacao.
+    """
+
+    current_amount = sum(
+        (account.balance for account in goal.accounts.all()), Decimal("0.00")
+    )
+    monthly_goal.current_amount = current_amount
+    monthly_goal.status = (
+        MonthlyGoal.Status.ACHIEVED
+        if current_amount >= monthly_goal.target_amount
+        else MonthlyGoal.Status.ON_TRACK
+    )
+    _save_validated(monthly_goal)
+
+
 def _create_goals(*, ctx, months):
     """Cria objetivos de acumulacao e de reducao com metas mensais."""
 
@@ -338,7 +357,7 @@ def _create_goals(*, ctx, months):
             monthly_goal = create_monthly_goal_from_goal(
                 goal=goal, year=year, month=month
             )
-            update_monthly_goal_status(monthly_goal)
+            _store_accumulation_snapshot(monthly_goal=monthly_goal, goal=goal)
 
     for category_name, target in (
         ("Mercado", "800.00"),

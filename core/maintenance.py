@@ -57,7 +57,7 @@ def run_daily_maintenance(*, today: date | None = None) -> MaintenanceReport:
         ),
         ("faturas_fechadas", lambda: auto_close_due_statements(today=today)),
         ("faturas_atrasadas", lambda: mark_late_statements(today=today)),
-        ("metas", lambda: refresh_monthly_goals(year=year, month=month)),
+        ("metas", lambda: refresh_monthly_goals(year=year, month=month, today=today)),
         (
             "insights",
             lambda: len(generate_monthly_insights(year=prev_year, month=prev_month)),

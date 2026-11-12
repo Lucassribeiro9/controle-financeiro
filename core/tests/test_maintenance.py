@@ -119,6 +119,41 @@ class DailyMaintenanceTests(TestCase):
         self.assertEqual(self.monthly_goal.current_amount, Decimal("250.00"))
         self.assertEqual(self.monthly_goal.status, MonthlyGoal.Status.AT_RISK)
 
+    def test_refreshes_current_month_accumulation_but_not_closed_months(self):
+        savings = FinancialAccount.objects.create(
+            name="Reserva",
+            institution=self.account.institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("2500.00"),
+        )
+        goal = Goal.objects.create(
+            name="Reserva de emergencia",
+            goal_type=Goal.GoalType.ACCUMULATION,
+            target_amount=Decimal("2000.00"),
+            start_date=date(2026, 1, 1),
+        )
+        goal.accounts.add(savings)
+        current = MonthlyGoal.objects.create(
+            goal=goal, year=2026, month=6, target_amount=Decimal("2000.00")
+        )
+        closed = MonthlyGoal.objects.create(
+            goal=goal,
+            year=2026,
+            month=5,
+            target_amount=Decimal("2000.00"),
+            current_amount=Decimal("1800.00"),
+            status=MonthlyGoal.Status.ON_TRACK,
+        )
+
+        run_daily_maintenance(today=TODAY)
+
+        current.refresh_from_db()
+        closed.refresh_from_db()
+        self.assertEqual(current.current_amount, Decimal("2500.00"))
+        self.assertEqual(current.status, MonthlyGoal.Status.ACHIEVED)
+        self.assertEqual(closed.current_amount, Decimal("1800.00"))
+        self.assertEqual(closed.status, MonthlyGoal.Status.ON_TRACK)
+
     def test_generates_insights_for_previous_month(self):
         build_realistic_month(year=2026, month=5)
 
