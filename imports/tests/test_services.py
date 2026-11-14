@@ -17,6 +17,7 @@ from imports.services import (
     apply_account_to_imports,
     apply_category_to_imports,
     build_import_hash,
+    choose_suggested_account,
     confirm_imported_transaction,
     confirm_imported_transactions_partially,
     detect_duplicate_import,
@@ -620,3 +621,47 @@ class CategoryHistoryStagingTests(TestCase):
         imported = self._stage([self._row("PADARIA X")])
 
         self.assertIsNone(imported[0].suggested_category)
+
+
+class ChooseSuggestedAccountTests(TestCase):
+    """Garante a precedencia entre conta escolhida e detectada."""
+
+    def setUp(self):
+        institution = Institution.objects.create(name="Itau", code="341")
+        self.chosen = FinancialAccount.objects.create(
+            name="Escolhida", institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+        )
+        self.detected = FinancialAccount.objects.create(
+            name="Detectada", institution=institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+        )
+
+    def test_chosen_account_wins(self):
+        self.assertEqual(choose_suggested_account(self.chosen, self.detected), self.chosen)
+
+    def test_detected_used_when_nothing_chosen(self):
+        self.assertEqual(choose_suggested_account(None, self.detected), self.detected)
+
+    def test_none_when_neither(self):
+        self.assertIsNone(choose_suggested_account(None, None))
+
+    def test_staging_with_detected_account_flags_duplicate_against_it(self):
+        Transaction.objects.create(
+            description="Mercado Dia", amount=Decimal("87.45"), date=date(2026, 5, 10),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID, account=self.detected,
+        )
+        row = ImportedTransactionRow(
+            date=date(2026, 5, 10), raw_description="Mercado Dia",
+            normalized_description="Mercado Dia", amount=Decimal("87.45"),
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+        [staged] = stage_imported_transactions(
+            file_name="a.ofx", source_type=ImportedTransaction.SourceType.OFX,
+            rows=[row], suggested_account=choose_suggested_account(None, self.detected),
+        )
+
+        self.assertEqual(staged.suggested_account, self.detected)
+        self.assertEqual(staged.status, ImportedTransaction.Status.DUPLICATE)

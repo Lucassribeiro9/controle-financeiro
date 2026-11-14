@@ -122,6 +122,12 @@ def detect_duplicate_transaction(*, imported_transaction, occurrence=0):
     return occurrence < matches
 
 
+def choose_suggested_account(chosen_account, detected_account):
+    """A conta escolhida no upload prevalece sobre a detectada pelo banco do OFX."""
+
+    return chosen_account or detected_account
+
+
 def stage_imported_transactions(*, file_name, source_type, rows, suggested_account=None):
     """Salva linhas importadas como pendencias para revisao do usuario."""
 
