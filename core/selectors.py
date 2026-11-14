@@ -9,7 +9,8 @@ from django.utils import timezone
 
 from cards.models import CardStatement
 from categories.selectors import get_categories_at_risk
-from goals.models import MonthlyGoal
+from goals.models import Goal, MonthlyGoal
+from goals.selectors import get_monthly_goals_with_status
 from imports.models import ImportedTransaction
 from insights.models import Insight
 from recurrences.models import Recurrence
@@ -294,7 +295,7 @@ def _build_alerts(*, today, year: int, month: int) -> list[dict]:
     return [
         *_get_due_statement_alerts(today=today),
         *_get_pending_import_alerts(),
-        *_get_goal_risk_alerts(year=year, month=month),
+        *_get_goal_risk_alerts(year=year, month=month, today=today),
     ]
 
 
@@ -359,13 +360,16 @@ def _get_pending_import_alerts() -> list[dict]:
     ]
 
 
-def _get_goal_risk_alerts(*, year: int, month: int) -> list[dict]:
-    """Lista metas mensais em risco no periodo informado."""
+def _get_goal_risk_alerts(*, year: int, month: int, today=None) -> list[dict]:
+    """Lista metas mensais de reducao em risco no periodo informado.
 
-    monthly_goals = (
-        MonthlyGoal.objects.filter(year=year, month=month)
-        .select_related("goal", "goal__category")
-        .order_by("goal__name")
+    Le o status calculado na leitura pelo selector unico de metas (ADR-017),
+    sem gravar. Metas de acumulacao nao geram alerta de risco.
+    """
+
+    monthly_goals = sorted(
+        get_monthly_goals_with_status(year=year, month=month, today=today),
+        key=lambda item: item.goal.name,
     )
 
     alerts = []
@@ -389,7 +393,14 @@ def _get_goal_risk_alerts(*, year: int, month: int) -> list[dict]:
 
 
 def _is_goal_at_risk(monthly_goal: MonthlyGoal) -> bool:
-    """Indica se uma meta mensal deve aparecer como risco operacional."""
+    """Indica se uma meta mensal deve aparecer como risco operacional.
+
+    So metas de reducao (limite) alertam; acumulacao proxima do alvo e
+    progresso, nao risco (#236).
+    """
+
+    if monthly_goal.goal.goal_type != Goal.GoalType.REDUCTION:
+        return False
 
     if monthly_goal.status in [
         MonthlyGoal.Status.AT_RISK,

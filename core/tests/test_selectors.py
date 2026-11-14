@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
+from categories.models import Category
 from cards.models import Card, CardStatement
 from core.selectors import get_operational_home_context
 from core.testing import AuthenticatedTestCase
@@ -257,9 +258,11 @@ class OperationalHomeSelectorTests(TestCase):
             insight_type=Insight.InsightType.RECURRING_EXPENSE,
             status=Insight.Status.PENDING,
         )
+        category = Category.objects.create(name="Mercado")
         goal = Goal.objects.create(
             name="Mercado",
             goal_type=Goal.GoalType.REDUCTION,
+            category=category,
             target_amount=Decimal("1000.00"),
             start_date=date(2026, 5, 1),
         )
@@ -268,7 +271,15 @@ class OperationalHomeSelectorTests(TestCase):
             year=2026,
             month=5,
             target_amount=Decimal("1000.00"),
-            current_amount=Decimal("850.00"),
+        )
+        Transaction.objects.create(
+            description="Compras",
+            amount=Decimal("850.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=category,
+            date=date(2026, 5, 10),
         )
 
         context = get_operational_home_context(today=self.today)
@@ -488,3 +499,133 @@ class HomeAndForecastsPageAlignmentTests(AuthenticatedTestCase):
         ).count()
 
         self.assertEqual(recurrences_item["count"], listed_count)
+
+
+class HomeGoalAlertsTests(TestCase):
+    """Alertas de meta da home: so reducao, com status calculado na leitura (#236)."""
+
+    def setUp(self):
+        self.today = date(2026, 5, 27)
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.category = Category.objects.create(name="Mercado")
+
+    def _reduction(self, *, target="1000.00", spent=None, stored_status=None):
+        goal = Goal.objects.create(
+            name="Reduzir mercado",
+            goal_type=Goal.GoalType.REDUCTION,
+            category=self.category,
+            target_amount=Decimal(target),
+            start_date=date(2026, 5, 1),
+        )
+        monthly_goal = MonthlyGoal.objects.create(
+            goal=goal,
+            year=2026,
+            month=5,
+            target_amount=Decimal(target),
+            **({"status": stored_status} if stored_status else {}),
+        )
+        if spent:
+            Transaction.objects.create(
+                description="Compras",
+                amount=Decimal(spent),
+                transaction_type=Transaction.TransactionType.EXPENSE,
+                status=Transaction.PaymentStatus.PAID,
+                account=self.account,
+                category=self.category,
+                date=date(2026, 5, 10),
+            )
+        return monthly_goal
+
+    def _accumulation(self, *, balance, target="1000.00", stored_status=None):
+        account = FinancialAccount.objects.create(
+            name="Cofre",
+            institution=self.account.institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal(balance),
+        )
+        goal = Goal.objects.create(
+            name="Reserva",
+            goal_type=Goal.GoalType.ACCUMULATION,
+            target_amount=Decimal(target),
+            start_date=date(2026, 5, 1),
+        )
+        goal.accounts.add(account)
+        return MonthlyGoal.objects.create(
+            goal=goal,
+            year=2026,
+            month=5,
+            target_amount=Decimal(target),
+            current_amount=Decimal(balance),
+            **({"status": stored_status} if stored_status else {}),
+        )
+
+    def _goal_alerts(self):
+        context = get_operational_home_context(today=self.today)
+        return [a for a in context["alerts"] if a["type"] == "goal"]
+
+    def test_accumulation_at_90_percent_has_no_alert(self):
+        self._accumulation(balance="900.00")
+
+        self.assertEqual(self._goal_alerts(), [])
+
+    def test_accumulation_achieved_has_no_alert(self):
+        self._accumulation(balance="1000.00")
+
+        self.assertEqual(self._goal_alerts(), [])
+
+    def test_accumulation_with_stored_at_risk_or_missed_has_no_alert(self):
+        self._accumulation(
+            balance="100.00", stored_status=MonthlyGoal.Status.AT_RISK
+        )
+
+        self.assertEqual(self._goal_alerts(), [])
+
+    def test_reduction_at_90_percent_has_alert(self):
+        self._reduction(spent="900.00")
+
+        alerts = self._goal_alerts()
+
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["current_amount"], Decimal("900.00"))
+
+    def test_reduction_above_limit_has_alert(self):
+        self._reduction(spent="1200.00")
+
+        self.assertEqual(len(self._goal_alerts()), 1)
+
+    def test_reduction_below_80_percent_has_no_alert(self):
+        self._reduction(spent="700.00")
+
+        self.assertEqual(self._goal_alerts(), [])
+
+    def test_status_is_calculated_on_read_without_writing(self):
+        """Gasto real >= 80% alerta mesmo com status gravado ON_TRACK; nao grava."""
+
+        monthly_goal = self._reduction(
+            spent="900.00", stored_status=MonthlyGoal.Status.ON_TRACK
+        )
+
+        alerts = self._goal_alerts()
+
+        self.assertEqual(len(alerts), 1)
+        monthly_goal.refresh_from_db()
+        self.assertEqual(monthly_goal.status, MonthlyGoal.Status.ON_TRACK)
+        self.assertEqual(monthly_goal.current_amount, Decimal("0.00"))
+
+    def test_today_is_propagated_to_calculation(self):
+        """Acumulo de mes fechado e snapshot: usa o today da home, nao o relogio."""
+
+        self._accumulation(
+            balance="100.00", stored_status=MonthlyGoal.Status.ON_TRACK
+        )
+        context = get_operational_home_context(today=date(2026, 6, 15))
+
+        self.assertEqual(
+            [a for a in context["alerts"] if a["type"] == "goal"], []
+        )

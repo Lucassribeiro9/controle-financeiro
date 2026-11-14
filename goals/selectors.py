@@ -1,5 +1,6 @@
 """Seletores para as funcionalidades de objetivos e metas."""
 
+from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -8,7 +9,9 @@ from .models import Goal, MonthlyGoal
 from .services import calculate_goal_progress, calculate_monthly_goal_status
 
 
-def apply_calculated_status(monthly_goals) -> list[MonthlyGoal]:
+def apply_calculated_status(
+    monthly_goals, *, today: date | None = None
+) -> list[MonthlyGoal]:
     """Preenche valor atual e status em memoria, sem gravar (ADR-012/016).
 
     Se o calculo falhar (ex.: objetivo antigo com moedas misturadas), mantem
@@ -19,7 +22,7 @@ def apply_calculated_status(monthly_goals) -> list[MonthlyGoal]:
     for monthly_goal in result:
         try:
             monthly_goal.current_amount, monthly_goal.status = (
-                calculate_monthly_goal_status(monthly_goal)
+                calculate_monthly_goal_status(monthly_goal, today=today)
             )
         except ValidationError:
             pass
@@ -76,7 +79,9 @@ def get_active_goals(*, year: int, month: int) -> list[dict]:
     ]
 
 
-def get_monthly_goals_with_status(*, year: int, month: int) -> list[MonthlyGoal]:
+def get_monthly_goals_with_status(
+    *, year: int, month: int, today: date | None = None
+) -> list[MonthlyGoal]:
     """Lista metas mensais do periodo com status calculado na leitura.
 
     Ponto unico de calculo para metas, detalhe e relatorios; nao grava.
@@ -85,7 +90,9 @@ def get_monthly_goals_with_status(*, year: int, month: int) -> list[MonthlyGoal]
     monthly_goals = MonthlyGoal.objects.filter(year=year, month=month).select_related(
         "goal", "goal__category"
     )
-    return _sort_by_status_and_name(apply_calculated_status(monthly_goals))
+    return _sort_by_status_and_name(
+        apply_calculated_status(monthly_goals, today=today)
+    )
 
 
 def get_goal_detail(*, goal_id: int, year: int, month: int) -> dict:
