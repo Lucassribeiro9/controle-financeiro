@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.db import models
-from django.db.models import Q, QuerySet, Sum, Subquery, OuterRef, ExpressionWrapper, F
+from django.db.models import Count, Q, QuerySet, Sum, Subquery, OuterRef, ExpressionWrapper, F
 from django.db.models.functions import Coalesce
 
 from categories.models import Category
@@ -54,6 +54,27 @@ def get_categories_with_monthly_spent(
                 output_field=models.DecimalField(),
             ),
         )
+    )
+
+
+def get_categories_for_list(reference_date: date) -> QuerySet[Category]:
+    """Retorna categorias da listagem com gasto mensal e contagem de filhos.
+
+    ``children_count`` conta os filhos diretos (ativos ou inativos) por
+    subquery, sem JOIN com ``children``, para nao multiplicar o
+    ``monthly_spent`` de ``get_categories_with_monthly_spent``.
+    """
+
+    children_count = (
+        Category.objects.filter(parent=OuterRef("pk"))
+        .values("parent")
+        .annotate(total=Count("pk"))
+        .values("total")
+    )
+    return (
+        get_categories_with_monthly_spent(reference_date)
+        .annotate(children_count=Coalesce(Subquery(children_count), 0))
+        .order_by("parent__name", "name")
     )
 
 
