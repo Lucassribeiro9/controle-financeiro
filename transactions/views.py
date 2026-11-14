@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.http import urlencode
 
 from core.errors import map_service_errors_to_view
+from core.periods import get_period_from_request
 from .constants import GENERIC_EDIT_BLOCKED_TYPES
 from .forms import TransactionForm, TransferForm
 from .models import Transaction
@@ -27,19 +28,10 @@ from .services import (
 from installments.models import InstallmentPlan
 
 
-def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
-    """Extrai ano e mes da query string ou usa o mes atual."""
-
-    today = timezone.localdate()
-    year = int(request.GET.get("year") or today.year)
-    month = int(request.GET.get("month") or today.month)
-    return year, month
-
-
 def transaction_list_page(request: HttpRequest) -> HttpResponse:
     """Renderiza a lista de lancamentos financeiros."""
 
-    year, month = _get_period_from_request(request)
+    year, month = get_period_from_request(request)
     status = request.GET.get("status")
     transaction_type = request.GET.get("transaction_type")
     transactions = get_filtered_transactions(
@@ -212,7 +204,7 @@ def transaction_edit_page(request: HttpRequest, transaction_id: int) -> HttpResp
 def transfer_list_page(request: HttpRequest) -> HttpResponse:
     """Renderiza a lista de transferencias entre contas."""
 
-    year, month = _get_period_from_request(request)
+    year, month = get_period_from_request(request)
     transfers = get_transfers_for_period(year=year, month=month)
 
     return render(

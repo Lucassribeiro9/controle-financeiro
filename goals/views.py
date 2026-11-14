@@ -2,24 +2,15 @@
 
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
-from django.utils import timezone
 
+from core.periods import get_period_from_request
 from .selectors import get_active_goals, get_goal_detail, get_monthly_goals_with_status
-
-
-def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
-    """Extrai ano e mes da query string ou usa o mes atual."""
-
-    today = timezone.localdate()
-    year = int(request.GET.get("year") or today.year)
-    month = int(request.GET.get("month") or today.month)
-    return year, month
 
 
 def goal_list_page(request: HttpRequest) -> HttpResponse:
     """Renderiza a lista de objetivos ativos com progresso."""
 
-    year, month = _get_period_from_request(request)
+    year, month = get_period_from_request(request)
     goal_summaries = get_active_goals(year=year, month=month)
 
     return render(
@@ -36,7 +27,7 @@ def goal_list_page(request: HttpRequest) -> HttpResponse:
 def monthly_goals_page(request: HttpRequest) -> HttpResponse:
     """Renderiza metas mensais do periodo informado."""
 
-    year, month = _get_period_from_request(request)
+    year, month = get_period_from_request(request)
     # Apenas leitura: a persistencia fica com a rotina diaria (ADR-013/016).
     monthly_goals = get_monthly_goals_with_status(year=year, month=month)
 
@@ -54,7 +45,7 @@ def monthly_goals_page(request: HttpRequest) -> HttpResponse:
 def goal_detail_page(request: HttpRequest, goal_id: int) -> HttpResponse:
     """Renderiza o detalhe de um objetivo com progresso e metas do periodo."""
 
-    year, month = _get_period_from_request(request)
+    year, month = get_period_from_request(request)
     goal_summary = get_goal_detail(goal_id=goal_id, year=year, month=month)
 
     return render(

@@ -5,25 +5,16 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from core.auth import api_login_required
 from core.errors import map_service_errors_to_view
 from core.forms import normalize_decimal
 
+from core.periods import get_period_from_request
 from .selectors import get_recurring_forecasts_for_period
 from .services import confirm_forecast as confirm_forecast_service
 from transactions.models import Transaction
-
-
-def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
-    """Extrai ano e mes da query string ou usa o mes atual."""
-
-    today = timezone.localdate()
-    year = int(request.GET.get("year") or today.year)
-    month = int(request.GET.get("month") or today.month)
-    return year, month
 
 
 def _get_forecasts_for_period(*, year: int, month: int):
@@ -78,7 +69,7 @@ def forecasts_page(request: HttpRequest, year: int, month: int):
 def forecasts_filter_page(request: HttpRequest):
     """Renderiza previsoes recorrentes usando periodo informado por filtro."""
 
-    year, month = _get_period_from_request(request)
+    year, month = get_period_from_request(request)
     return forecasts_page(request, year=year, month=month)
 
 
