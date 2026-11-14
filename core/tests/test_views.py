@@ -193,6 +193,15 @@ class HomeViewTests(AuthenticatedTestCase):
             status=CardStatement.StatementStatus.OPEN,
             payment_account=account,
         )
+        Transaction.objects.create(
+            description="Compra no cartao",
+            amount=Decimal("700.00"),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=card,
+            statement=statement,
+            date=timezone.localdate(),
+        )
         ImportedTransaction.objects.create(
             source_file_name="extrato.csv",
             source_type=ImportedTransaction.SourceType.CSV,

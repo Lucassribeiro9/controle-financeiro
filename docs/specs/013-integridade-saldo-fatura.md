@@ -32,7 +32,7 @@ Com dados reais entrando na Etapa 1, cada divergencia vira saldo errado sem rast
 | Importacao de extratos | Spec 014 (entrega 1.3). |
 | Formulario de lancamento (layout e campos) | Spec 015 (entrega 1.4); aqui so muda a lista de tipos permitidos. |
 | Rotina diaria de fechamento e atraso de faturas | ADR-013, Etapa 2. |
-| Alerta de fatura da home (#219) | Conferir depois da #221, como previsto no plano-mestre (Etapa 2.4). |
+| Alerta de fatura da home (#219) | Entregue na #219: valor e vencimento do alerta seguem a tela de faturas (spec 001). |
 | Subtotal de contas inativas nos relatorios | Decisao: total so de ativas; inativas ficam listadas a parte apenas em `/accounts/`. |
 
 ## Schema

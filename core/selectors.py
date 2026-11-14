@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from cards.models import CardStatement
+from cards.selectors import get_statement_summary
 from categories.selectors import get_categories_at_risk
 from goals.models import Goal, MonthlyGoal
 from goals.selectors import get_monthly_goals_with_status
@@ -315,18 +316,29 @@ def _get_due_statement_alerts(*, today) -> list[dict]:
         .order_by("due_date", "card__name")[:5]
     )
 
-    return [
-        {
-            "type": "card_statement",
-            "priority": "high",
-            "title": f"Fatura {statement.card.name}",
-            "description": f"Vence em {statement.due_date:%d/%m/%Y}",
-            "amount": statement.closed_amount or statement.expected_amount,
-            "url": reverse("cards:statement-detail", args=[statement.id]),
-            "due_date": statement.due_date,
-        }
-        for statement in statements
-    ]
+    return [_build_statement_alert(statement, today=today) for statement in statements]
+
+
+def _build_statement_alert(statement, *, today) -> dict:
+    """Monta o alerta de fatura com o mesmo valor e vencimento da tela de faturas."""
+
+    summary = get_statement_summary(statement)
+    is_open_statement = statement.status in (
+        CardStatement.StatementStatus.OPEN,
+        CardStatement.StatementStatus.FORECASTED,
+    )
+    amount = summary["expected_amount"] if is_open_statement else summary["remaining_amount"]
+    verb = "Venceu" if statement.due_date < today else "Vence"
+
+    return {
+        "type": "card_statement",
+        "priority": "high",
+        "title": f"Fatura {statement.card.name}",
+        "description": f"{verb} em {statement.due_date:%d/%m/%Y}",
+        "amount": amount,
+        "url": reverse("cards:statement-detail", args=[statement.id]),
+        "due_date": statement.due_date,
+    }
 
 
 def _count_imports_awaiting_review() -> int:

@@ -3,12 +3,15 @@
 from datetime import date
 from decimal import Decimal
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from accounts.models import FinancialAccount
 from categories.models import Category
 from cards.models import Card, CardStatement
+from cards.selectors import get_statement_summary
 from core.selectors import get_operational_home_context
 from core.testing import AuthenticatedTestCase
 from goals.models import Goal, MonthlyGoal
@@ -499,6 +502,146 @@ class HomeAndForecastsPageAlignmentTests(AuthenticatedTestCase):
         ).count()
 
         self.assertEqual(recurrences_item["count"], listed_count)
+
+
+class HomeStatementAlertsTests(TestCase):
+    """Alerta de fatura da home usa valor e vencimento da tela de faturas (#219)."""
+
+    def setUp(self):
+        self.today = date(2026, 8, 10)
+        institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.card = Card.objects.create(
+            name="Inter Gold",
+            institution=institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=10,
+            payment_account=self.account,
+        )
+
+    def _statement(self, *, month=8, due_date, status, **amounts):
+        return CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=month,
+            due_date=due_date,
+            closing_date=date(2026, 7, 20),
+            status=status,
+            payment_account=self.account,
+            **amounts,
+        )
+
+    def _purchase(self, statement, amount):
+        return Transaction.objects.create(
+            description="Compra",
+            amount=Decimal(amount),
+            transaction_type=Transaction.TransactionType.CARD_PURCHASE,
+            status=Transaction.PaymentStatus.PENDING,
+            card=self.card,
+            statement=statement,
+            date=date(2026, 7, 5),
+        )
+
+    def _alerts(self):
+        context = get_operational_home_context(today=self.today)
+        return [a for a in context["alerts"] if a["type"] == "card_statement"]
+
+    def test_open_statement_without_expected_amount_shows_purchase_total(self):
+        statement = self._statement(
+            due_date=date(2026, 8, 15), status=CardStatement.StatementStatus.OPEN
+        )
+        self._purchase(statement, "300.00")
+        self._purchase(statement, "120.00")
+
+        (alert,) = self._alerts()
+
+        self.assertEqual(alert["amount"], Decimal("420.00"))
+
+    def test_late_statement_with_partial_payment_shows_remaining(self):
+        statement = self._statement(
+            due_date=date(2026, 8, 7),
+            status=CardStatement.StatementStatus.LATE,
+            closed_amount=Decimal("116.68"),
+            paid_amount=Decimal("20.00"),
+        )
+
+        (alert,) = self._alerts()
+
+        self.assertEqual(alert["amount"], Decimal("96.68"))
+        self.assertEqual(
+            alert["amount"], get_statement_summary(statement)["remaining_amount"]
+        )
+
+    def test_overdue_statement_says_venceu_em(self):
+        self._statement(
+            due_date=date(2026, 8, 7),
+            status=CardStatement.StatementStatus.LATE,
+            closed_amount=Decimal("100.00"),
+        )
+
+        (alert,) = self._alerts()
+
+        self.assertEqual(alert["description"], "Venceu em 07/08/2026")
+
+    def test_due_today_or_future_keeps_vence_em(self):
+        self._statement(
+            month=7,
+            due_date=self.today,
+            status=CardStatement.StatementStatus.PENDING,
+            closed_amount=Decimal("50.00"),
+        )
+        self._statement(
+            month=8,
+            due_date=date(2026, 8, 20),
+            status=CardStatement.StatementStatus.PENDING,
+            closed_amount=Decimal("60.00"),
+        )
+
+        descriptions = [a["description"] for a in self._alerts()]
+
+        self.assertEqual(descriptions, ["Vence em 10/08/2026", "Vence em 20/08/2026"])
+
+    def test_alert_amount_matches_statement_summary(self):
+        statement = self._statement(
+            due_date=date(2026, 8, 12),
+            status=CardStatement.StatementStatus.PARTIALLY_PAID,
+            closed_amount=Decimal("500.00"),
+            paid_amount=Decimal("150.00"),
+        )
+
+        (alert,) = self._alerts()
+
+        self.assertEqual(
+            alert["amount"], get_statement_summary(statement)["remaining_amount"]
+        )
+        self.assertEqual(alert["amount"], Decimal("350.00"))
+
+    def test_query_count_grows_at_most_one_per_statement(self):
+        def add_statement(month):
+            statement = self._statement(
+                month=month,
+                due_date=date(2026, 8, 10 + month),
+                status=CardStatement.StatementStatus.OPEN,
+            )
+            self._purchase(statement, "10.00")
+
+        add_statement(1)
+        with CaptureQueriesContext(connection) as one:
+            self._alerts()
+        for month in range(2, 6):
+            add_statement(month)
+        with CaptureQueriesContext(connection) as five:
+            alerts = self._alerts()
+
+        self.assertEqual(len(alerts), 5)
+        self.assertLessEqual(len(five) - len(one), 4)
 
 
 class HomeGoalAlertsTests(TestCase):
