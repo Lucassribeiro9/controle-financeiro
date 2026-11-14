@@ -24,6 +24,16 @@
             </label>
 
             <label class="form-field">
+                <span>Banco do CSV</span>
+                <select name="csv_profile">
+                    {% for value, label in csv_profiles %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <small class="muted">Só vale para CSV. Escolha Nubank ou Inter para importar o arquivo do banco sem editar.</small>
+            </label>
+
+            <label class="form-field">
                 <span>Arquivo</span>
                 <input type="file" name="file" accept=".csv,.xlsx,.ofx" required>
             </label>

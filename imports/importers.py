@@ -110,7 +110,14 @@ def _normalize_header(header: str) -> str:
     return "".join(char for char in decomposed if not unicodedata.combining(char))
 
 
-def _map_headers(headers: list[str], *, file_label: str) -> dict[str, int]:
+BANK_PROFILE_HINT = (
+    " Se o arquivo é do Nubank ou do Inter, escolha o banco no campo Banco do CSV."
+)
+
+
+def _map_headers(
+    headers: list[str], *, file_label: str, hint: str = ""
+) -> dict[str, int]:
     """Mapeia cabecalhos (ingles ou portugues) para o indice de cada campo."""
 
     column_indexes: dict[str, int] = {}
@@ -126,7 +133,8 @@ def _map_headers(headers: list[str], *, file_label: str) -> dict[str, int]:
     missing_fields = {"date", "description", "amount"} - set(column_indexes)
     if missing_fields:
         raise ValueError(
-            f"{file_label} sem colunas obrigatórias: {', '.join(sorted(missing_fields))}"
+            f"{file_label} sem colunas obrigatórias: "
+            f"{', '.join(sorted(missing_fields))}.{hint}"
         )
 
     return column_indexes
@@ -182,11 +190,12 @@ class CsvTransactionImporter:
         records = [(number, row) for number, row in records if any(c.strip() for c in row)]
         if not records:
             raise ValueError(
-                f"CSV sem colunas obrigatórias: {', '.join(sorted(self.required_fields))}"
+                "CSV sem colunas obrigatórias: "
+                f"{', '.join(sorted(self.required_fields))}.{BANK_PROFILE_HINT}"
             )
 
         _, headers = records[0]
-        column_indexes = _map_headers(headers, file_label="CSV")
+        column_indexes = _map_headers(headers, file_label="CSV", hint=BANK_PROFILE_HINT)
         rows = []
 
         for line_number, row in records[1:]:
@@ -211,6 +220,152 @@ class CsvTransactionImporter:
             )
 
         return rows
+
+
+@dataclass(frozen=True)
+class CsvProfile:
+    """Layout de CSV de um banco, declarado em codigo (spec 016, #268)."""
+
+    key: str
+    label: str
+    delimiter: str
+    date_column: str
+    amount_column: str
+    description_columns: tuple[str, ...]
+    external_id_column: str = ""
+    max_header_scan_lines: int = 10
+
+    @property
+    def required_columns(self) -> tuple[str, ...]:
+        """Colunas obrigatorias, com o nome que o banco usa, na ordem do layout."""
+
+        columns = [self.date_column, *self.description_columns, self.amount_column]
+        if self.external_id_column:
+            columns.insert(1, self.external_id_column)
+        return tuple(columns)
+
+
+CSV_PROFILES = {
+    "nubank": CsvProfile(
+        key="nubank",
+        label="Nubank",
+        delimiter=",",
+        date_column="Data",
+        amount_column="Valor",
+        description_columns=("Descrição",),
+        external_id_column="Identificador",
+    ),
+    "inter": CsvProfile(
+        key="inter",
+        label="Inter",
+        delimiter=";",
+        date_column="Data Lançamento",
+        amount_column="Valor",
+        description_columns=("Histórico", "Descrição"),
+    ),
+}
+
+GENERIC_CSV_PROFILE = "generic"
+CSV_PROFILE_CHOICES = (
+    (GENERIC_CSV_PROFILE, "Genérico"),
+    *((key, profile.label) for key, profile in CSV_PROFILES.items()),
+)
+RAW_DESCRIPTION_MAX_LENGTH = 255
+
+
+class ProfiledCsvTransactionImporter:
+    """Importador de CSV com layout fixo de um banco (spec 016, #268)."""
+
+    def __init__(self, profile: CsvProfile):
+        self.profile = profile
+
+    def parse(self, file_obj) -> list[ImportedTransactionRow]:
+        """Parseia o CSV do banco e retorna linhas normalizadas para staging."""
+
+        profile = self.profile
+        content = _decode_text(_read_file_content(file_obj))
+        reader = csv.reader(content.splitlines(), delimiter=profile.delimiter)
+
+        try:
+            records = list(enumerate(reader, start=1))
+        except csv.Error as exc:
+            raise ValueError("Arquivo CSV inválido.") from exc
+
+        records = [(number, row) for number, row in records if any(c.strip() for c in row)]
+        header_position = self._find_header_position(records)
+        headers = records[header_position][1] if records else []
+        indexes = self._map_columns(headers)
+
+        rows = []
+        for line_number, row in records[header_position + 1 :]:
+            if len(row) > len(headers):
+                raise ValueError(f"Linha {line_number} tem mais colunas que o cabeçalho.")
+            if len(row) < len(headers):
+                raise ValueError(f"Linha {line_number} tem menos colunas que o cabeçalho.")
+
+            cells = [cell.strip() for cell in row]
+            external_index = indexes.get(profile.external_id_column)
+            rows.append(
+                _build_row(
+                    transaction_date=_parse_date(
+                        cells[indexes[profile.date_column]], line_number=line_number
+                    ),
+                    raw_description=self._build_description(cells, indexes),
+                    raw_amount=_parse_amount(
+                        cells[indexes[profile.amount_column]], line_number=line_number
+                    ),
+                    external_id=cells[external_index] if external_index is not None else "",
+                    line_number=line_number,
+                )
+            )
+
+        return rows
+
+    def _find_header_position(self, records) -> int:
+        """Escolhe, entre as primeiras linhas, a que casa mais colunas do perfil."""
+
+        required = {_normalize_header(name) for name in self.profile.required_columns}
+        best_position, best_score = 0, -1
+        for position, (_, row) in enumerate(records[: self.profile.max_header_scan_lines]):
+            score = len(required & {_normalize_header(cell) for cell in row})
+            if score > best_score:
+                best_position, best_score = position, score
+        return best_position
+
+    def _map_columns(self, headers: list[str]) -> dict[str, int]:
+        """Mapeia as colunas do perfil; recusa citando as que faltam."""
+
+        by_name: dict[str, int] = {}
+        for index, header in enumerate(headers):
+            normalized = _normalize_header(header)
+            if normalized in by_name:
+                raise ValueError(f"Cabeçalho com coluna repetida: {header.strip()}")
+            by_name[normalized] = index
+
+        indexes: dict[str, int] = {}
+        missing = []
+        for name in self.profile.required_columns:
+            if _normalize_header(name) in by_name:
+                indexes[name] = by_name[_normalize_header(name)]
+            else:
+                missing.append(name)
+
+        if missing:
+            raise ValueError(
+                f"CSV do {self.profile.label} sem colunas: {', '.join(missing)}. "
+                "Confira se escolheu o banco certo."
+            )
+        return indexes
+
+    def _build_description(self, cells: list[str], indexes: dict[str, int]) -> str:
+        """Junta as colunas de descricao (Historico - Descricao) e limita em 255."""
+
+        parts = [
+            normalize_description(cells[indexes[name]])
+            for name in self.profile.description_columns
+        ]
+        description = " - ".join(part for part in parts if part)
+        return description[:RAW_DESCRIPTION_MAX_LENGTH].strip()
 
 
 class XlsxTransactionImporter:
@@ -508,8 +663,12 @@ class OfxTransactionImporter:
         return datetime.strptime(date_match.group(1), "%Y%m%d").date()
 
 
-def get_importer_for_source_type(source_type):
-    """Retorna o importer adequado para o formato solicitado."""
+def get_importer_for_source_type(source_type, csv_profile=None):
+    """Retorna o importer adequado para o formato (e perfil de CSV) solicitado."""
+
+    profile_key = (csv_profile or GENERIC_CSV_PROFILE).strip().lower()
+    if profile_key != GENERIC_CSV_PROFILE and profile_key not in CSV_PROFILES:
+        raise ValueError(f"Perfil de CSV não suportado: {csv_profile}")
 
     importers = {
         ImportedTransaction.SourceType.CSV: CsvTransactionImporter,
@@ -518,6 +677,12 @@ def get_importer_for_source_type(source_type):
     }
 
     try:
-        return importers[source_type]()
+        importer_class = importers[source_type]
     except KeyError as exc:
         raise ValueError(f"Tipo de importacao nao suportado: {source_type}") from exc
+
+    if profile_key == GENERIC_CSV_PROFILE:
+        return importer_class()
+    if source_type != ImportedTransaction.SourceType.CSV:
+        raise ValueError("Perfil de banco só se aplica a CSV.")
+    return ProfiledCsvTransactionImporter(CSV_PROFILES[profile_key])

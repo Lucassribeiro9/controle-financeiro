@@ -14,7 +14,7 @@ from core.forms import normalize_decimal
 from core.forms import parse_br_date
 from transactions.models import Transaction
 
-from .importers import get_importer_for_source_type
+from .importers import CSV_PROFILE_CHOICES, get_importer_for_source_type
 from .models import ImportedTransaction
 from .selectors import IMPORT_REVIEW_TABS
 from .selectors import detect_bank_from_ofx
@@ -161,7 +161,9 @@ def _stage_import_from_request(request: HttpRequest):
     if account_id:
         suggested_account = get_object_or_404(FinancialAccount, pk=account_id)
 
-    importer = get_importer_for_source_type(source_type)
+    importer = get_importer_for_source_type(
+        source_type, csv_profile=request.POST.get("csv_profile")
+    )
     rows = importer.parse(uploaded_file)
 
     detection = None
@@ -390,6 +392,7 @@ def upload_import_page(request: HttpRequest):
         {
             "accounts": accounts,
             "source_types": ImportedTransaction.SourceType.choices,
+            "csv_profiles": CSV_PROFILE_CHOICES,
         },
     )
 
