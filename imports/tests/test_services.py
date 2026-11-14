@@ -3,6 +3,8 @@
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
+from io import BytesIO
+from pathlib import Path
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
@@ -10,7 +12,7 @@ from django.test import TestCase
 
 from accounts.models import FinancialAccount
 from categories.models import Category
-from imports.importers import ImportedTransactionRow
+from imports.importers import ImportedTransactionRow, get_importer_for_source_type
 from imports.models import ImportedTransaction
 from imports.selectors import get_category_history
 from imports.services import (
@@ -197,6 +199,38 @@ class ImportServiceTests(TestCase):
         self._stage([self._row()])
 
         imported = self._stage([self._row(), self._row()])
+
+        self.assertEqual(
+            self._statuses(imported),
+            [ImportedTransaction.Status.DUPLICATE, ImportedTransaction.Status.PENDING],
+        )
+
+    def test_inter_profile_reimport_marks_every_row_as_duplicate(self):
+        """Reimportar o extrato do Inter (sem identificador) marca todas como duplicadas."""
+
+        path = Path(__file__).parent / "fixtures" / "csv" / "inter_extrato.csv"
+        importer = get_importer_for_source_type("csv", csv_profile="inter")
+
+        first = self._stage(importer.parse(BytesIO(path.read_bytes())))
+        again = self._stage(importer.parse(BytesIO(path.read_bytes())))
+
+        self.assertNotIn(ImportedTransaction.Status.DUPLICATE, self._statuses(first))
+        self.assertEqual(
+            self._statuses(again), [ImportedTransaction.Status.DUPLICATE] * len(again)
+        )
+
+    def test_inter_profile_identical_rows_with_one_prior_mark_only_one(self):
+        """Duas linhas identicas do Inter, uma ja importada: so uma fica duplicada."""
+
+        content = (
+            "Data Lançamento;Histórico;Descrição;Valor\n"
+            "07/05/2026;Pix enviado;Padaria Exemplo;-12,50\n"
+        )
+        importer = get_importer_for_source_type("csv", csv_profile="inter")
+        self._stage(importer.parse(BytesIO(content.encode())))
+
+        twice = content + "07/05/2026;Pix enviado;Padaria Exemplo;-12,50\n"
+        imported = self._stage(importer.parse(BytesIO(twice.encode())))
 
         self.assertEqual(
             self._statuses(imported),

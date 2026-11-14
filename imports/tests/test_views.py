@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from datetime import date
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 
 from core.testing import AuthenticatedTestCase
 from django.contrib.messages import get_messages
@@ -1243,3 +1244,115 @@ class OfxBankDetectionViewTests(AuthenticatedTestCase):
         )
 
         self.assertIsNone(response.json()["bank_detection"])
+
+
+class CsvProfileViewTests(AuthenticatedTestCase):
+    """Garante o campo csv_profile no upload (spec 016, #268)."""
+
+    FIXTURES = Path(__file__).parent / "fixtures" / "csv"
+
+    def _upload_file(self, name="inter_extrato.csv", content=None):
+        data = content if content is not None else (self.FIXTURES / name).read_bytes()
+        file_obj = BytesIO(data)
+        file_obj.name = name
+        return file_obj
+
+    def _post(self, url_name, profile=None, **extra):
+        data = {"source_type": "csv", "file": self._upload_file(**extra.pop("file_kwargs", {}))}
+        if profile is not None:
+            data["csv_profile"] = profile
+        data.update(extra)
+        return self.client.post(reverse(url_name), data)
+
+    def test_api_inter_profile_stages_rows_without_new_json_keys(self):
+        response = self._post("imports:upload", "inter")
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["count"], 5)
+        self.assertEqual(body["results"][0]["raw_description"], "Pix enviado - Mercado Exemplo")
+        self.assertEqual(body["results"][0]["source_type"], "csv")
+        self.assertEqual(set(body), {"bank_detection", "count", "results"})
+
+    def test_api_nubank_profile_keeps_external_id(self):
+        response = self._post(
+            "imports:upload", "nubank", file_kwargs={"name": "nubank_extrato.csv"}
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.json()["results"][0]["external_id"],
+            "00000000-0000-4000-8000-000000000001",
+        )
+
+    def test_api_missing_column_returns_400_naming_it_without_writing(self):
+        response = self._post(
+            "imports:upload",
+            "inter",
+            file_kwargs={
+                "content": "Data Lançamento;Descrição;Valor\n05/05/2026;Teste;-1,00\n".encode()
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Histórico", response.json()["error"])
+        self.assertEqual(ImportedTransaction.objects.count(), 0)
+
+    def test_api_unknown_profile_returns_400(self):
+        response = self._post("imports:upload", "itau")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Perfil de CSV não suportado", response.json()["error"])
+        self.assertEqual(ImportedTransaction.objects.count(), 0)
+
+    def test_api_bank_profile_with_ofx_returns_400(self):
+        response = self._post("imports:upload", "inter", source_type="ofx")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("só se aplica a CSV", response.json()["error"])
+        self.assertEqual(ImportedTransaction.objects.count(), 0)
+
+    def test_api_without_profile_behaves_as_generic(self):
+        content = b"date,description,amount\n2026-05-10,Mercado Dia,-87.45\n"
+
+        for profile in (None, "", "generic"):
+            response = self._post(
+                "imports:upload", profile, file_kwargs={"content": content}
+            )
+            self.assertEqual(response.status_code, 201)
+
+        self.assertEqual(ImportedTransaction.objects.count(), 3)
+
+    def test_api_generic_failure_hints_to_choose_the_bank(self):
+        response = self._post("imports:upload", file_kwargs={"name": "inter_extrato.csv"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Banco do CSV", response.json()["error"])
+
+    def test_page_post_with_profile_redirects_with_success(self):
+        response = self._post("imports:upload-page", "inter")
+
+        self.assertEqual(response.status_code, 302)
+        texts = [str(m) for m in get_messages(response.wsgi_request)]
+        self.assertTrue(any("5 transação(ões) enviada(s)" in t for t in texts))
+        self.assertEqual(ImportedTransaction.objects.count(), 5)
+
+    def test_page_post_with_missing_column_shows_error_without_writing(self):
+        response = self._post(
+            "imports:upload-page",
+            "nubank",
+            file_kwargs={"name": "inter_extrato.csv"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        texts = [str(m) for m in get_messages(response.wsgi_request)]
+        self.assertTrue(any("Identificador" in t for t in texts))
+        self.assertEqual(ImportedTransaction.objects.count(), 0)
+
+    def test_page_get_lists_profiles_and_does_not_write(self):
+        response = self.client.get(reverse("imports:upload-page"))
+
+        self.assertContains(response, 'name="csv_profile"')
+        self.assertContains(response, 'value="nubank"')
+        self.assertContains(response, 'value="inter"')
+        self.assertEqual(ImportedTransaction.objects.count(), 0)

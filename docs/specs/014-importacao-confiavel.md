@@ -28,7 +28,7 @@ A Etapa 1 termina quando um mes real de extrato concilia com o banco. Com esses 
 | Item | Motivo |
 | ---- | ------ |
 | Importar fatura de cartao (compras como `card_purchase`) | Decisao do usuario: tratado no futuro, candidato da Etapa 4. Na 1.3 a fatura e conferida com lancamentos manuais. |
-| Tela de mapeamento de colunas | Funcionalidade nova; a 1.3 cobre os cabecalhos comuns por aliases. |
+| Tela de mapeamento de colunas | Funcionalidade nova; a 1.3 cobre os cabecalhos comuns por aliases. Perfis por banco (Nubank, Inter): spec 016, secao P2 (#268). |
 | Colunas separadas de debito e credito, valor com `R$` ou sinal no fim (`10,50-`) | Formatos fora do padrao "uma coluna de valor com sinal"; revisitar se o extrato do aceite usar algum deles. |
 | Reconhecer pagamento de fatura e transferencia entre contas proprias no extrato | Sem regra hoje; no aceite o usuario descarta essas linhas e usa o fluxo proprio. |
 | Falso positivo de "mercado" (Mercado Livre, Mercado Pago) na categoria sugerida | Nao citado na #223 e a sugestao e revisavel; se aparecer no aceite, vira issue nova. |
