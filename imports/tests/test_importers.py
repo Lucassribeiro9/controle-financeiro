@@ -117,6 +117,7 @@ from django.test import SimpleTestCase
 
 from imports.importers import (
     CsvTransactionImporter,
+    OfxBankAccount,
     OfxTransactionImporter,
     XlsxTransactionImporter,
     get_importer_for_source_type,
@@ -392,6 +393,85 @@ class OfxTransactionImporterTests(SimpleTestCase):
 
         with self.assertRaisesMessage(ValueError, "OFX sem TRNAMT"):
             OfxTransactionImporter().parse(file_obj)
+
+
+class OfxBankAccountTests(SimpleTestCase):
+    """Garante a leitura de BANKACCTFROM no OFX."""
+
+    TRN = "<STMTTRN><DTPOSTED>20260510<TRNAMT>-1.00<FITID>1<MEMO>X</STMTTRN>"
+
+    def _parse(self, body):
+        importer = OfxTransactionImporter()
+        rows = importer.parse(StringIO(f"<OFX>{body}</OFX>"))
+        return importer, rows
+
+    def test_reads_bank_account_with_closed_tags(self):
+        importer, rows = self._parse(
+            "<BANKACCTFROM><BANKID>0260</BANKID><ACCTID>12345-6</ACCTID>"
+            "<ACCTTYPE>CHECKING</ACCTTYPE></BANKACCTFROM>"
+            f"<BANKTRANLIST>{self.TRN}</BANKTRANLIST>"
+        )
+
+        self.assertEqual(
+            importer.bank_account,
+            OfxBankAccount(bank_id="0260", account_id="12345-6", account_type="CHECKING"),
+        )
+        self.assertEqual(len(rows), 1)
+
+    def test_reads_bank_account_with_open_tags(self):
+        importer, rows = self._parse(
+            "<BANKACCTFROM>\n<BANKID>077\n<ACCTID>999\n<ACCTTYPE>SAVINGS\n"
+            f"</BANKACCTFROM>\n<BANKTRANLIST>{self.TRN}</BANKTRANLIST>"
+        )
+
+        self.assertEqual(importer.bank_account.bank_id, "077")
+        self.assertEqual(importer.bank_account.account_type, "SAVINGS")
+        self.assertEqual(len(rows), 1)
+
+    def test_missing_acct_type_is_empty(self):
+        importer, _ = self._parse(
+            "<BANKACCTFROM><BANKID>1</BANKID><ACCTID>2</ACCTID></BANKACCTFROM>"
+            f"<BANKTRANLIST>{self.TRN}</BANKTRANLIST>"
+        )
+
+        self.assertEqual(importer.bank_account.account_type, "")
+
+    def test_without_bankacctfrom_is_none(self):
+        importer, rows = self._parse(f"<BANKTRANLIST>{self.TRN}</BANKTRANLIST>")
+
+        self.assertIsNone(importer.bank_account)
+        self.assertEqual(len(rows), 1)
+
+    def test_credit_card_account_is_ignored(self):
+        importer, _ = self._parse(
+            "<CCACCTFROM><ACCTID>4111</ACCTID></CCACCTFROM>"
+            f"<BANKTRANLIST>{self.TRN}</BANKTRANLIST>"
+        )
+
+        self.assertIsNone(importer.bank_account)
+
+    def test_without_bankid_is_none(self):
+        importer, _ = self._parse(
+            "<BANKACCTFROM><ACCTID>2</ACCTID></BANKACCTFROM>"
+            f"<BANKTRANLIST>{self.TRN}</BANKTRANLIST>"
+        )
+
+        self.assertIsNone(importer.bank_account)
+
+    def test_different_accounts_in_same_file_are_ambiguous(self):
+        importer, _ = self._parse(
+            "<BANKACCTFROM><BANKID>1</BANKID><ACCTID>2</ACCTID></BANKACCTFROM>"
+            "<BANKACCTFROM><BANKID>3</BANKID><ACCTID>4</ACCTID></BANKACCTFROM>"
+            f"<BANKTRANLIST>{self.TRN}</BANKTRANLIST>"
+        )
+
+        self.assertIsNone(importer.bank_account)
+
+    def test_same_account_repeated_is_kept(self):
+        block = "<BANKACCTFROM><BANKID>1</BANKID><ACCTID>2</ACCTID></BANKACCTFROM>"
+        importer, _ = self._parse(block + block + f"<BANKTRANLIST>{self.TRN}</BANKTRANLIST>")
+
+        self.assertEqual(importer.bank_account.bank_id, "1")
 
 
 class ImporterFactoryTests(SimpleTestCase):

@@ -7,8 +7,10 @@ from django.test import TestCase
 
 from accounts.models import FinancialAccount
 from categories.models import Category
+from imports.importers import OfxBankAccount
 from imports.models import ImportedTransaction
 from imports.selectors import IMPORT_REVIEW_PAGE_SIZE
+from imports.selectors import detect_bank_from_ofx
 from imports.selectors import get_category_history
 from imports.selectors import get_import_review_tab_counts
 from imports.selectors import get_imported_transactions_for_review
@@ -517,3 +519,85 @@ class CategoryHistorySelectorTests(TestCase):
             result = get_category_history([self._key("A"), self._key("B"), self._key("C")])
 
         self.assertEqual(len(result), 2)
+
+
+class BankDetectionTests(TestCase):
+    """Garante a deteccao de banco e conta a partir do OFX."""
+
+    def setUp(self):
+        self.institution = Institution.objects.create(name="Itau", code="341")
+        self.account = self._account("Corrente")
+
+    def _account(self, name, institution=None, **kwargs):
+        defaults = {"account_type": FinancialAccount.AccountType.CHECKING}
+        defaults.update(kwargs)
+        return FinancialAccount.objects.create(
+            name=name, institution=institution or self.institution, **defaults
+        )
+
+    def _ofx(self, bank_id="341", account_type="CHECKING", account_id="12345678"):
+        return OfxBankAccount(bank_id=bank_id, account_id=account_id, account_type=account_type)
+
+    def test_single_account_is_suggested(self):
+        detection = detect_bank_from_ofx(self._ofx())
+
+        self.assertEqual(detection.institution, self.institution)
+        self.assertEqual(detection.account, self.account)
+        self.assertEqual(detection.account_count, 1)
+        self.assertEqual(detection.masked_account_id, "****5678")
+
+    def test_missing_type_means_checking(self):
+        self.assertEqual(detect_bank_from_ofx(self._ofx(account_type="")).account, self.account)
+
+    def test_savings_type_maps_to_savings(self):
+        savings = self._account("Poupanca", account_type=FinancialAccount.AccountType.SAVINGS)
+
+        self.assertEqual(detect_bank_from_ofx(self._ofx(account_type="SAVINGS")).account, savings)
+
+    def test_unknown_type_identifies_bank_without_account(self):
+        detection = detect_bank_from_ofx(self._ofx(account_type="MONEYMRKT"))
+
+        self.assertEqual(detection.institution, self.institution)
+        self.assertIsNone(detection.account)
+        self.assertEqual(detection.account_count, 0)
+
+    def test_leading_zeros_are_ignored_both_ways(self):
+        self.institution.code = "077"
+        self.institution.save()
+
+        self.assertEqual(detect_bank_from_ofx(self._ofx(bank_id="77")).institution, self.institution)
+        self.assertEqual(detect_bank_from_ofx(self._ofx(bank_id="0077")).institution, self.institution)
+
+    def test_two_accounts_give_no_suggestion(self):
+        self._account("Outra corrente")
+
+        detection = detect_bank_from_ofx(self._ofx())
+
+        self.assertEqual(detection.institution, self.institution)
+        self.assertIsNone(detection.account)
+        self.assertEqual(detection.account_count, 2)
+
+    def test_inactive_account_is_not_counted(self):
+        self._account("Antiga", is_active=False)
+
+        self.assertEqual(detect_bank_from_ofx(self._ofx()).account, self.account)
+
+    def test_unknown_bank_returns_none(self):
+        self.assertIsNone(detect_bank_from_ofx(self._ofx(bank_id="999")))
+
+    def test_inactive_institution_returns_none(self):
+        self.institution.is_active = False
+        self.institution.save()
+
+        self.assertIsNone(detect_bank_from_ofx(self._ofx()))
+
+    def test_non_numeric_bank_id_returns_none(self):
+        self.assertIsNone(detect_bank_from_ofx(self._ofx(bank_id="ABC")))
+
+    def test_ambiguous_institutions_return_none(self):
+        Institution.objects.create(name="Itau 2", code="0341")
+
+        self.assertIsNone(detect_bank_from_ofx(self._ofx()))
+
+    def test_none_input_returns_none(self):
+        self.assertIsNone(detect_bank_from_ofx(None))

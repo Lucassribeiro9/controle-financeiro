@@ -17,6 +17,7 @@ from transactions.models import Transaction
 from .importers import get_importer_for_source_type
 from .models import ImportedTransaction
 from .selectors import IMPORT_REVIEW_TABS
+from .selectors import detect_bank_from_ofx
 from .selectors import get_imported_transactions_for_review
 from .selectors import get_import_review_filter_options
 from .selectors import get_import_review_tab_counts
@@ -25,6 +26,7 @@ from .selectors import paginate_imported_transactions_for_review
 from .services import (
     apply_account_to_imports,
     apply_category_to_imports,
+    choose_suggested_account,
     confirm_imported_transaction,
     confirm_imported_transactions_partially,
     discard_imported_transactions,
@@ -114,8 +116,40 @@ def _serialize_imported_transaction(imported_transaction: ImportedTransaction) -
     }
 
 
+def _bank_detection_payload(detection):
+    """Serializa o banco identificado no OFX para a resposta JSON."""
+
+    if detection is None:
+        return None
+    return {
+        "bank_id": detection.bank_id,
+        "institution": detection.institution.name,
+        "account": detection.account.name if detection.account else None,
+        "masked_account_id": detection.masked_account_id,
+    }
+
+
+def _bank_detection_message(detection, *, account_chosen=False):
+    """Texto da mensagem informativa sobre o banco identificado."""
+
+    text = f"Banco identificado no OFX: {detection.institution.name}"
+    if detection.masked_account_id:
+        text += f" (conta {detection.masked_account_id})"
+    text += "."
+    if account_chosen:
+        text += " Mantida a conta escolhida no envio."
+    elif detection.account:
+        text += f" Conta sugerida: {detection.account.name}."
+    else:
+        text += " Escolha a conta na revisão."
+    return text
+
+
 def _stage_import_from_request(request: HttpRequest):
-    """Processa o arquivo enviado e cria pendencias para revisao."""
+    """Processa o arquivo enviado e cria pendencias para revisao.
+
+    Devolve as pendencias criadas e o banco identificado no OFX (ou None).
+    """
     uploaded_file = request.FILES.get("file")
     if uploaded_file is None:
         raise ValueError("Campo file é obrigatório.")
@@ -129,12 +163,20 @@ def _stage_import_from_request(request: HttpRequest):
 
     importer = get_importer_for_source_type(source_type)
     rows = importer.parse(uploaded_file)
-    return stage_imported_transactions(
+
+    detection = None
+    if source_type == ImportedTransaction.SourceType.OFX:
+        detection = detect_bank_from_ofx(importer.bank_account)
+
+    imported = stage_imported_transactions(
         file_name=uploaded_file.name,
         source_type=source_type,
         rows=rows,
-        suggested_account=suggested_account,
+        suggested_account=choose_suggested_account(
+            suggested_account, detection.account if detection else None
+        ),
     )
+    return imported, detection
 
 
 def _should_redirect_to_review(request: HttpRequest) -> bool:
@@ -185,12 +227,13 @@ def upload_import(request: HttpRequest) -> JsonResponse:
     """Recebe arquivo suportado e cria transacoes importadas para revisao."""
 
     try:
-        imported_transactions = _stage_import_from_request(request)
+        imported_transactions, detection = _stage_import_from_request(request)
     except ValueError as exc:
         return JsonResponse({"error": str(exc)}, status=400)
 
     return JsonResponse(
         {
+            "bank_detection": _bank_detection_payload(detection),
             "count": len(imported_transactions),
             "results": [
                 _serialize_imported_transaction(imported_transaction)
@@ -324,7 +367,7 @@ def upload_import_page(request: HttpRequest):
 
     if request.method == "POST":
         try:
-            imported_transactions = _stage_import_from_request(request)
+            imported_transactions, detection = _stage_import_from_request(request)
         except ValueError as exc:
             messages.error(request, str(exc))
         else:
@@ -332,6 +375,13 @@ def upload_import_page(request: HttpRequest):
                 request,
                 f"{len(imported_transactions)} transação(ões) enviada(s) para revisão.",
             )
+            if detection is not None:
+                messages.info(
+                    request,
+                    _bank_detection_message(
+                        detection, account_chosen=bool(request.POST.get("account_id"))
+                    ),
+                )
             return redirect("imports:review-page")
 
     return render(
