@@ -3,6 +3,7 @@
 from datetime import date
 from decimal import Decimal
 from io import BytesIO, StringIO
+from pathlib import Path
 
 from django.test import SimpleTestCase
 
@@ -727,3 +728,174 @@ class XlsxInvalidFileTests(SimpleTestCase):
             XlsxTransactionImporter().parse(
                 self._numeric_sheet("10.199999999999999", cell_type="str")
             )
+
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "csv"
+
+
+def _fixture_bytes(name):
+    """Le uma amostra sintetica de layout de banco."""
+
+    return (FIXTURES_DIR / name).read_bytes()
+
+
+def _profile_importer(key):
+    """Importer de CSV para o perfil informado."""
+
+    return get_importer_for_source_type(ImportedTransaction.SourceType.CSV, csv_profile=key)
+
+
+class NubankCsvProfileTests(SimpleTestCase):
+    """Perfil nubank: layout Data, Valor, Identificador, Descricao (spec 016, #268)."""
+
+    def test_parses_sample_with_external_id_and_sign(self):
+        rows = _profile_importer("nubank").parse(BytesIO(_fixture_bytes("nubank_extrato.csv")))
+
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[0].date, date(2026, 5, 5))
+        self.assertEqual(rows[0].amount, Decimal("45.90"))
+        self.assertEqual(
+            rows[0].suggested_transaction_type, Transaction.TransactionType.EXPENSE
+        )
+        self.assertEqual(rows[0].external_id, "00000000-0000-4000-8000-000000000001")
+        self.assertEqual(rows[0].raw_description, "Compra no débito - Mercado Exemplo")
+        self.assertEqual(rows[1].amount, Decimal("1500.00"))
+        self.assertEqual(rows[1].suggested_transaction_type, Transaction.TransactionType.INCOME)
+        self.assertEqual(rows[0].line_number, 2)
+
+    def test_parses_sample_with_bom(self):
+        content = b"\xef\xbb\xbf" + _fixture_bytes("nubank_extrato.csv")
+
+        rows = _profile_importer("nubank").parse(BytesIO(content))
+
+        self.assertEqual(len(rows), 3)
+
+    def test_missing_identifier_column_is_rejected_naming_it(self):
+        content = "Data,Valor,Descrição\n05/05/2026,-10.00,Teste Exemplo\n"
+
+        with self.assertRaisesMessage(ValueError, "CSV do Nubank sem colunas: Identificador"):
+            _profile_importer("nubank").parse(StringIO(content))
+
+    def test_unknown_extra_column_is_ignored(self):
+        content = (
+            "Data,Valor,Identificador,Descrição,Categoria\n"
+            "05/05/2026,-10.00,id-1,Teste Exemplo,Mercado\n"
+        )
+
+        rows = _profile_importer("nubank").parse(StringIO(content))
+
+        self.assertEqual(len(rows), 1)
+
+    def test_same_description_and_hash_as_generic(self):
+        content = _fixture_bytes("nubank_extrato.csv")
+
+        profiled = _profile_importer("nubank").parse(BytesIO(content))
+        generic = CsvTransactionImporter().parse(BytesIO(content))
+
+        self.assertEqual(
+            [(r.date, r.amount, r.normalized_description, r.external_id) for r in profiled],
+            [(r.date, r.amount, r.normalized_description, r.external_id) for r in generic],
+        )
+
+    def test_inter_file_in_nubank_profile_is_rejected_with_bank_hint(self):
+        with self.assertRaisesMessage(ValueError, "Confira se escolheu o banco certo"):
+            _profile_importer("nubank").parse(BytesIO(_fixture_bytes("inter_extrato.csv")))
+
+
+class InterCsvProfileTests(SimpleTestCase):
+    """Perfil inter: metadados, ponto e virgula, Historico + Descricao."""
+
+    def _parse(self, content):
+        return _profile_importer("inter").parse(BytesIO(content.encode("utf-8")))
+
+    def test_sample_has_trailing_spaces_and_metadata_sentinel(self):
+        """Falha se um editor remover os espacos ou os metadados da amostra."""
+
+        lines = _fixture_bytes("inter_extrato.csv").decode("utf-8").split("\n")
+
+        self.assertGreaterEqual(len(lines), 6)
+        self.assertTrue(lines[5].startswith("Data Lançamento;"))
+        self.assertTrue(lines[5].endswith("Saldo     "))
+        self.assertTrue(lines[6].endswith("   "))
+
+    def test_parses_sample_skipping_metadata_and_ignoring_balance(self):
+        rows = _profile_importer("inter").parse(BytesIO(_fixture_bytes("inter_extrato.csv")))
+
+        self.assertEqual(len(rows), 5)
+        self.assertEqual(rows[0].date, date(2026, 5, 5))
+        self.assertEqual(rows[0].amount, Decimal("45.90"))
+        self.assertEqual(rows[0].suggested_transaction_type, Transaction.TransactionType.EXPENSE)
+        self.assertEqual(rows[0].raw_description, "Pix enviado - Mercado Exemplo")
+        self.assertEqual(rows[0].external_id, "")
+        self.assertEqual(rows[0].line_number, 7)
+        self.assertEqual(rows[1].amount, Decimal("1500.00"))
+        self.assertEqual(rows[1].suggested_transaction_type, Transaction.TransactionType.INCOME)
+
+    def test_description_uses_other_part_when_one_is_empty(self):
+        header = "Data Lançamento;Histórico;Descrição;Valor\n"
+
+        rows = self._parse(
+            header + "05/05/2026;Pix enviado;;-1,00\n05/05/2026;;Fulano Exemplo;-2,00\n"
+        )
+
+        self.assertEqual(rows[0].raw_description, "Pix enviado")
+        self.assertEqual(rows[1].raw_description, "Fulano Exemplo")
+
+    def test_description_is_truncated_to_255(self):
+        header = "Data Lançamento;Histórico;Descrição;Valor\n"
+
+        rows = self._parse(header + f"05/05/2026;Pix enviado;{'x' * 400};-1,00\n")
+
+        self.assertEqual(len(rows[0].raw_description), 255)
+        self.assertTrue(rows[0].raw_description.startswith("Pix enviado - xxx"))
+
+    def test_balance_column_is_optional(self):
+        rows = self._parse(
+            "Data Lançamento;Histórico;Descrição;Valor\n05/05/2026;Pagamento;Boleto Exemplo;-9,90\n"
+        )
+
+        self.assertEqual(len(rows), 1)
+
+    def test_missing_history_column_is_rejected_naming_it(self):
+        with self.assertRaisesMessage(ValueError, "CSV do Inter sem colunas: Histórico"):
+            self._parse("Data Lançamento;Descrição;Valor\n05/05/2026;Teste;-1,00\n")
+
+    def test_missing_amount_column_is_rejected_naming_it(self):
+        with self.assertRaisesMessage(ValueError, "CSV do Inter sem colunas: Valor"):
+            self._parse("Data Lançamento;Histórico;Descrição\n05/05/2026;Pix;Teste\n")
+
+    def test_nubank_file_in_inter_profile_is_rejected_with_bank_hint(self):
+        with self.assertRaisesMessage(ValueError, "Confira se escolheu o banco certo"):
+            _profile_importer("inter").parse(BytesIO(_fixture_bytes("nubank_extrato.csv")))
+
+    def test_empty_file_is_rejected(self):
+        with self.assertRaisesMessage(ValueError, "CSV do Inter sem colunas"):
+            self._parse("")
+
+    def test_header_only_returns_no_rows(self):
+        self.assertEqual(self._parse("Data Lançamento;Histórico;Descrição;Valor\n"), [])
+
+
+class CsvProfileRegistryTests(SimpleTestCase):
+    """Selecao de perfil no factory e dica no CSV generico."""
+
+    def test_default_and_generic_profiles_use_generic_importer(self):
+        csv_type = ImportedTransaction.SourceType.CSV
+
+        for profile in (None, "", "generic"):
+            self.assertIsInstance(
+                get_importer_for_source_type(csv_type, csv_profile=profile),
+                CsvTransactionImporter,
+            )
+
+    def test_unknown_profile_is_rejected(self):
+        with self.assertRaisesMessage(ValueError, "Perfil de CSV não suportado: itau"):
+            _profile_importer("itau")
+
+    def test_bank_profile_with_non_csv_source_is_rejected(self):
+        with self.assertRaisesMessage(ValueError, "Perfil de banco só se aplica a CSV"):
+            get_importer_for_source_type(ImportedTransaction.SourceType.OFX, csv_profile="inter")
+
+    def test_generic_failure_suggests_choosing_the_bank(self):
+        with self.assertRaisesMessage(ValueError, "escolha o banco no campo Banco do CSV"):
+            CsvTransactionImporter().parse(StringIO("foo,bar\n1,2\n"))

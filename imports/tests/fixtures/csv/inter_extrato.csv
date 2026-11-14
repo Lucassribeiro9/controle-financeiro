@@ -1,0 +1,11 @@
+   Extrato Conta Corrente  
+Conta ; 0000000-0  
+Período ; 01/05/2026 a 31/05/2026  
+Saldo ; 1.000,00  
+
+Data Lançamento;Histórico;Descrição;Valor;Saldo     
+05/05/2026;Pix enviado;Mercado Exemplo;-45,90;954,10   
+06/05/2026;Pix recebido;Fulano Exemplo;1.500,00;2.454,10   
+07/05/2026;Pagamento;Boleto Exemplo;-120,00;2.334,10   
+07/05/2026;Pix enviado;Padaria Exemplo;-12,50;2.321,60   
+07/05/2026;Pix enviado;Padaria Exemplo;-12,50;2.309,10   
