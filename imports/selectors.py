@@ -1,8 +1,13 @@
 """Seletores para as funcionalidades de importacao."""
 
+from dataclasses import dataclass
+
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.utils.dateparse import parse_date
+
+from accounts.models import FinancialAccount
+from institutions.models import Institution
 
 from .models import ImportedTransaction
 
@@ -211,3 +216,68 @@ def _parse_filter_date(value):
         return None
 
     return parse_date(value)
+
+
+_OFX_ACCOUNT_TYPES = {
+    "": FinancialAccount.AccountType.CHECKING,
+    "CHECKING": FinancialAccount.AccountType.CHECKING,
+    "SAVINGS": FinancialAccount.AccountType.SAVINGS,
+}
+
+
+@dataclass(frozen=True)
+class BankDetection:
+    """Resultado da leitura de banco/conta de um OFX; so leitura, nada e gravado."""
+
+    bank_id: str
+    institution: Institution
+    account: FinancialAccount | None
+    account_count: int
+    masked_account_id: str
+
+
+def _mask_account_id(account_id):
+    """Mostra so os ultimos 4 caracteres do numero da conta."""
+
+    if not account_id:
+        return ""
+    return "****" + account_id[-4:]
+
+
+def detect_bank_from_ofx(ofx_account):
+    """Resolve banco e conta sugerida a partir do BANKACCTFROM; None sem identificacao."""
+
+    if ofx_account is None:
+        return None
+
+    bank_id = ofx_account.bank_id.strip()
+    if not bank_id.isdigit():
+        return None
+    normalized = bank_id.lstrip("0") or "0"
+
+    matches = [
+        institution
+        for institution in Institution.objects.filter(is_active=True, code__isnull=False)
+        if institution.code.strip().isdigit()
+        and (institution.code.strip().lstrip("0") or "0") == normalized
+    ]
+    if len(matches) != 1:
+        return None
+    institution = matches[0]
+
+    account_type = _OFX_ACCOUNT_TYPES.get(ofx_account.account_type.upper())
+    candidates = []
+    if account_type is not None:
+        candidates = list(
+            FinancialAccount.objects.filter(
+                institution=institution, is_active=True, account_type=account_type
+            )[:2]
+        )
+
+    return BankDetection(
+        bank_id=bank_id,
+        institution=institution,
+        account=candidates[0] if len(candidates) == 1 else None,
+        account_count=len(candidates),
+        masked_account_id=_mask_account_id(ofx_account.account_id),
+    )
