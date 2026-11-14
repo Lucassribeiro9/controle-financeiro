@@ -132,6 +132,7 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - Transferencias nao entram como receita ou despesa no resumo mensal.
 - Faturas proximas sao faturas vencidas ou com vencimento em ate 15 dias.
 - Metas em risco no MVP sao metas ou categorias ja ultrapassadas ou acima de 80% do limite, quando os dados existirem.
+- Alerta de meta na home so existe para meta de reducao (limite): gasto de 80% do limite ou mais, ou acima dele. Meta de acumulacao nunca gera alerta de risco, mesmo perto do alvo (#236). A home le o status calculado na leitura pelo selector unico de metas, sem gravar, usando o `today` da propria home (ADR-017).
 - Pendencias de importacao, insights, recorrencias, faturas e metas devem usar os modelos/status ja existentes; se algum dado ainda nao existir, o bloco deve retornar vazio ou estado vazio, nao criar regra nova.
 - Isolamento avancado de erro por bloco fica fora da primeira issue; o MVP deve garantir banco vazio sem excecao.
 - Prioridade inicial dos alertas:

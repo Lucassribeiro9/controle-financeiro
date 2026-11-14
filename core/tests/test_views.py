@@ -203,9 +203,11 @@ class HomeViewTests(AuthenticatedTestCase):
             status=ImportedTransaction.Status.PENDING,
         )
         period = self.client.get(reverse("core:home")).context["summary"]["period"]
+        goal_category = Category.objects.create(name="Mercado")
         goal = Goal.objects.create(
             name="Mercado",
             goal_type=Goal.GoalType.REDUCTION,
+            category=goal_category,
             target_amount=Decimal("1000.00"),
             start_date=date(period["year"], period["month"], 1),
         )
@@ -214,7 +216,15 @@ class HomeViewTests(AuthenticatedTestCase):
             year=period["year"],
             month=period["month"],
             target_amount=Decimal("1000.00"),
-            current_amount=Decimal("850.00"),
+        )
+        Transaction.objects.create(
+            description="Compras",
+            amount=Decimal("850.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=account,
+            category=goal_category,
+            date=timezone.localdate(),
         )
 
         response = self.client.get(reverse("core:home"))
@@ -233,6 +243,37 @@ class HomeViewTests(AuthenticatedTestCase):
         self.assertContains(response, "Meta mensal em risco")
         self.assertContains(response, "R$ 850,00 de R$ 1.000,00")
         self.assertContains(response, reverse("goals:monthly-goals"))
+
+    def test_home_does_not_show_accumulation_goal_at_90_percent(self):
+        """Meta de acumulacao proxima do alvo e progresso, nao risco (#236)."""
+
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Cofre",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+            balance=Decimal("900.00"),
+        )
+        period = self.client.get(reverse("core:home")).context["summary"]["period"]
+        goal = Goal.objects.create(
+            name="Reserva de emergencia",
+            goal_type=Goal.GoalType.ACCUMULATION,
+            target_amount=Decimal("1000.00"),
+            start_date=date(period["year"], period["month"], 1),
+        )
+        goal.accounts.add(account)
+        MonthlyGoal.objects.create(
+            goal=goal,
+            year=period["year"],
+            month=period["month"],
+            target_amount=Decimal("1000.00"),
+            current_amount=Decimal("900.00"),
+        )
+
+        response = self.client.get(reverse("core:home"))
+
+        self.assertNotContains(response, "Meta mensal em risco")
+        self.assertNotContains(response, "Reserva de emergencia")
 
     def test_home_displays_empty_pending_items_state(self):
         """Sem pendencias, a home deve mostrar estado vazio acionavel."""
