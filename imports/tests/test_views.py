@@ -1131,3 +1131,115 @@ class ImportViewTests(AuthenticatedTestCase):
 
         messages = [str(m) for m in response.context["messages"]]
         self.assertEqual(messages, ["Valor invalido."])
+
+
+class OfxBankDetectionViewTests(AuthenticatedTestCase):
+    """Garante a sugestao de conta pelo banco do OFX no upload."""
+
+    def setUp(self):
+        self.institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+        )
+
+    def _ofx(self, bank_block="<BANKID>0077</BANKID><ACCTID>123456789</ACCTID><ACCTTYPE>CHECKING</ACCTTYPE>"):
+        header = f"<BANKACCTFROM>{bank_block}</BANKACCTFROM>" if bank_block else ""
+        content = (
+            f"<OFX>{header}<BANKTRANLIST><STMTTRN><DTPOSTED>20260510<TRNAMT>-10.00"
+            "<FITID>A1<MEMO>Padaria</STMTTRN></BANKTRANLIST></OFX>"
+        )
+        file_obj = BytesIO(content.encode("utf-8"))
+        file_obj.name = "extrato.ofx"
+        return file_obj
+
+    def _post(self, url_name, bank_block=None, **extra):
+        data = {"source_type": ImportedTransaction.SourceType.OFX, "file": self._ofx(**(
+            {"bank_block": bank_block} if bank_block is not None else {}))}
+        data.update(extra)
+        return self.client.post(reverse(url_name), data)
+
+    def test_api_suggests_detected_account_and_reports_bank(self):
+        response = self._post("imports:upload")
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["results"][0]["suggested_account_id"], self.account.id)
+        self.assertEqual(body["bank_detection"]["institution"], "Inter")
+        self.assertEqual(body["bank_detection"]["account"], "Conta corrente")
+        self.assertEqual(body["bank_detection"]["masked_account_id"], "****6789")
+        self.assertNotIn("123456789", response.content.decode())
+
+    def test_page_shows_info_message_with_masked_account(self):
+        response = self._post("imports:upload-page")
+
+        self.assertEqual(response.status_code, 302)
+        texts = [str(m) for m in get_messages(response.wsgi_request)]
+        info = [t for t in texts if "Inter" in t]
+        self.assertEqual(len(info), 1)
+        self.assertIn("****6789", info[0])
+        self.assertIn("Conta corrente", info[0])
+        self.assertNotIn("123456789", info[0])
+        self.assertEqual(
+            ImportedTransaction.objects.get().suggested_account, self.account
+        )
+
+    def test_chosen_account_prevails(self):
+        other = FinancialAccount.objects.create(
+            name="Poupanca", institution=self.institution,
+            account_type=FinancialAccount.AccountType.SAVINGS,
+        )
+
+        response = self._post("imports:upload", account_id=other.id)
+
+        self.assertEqual(response.json()["results"][0]["suggested_account_id"], other.id)
+
+        page = self._post("imports:upload-page", account_id=other.id)
+        texts = [str(m) for m in get_messages(page.wsgi_request)]
+        self.assertTrue(any("Mantida a conta escolhida" in t for t in texts))
+
+    def test_two_candidates_leave_rows_without_account(self):
+        FinancialAccount.objects.create(
+            name="Outra", institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+        )
+
+        response = self._post("imports:upload")
+
+        body = response.json()
+        self.assertIsNone(body["results"][0]["suggested_account_id"])
+        self.assertEqual(body["bank_detection"]["institution"], "Inter")
+        self.assertIsNone(body["bank_detection"]["account"])
+
+    def test_unknown_bank_behaves_as_before(self):
+        response = self._post(
+            "imports:upload", bank_block="<BANKID>999</BANKID><ACCTID>1</ACCTID>"
+        )
+
+        body = response.json()
+        self.assertIsNone(body["bank_detection"])
+        self.assertIsNone(body["results"][0]["suggested_account_id"])
+
+    def test_ofx_without_bank_block_behaves_as_before(self):
+        response = self._post("imports:upload", bank_block="")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertIsNone(response.json()["bank_detection"])
+
+    def test_page_without_detection_adds_no_bank_message(self):
+        response = self._post("imports:upload-page", bank_block="")
+
+        texts = [str(m) for m in get_messages(response.wsgi_request)]
+        self.assertFalse(any("Banco identificado" in t for t in texts))
+
+    def test_csv_upload_has_null_bank_detection(self):
+        file_obj = BytesIO(b"date,description,amount\n2026-05-10,Mercado,-5.00\n")
+        file_obj.name = "x.csv"
+
+        response = self.client.post(
+            reverse("imports:upload"),
+            {"source_type": ImportedTransaction.SourceType.CSV, "file": file_obj},
+        )
+
+        self.assertIsNone(response.json()["bank_detection"])
