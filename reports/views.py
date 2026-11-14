@@ -2,18 +2,9 @@
 
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
-from django.utils import timezone
 
+from core.periods import get_period_from_request
 from .selectors import get_monthly_dashboard
-
-
-def _get_period_from_request(request: HttpRequest) -> tuple[int, int]:
-    """Extrai ano e mes da query string ou usa o mes atual."""
-
-    today = timezone.localdate()
-    year = int(request.GET.get("year") or today.year)
-    month = int(request.GET.get("month") or today.month)
-    return year, month
 
 
 def _get_range_from_request(request: HttpRequest) -> int:
@@ -51,5 +42,5 @@ def monthly_dashboard(request: HttpRequest, year: int, month: int) -> HttpRespon
 def monthly_dashboard_page(request: HttpRequest) -> HttpResponse:
     """Exibe o painel mensal usando periodo informado por filtro."""
 
-    year, month = _get_period_from_request(request)
+    year, month = get_period_from_request(request)
     return _render_monthly_dashboard(request, year=year, month=month)
