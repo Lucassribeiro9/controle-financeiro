@@ -31,6 +31,15 @@ class ImportedTransactionRow:
     line_number: int = 0
 
 
+@dataclass(frozen=True)
+class OfxBankAccount:
+    """Banco e conta declarados em BANKACCTFROM; usados so no upload."""
+
+    bank_id: str
+    account_id: str = ""
+    account_type: str = ""
+
+
 def normalize_description(description: str) -> str:
     """Remove espacos extras da descricao importada."""
 
@@ -384,10 +393,13 @@ class XlsxTransactionImporter:
 class OfxTransactionImporter:
     """Importador de transacoes a partir de arquivos OFX."""
 
+    bank_account = None
+
     def parse(self, file_obj) -> list[ImportedTransactionRow]:
         """Parseia transacoes STMTTRN de um arquivo OFX."""
 
         content = _decode_text(_read_file_content(file_obj))
+        self.bank_account = self._extract_bank_account(content)
         blocks = self._extract_transaction_blocks(content)
         rows = []
 
@@ -417,6 +429,30 @@ class OfxTransactionImporter:
             )
 
         return rows
+
+    def _extract_bank_account(self, content: str):
+        """Le BANKACCTFROM; devolve None se ausente, sem BANKID ou ambiguo."""
+
+        blocks = re.findall(
+            r"<BANKACCTFROM>(.*?)(?:</BANKACCTFROM>|(?=<BANKTRANLIST|<STMTTRN|</STMTRS>))",
+            content,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        accounts = set()
+        for block in blocks:
+            bank_id = self._extract_tag(block, "BANKID")
+            if not bank_id:
+                return None
+            accounts.add(
+                OfxBankAccount(
+                    bank_id=bank_id,
+                    account_id=self._extract_tag(block, "ACCTID"),
+                    account_type=self._extract_tag(block, "ACCTTYPE").upper(),
+                )
+            )
+        if len(accounts) != 1:
+            return None
+        return accounts.pop()
 
     def _extract_transaction_blocks(self, content: str) -> list[str]:
         """Extrai blocos STMTTRN aceitando OFX com ou sem tag de fechamento."""
