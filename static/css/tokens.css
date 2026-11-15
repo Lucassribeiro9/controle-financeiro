@@ -1,0 +1,118 @@
+/*
+ * Tokens do design (FIN-34). Fonte: docs/design/DESIGN.md, nomes `color/bg/canvas`
+ * viram `--color-bg-canvas`. Dono: item 3.1 da Etapa 3 (spec 017, D1).
+ *
+ * O tema claro fica em :root. O escuro aparece duas vezes, com os mesmos valores:
+ * no @media (sem escolha salva, segue o sistema) e em [data-theme="dark"] (escolha
+ * manual); sem build step nao ha como reaproveitar o bloco.
+ */
+
+:root {
+    color-scheme: light;
+
+    --color-bg-canvas: #e8ebe6;
+    --color-bg-surface: #ffffff;
+    --color-bg-surface-muted: #f3f5f1;
+    --color-bg-brand-pale: #e2f6d5;
+    --color-text-primary: #0e0f0c;
+    --color-text-secondary: #454745;
+    --color-text-on-primary: #0e0f0c;
+    --color-border-default: #d5d9d2;
+    --color-border-strong: #0e0f0c;
+    --color-action-primary: #9fe870;
+    --color-action-secondary: #dde2d9;
+    --color-money-income: #054d28;
+    --color-money-income-bg: #e2f6d5;
+    --color-money-expense: #d03238;
+    --color-money-expense-strong: #a72027;
+    --color-money-expense-bg: #fde8e8;
+    --color-status-warning-bg: #fff4cc;
+    --color-status-warning-text: #4a3b1c;
+
+    /* Tipografia */
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-weight-display: 800;
+    --font-size-balance: 40px;
+    --line-height-balance: 44px;
+    --font-size-title: 26px;
+    --line-height-title: 32px;
+    --font-size-section: 17px;
+    --line-height-section: 24px;
+    --font-size-body: 15px;
+    --line-height-body: 22px;
+    --font-size-caption: 12px;
+    --line-height-caption: 16px;
+
+    /* Forma e espaco */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-pill: 9999px;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+    --space-2xl: 32px;
+    --space-3xl: 48px;
+
+    /* Derivados (resolvem pelo tema ativo) */
+    --color-focus-ring: var(--color-text-primary);
+    --chart-income: var(--color-money-income);
+    --chart-expense: var(--color-money-expense);
+    --chart-balance: var(--color-text-primary);
+    --chart-grid: var(--color-border-default);
+    --chart-text: var(--color-text-secondary);
+    --chart-surface: var(--color-bg-surface);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --color-bg-canvas: #171721;
+        --color-bg-surface: #1e1e2a;
+        --color-bg-surface-muted: #272736;
+        --color-bg-brand-pale: #283829;
+        --color-text-primary: #ededf3;
+        --color-text-secondary: #c3c3cc;
+        --color-text-on-primary: #0e0f0c;
+        --color-border-default: #34344a;
+        --color-border-strong: #70707d;
+        --color-action-primary: #9fe870;
+        --color-action-secondary: #3b3c4b;
+        --color-money-income: #7ee0a8;
+        --color-money-income-bg: #1f3a2d;
+        --color-money-expense: #ff8f85;
+        --color-money-expense-strong: #ff8f85;
+        --color-money-expense-bg: #3d2229;
+        --color-status-warning-bg: #3a3220;
+        --color-status-warning-text: #ffd97a;
+        --font-weight-display: 500;
+        --chart-balance: var(--color-action-primary);
+        }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-bg-canvas: #171721;
+    --color-bg-surface: #1e1e2a;
+    --color-bg-surface-muted: #272736;
+    --color-bg-brand-pale: #283829;
+    --color-text-primary: #ededf3;
+    --color-text-secondary: #c3c3cc;
+    --color-text-on-primary: #0e0f0c;
+    --color-border-default: #34344a;
+    --color-border-strong: #70707d;
+    --color-action-primary: #9fe870;
+    --color-action-secondary: #3b3c4b;
+    --color-money-income: #7ee0a8;
+    --color-money-income-bg: #1f3a2d;
+    --color-money-expense: #ff8f85;
+    --color-money-expense-strong: #ff8f85;
+    --color-money-expense-bg: #3d2229;
+    --color-status-warning-bg: #3a3220;
+    --color-status-warning-text: #ffd97a;
+    --font-weight-display: 500;
+    --chart-balance: var(--color-action-primary);
+}
