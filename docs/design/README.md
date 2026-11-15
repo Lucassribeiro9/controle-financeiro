@@ -33,9 +33,17 @@ app saem das decisões abaixo. Os wireframes abrem em https://excalidraw.com
 - **Formas e espaço:** escala da Wise nos dois temas (raios 8/12/16/24/pílula,
   espaçamento base 4px).
 
+- **Navegação no celular:** barra inferior com Início, Lançamentos, novo
+  lançamento, Faturas e Mais; as demais telas e a troca de tema ficam na folha
+  "Mais". No desktop, sidebar clara e agrupada.
+- **Tabelas no celular:** lista empilhada (descrição e valor na primeira linha,
+  metadados na segunda); tabelas-resumo do relatório viram linhas rótulo e
+  valor. Registrado na ADR-014 (Confluence, espaço FIN).
+- **Ajustes de estrutura:** "Dashboard" passa a se chamar "Relatório"; no início
+  do celular, Realizado/Pendente/Previsto viram um seletor sobre um único card
+  de saldo; a barra de ações em lote da revisão de importações fica em uma linha.
+
 ## Pendente
 
-- Navegação no celular (barra inferior × menu no topo) e tabelas no celular
-  (ADR-014, Confluence) — escolha após a revisão dos wireframes.
 - Telas e componentes no Figma, com variáveis para os dois temas.
 - `DESIGN.md` próprio do app, consolidando os tokens finais.
