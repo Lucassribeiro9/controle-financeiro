@@ -531,3 +531,71 @@ class ReportSelectorTests(TestCase):
         self.assertIsNone(dashboard["uncategorized_expense_alert"])
         self.assertEqual(dashboard["category_expenses"][0]["total_amount"], Decimal("300.00"))
         self.assertEqual(dashboard["category_expense_share"][0]["percentage"], 100)
+
+    def _create_expense(self, *, amount, category=None, day=10):
+        return Transaction.objects.create(
+            description="Gasto",
+            amount=Decimal(amount),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=category,
+            date=date(2026, 5, day),
+        )
+
+    def test_monthly_dashboard_computes_series_and_breakdown_once(self):
+        """Deve calcular serie e detalhamento uma vez so no painel."""
+
+        Transaction.objects.create(
+            description="Salario",
+            amount=Decimal("5000.00"),
+            transaction_type=Transaction.TransactionType.INCOME,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 5),
+        )
+        self._create_expense(amount="300.00", category=self.food_category)
+        self._create_expense(amount="80.00", category=None, day=11)
+
+        # receita, despesa, serie, detalhamento, metas mensais e categorias
+        # em risco. Patrimonio e extratos sao querysets lazy.
+        with self.assertNumQueries(6):
+            get_monthly_dashboard(year=2026, month=5)
+
+    def test_monthly_dashboard_keeps_context_keys(self):
+        """Deve manter as chaves consumidas pelo template."""
+
+        dashboard = get_monthly_dashboard(year=2026, month=5)
+
+        self.assertEqual(
+            set(dashboard),
+            {
+                "year",
+                "month",
+                "range_months",
+                "income_total",
+                "expense_total",
+                "monthly_balance",
+                "cashflow_series",
+                "chartjs_payload",
+                "uncategorized_expense_alert",
+                "category_expenses",
+                "category_expense_share",
+                "net_worth",
+                "card_statements",
+                "goal_summary",
+                "categories_at_risk",
+            },
+        )
+
+    def test_uncategorized_alert_ignores_real_category_named_sem_categoria(self):
+        """Categoria real com o nome "Sem categoria" nao dispara o alerta."""
+
+        real_category = Category.objects.create(name="Sem categoria")
+        self._create_expense(amount="600.00", category=real_category)
+        self._create_expense(amount="400.00", category=self.food_category, day=11)
+
+        self.assertIsNone(get_uncategorized_expense_alert(year=2026, month=5))
+        self.assertIsNone(
+            get_monthly_dashboard(year=2026, month=5)["uncategorized_expense_alert"]
+        )

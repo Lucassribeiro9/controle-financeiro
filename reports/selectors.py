@@ -87,6 +87,12 @@ def get_category_expense_share(*, year: int, month: int):
     """Monta percentuais de despesas por categoria para exibicao visual."""
 
     breakdown = get_category_expense_breakdown(year=year, month=month)
+    return _build_category_expense_share(breakdown)
+
+
+def _build_category_expense_share(breakdown):
+    """Calcula percentuais e cores a partir do detalhamento ja consultado."""
+
     total = sum((item["total_amount"] for item in breakdown), Decimal("0.00"))
 
     if not total:
@@ -139,6 +145,12 @@ def get_monthly_cashflow_series(*, year: int, month: int, range_months: int = 12
 
     range_months = _normalize_range_months(range_months)
     periods = _build_month_periods(year=year, month=month, range_months=range_months)
+    return _build_cashflow_series(periods)
+
+
+def _build_cashflow_series(periods):
+    """Consulta uma vez os totais mensais dos periodos informados."""
+
     period_map = {
         (period["year"], period["month"]): {
             **period,
@@ -218,6 +230,11 @@ def get_dashboard_chart_payload(*, year: int, month: int, range_months: int = 12
         range_months=range_months,
     )
     category_share = get_category_expense_share(year=year, month=month)
+    return _build_dashboard_chart_payload(cashflow_series, category_share)
+
+
+def _build_dashboard_chart_payload(cashflow_series, category_share):
+    """Serializa serie e participacao ja calculadas para o Chart.js."""
 
     return {
         "labels": [item["label"] for item in cashflow_series],
@@ -236,9 +253,17 @@ def get_dashboard_chart_payload(*, year: int, month: int, range_months: int = 12
 def get_uncategorized_expense_alert(*, year: int, month: int):
     """Destaca quando gastos sem categoria concentram parte relevante do mes."""
 
-    for item in get_category_expense_share(year=year, month=month):
+    return _find_uncategorized_expense_alert(
+        get_category_expense_share(year=year, month=month)
+    )
+
+
+def _find_uncategorized_expense_alert(category_share):
+    """Localiza gasto sem categoria (category_id nulo) acima do limite."""
+
+    for item in category_share:
         if (
-            item["category_name"] == "Sem categoria"
+            item["category_id"] is None
             and item["percentage"] >= UNCATEGORIZED_EXPENSE_ALERT_THRESHOLD
         ):
             return {
@@ -253,30 +278,32 @@ def get_monthly_dashboard(*, year: int, month: int, range_months: int = 12):
     """Montar o payload completo do painel mensal, incluindo despesas por categoria, patrimônio por moeda, extratos de cartão e resumo de metas."""
     income_total = get_monthly_income_total(year=year, month=month)
     expense_total = get_monthly_expense_total(year=year, month=month)
-    
+    range_months = _normalize_range_months(range_months)
+    cashflow_series = get_monthly_cashflow_series(
+        year=year,
+        month=month,
+        range_months=range_months,
+    )
+    category_expenses = get_category_expense_breakdown(year=year, month=month)
+    category_expense_share = _build_category_expense_share(category_expenses)
+
     return {
         "year": year,
         "month": month,
-        "range_months": _normalize_range_months(range_months),
+        "range_months": range_months,
         "income_total": income_total,
         "expense_total": expense_total,
         "monthly_balance": income_total - expense_total,
-        "cashflow_series": get_monthly_cashflow_series(
-            year=year,
-            month=month,
-            range_months=range_months,
+        "cashflow_series": cashflow_series,
+        "chartjs_payload": _build_dashboard_chart_payload(
+            cashflow_series,
+            category_expense_share,
         ),
-        "chartjs_payload": get_dashboard_chart_payload(
-            year=year,
-            month=month,
-            range_months=range_months,
+        "uncategorized_expense_alert": _find_uncategorized_expense_alert(
+            category_expense_share
         ),
-        "uncategorized_expense_alert": get_uncategorized_expense_alert(
-            year=year,
-            month=month,
-        ),
-        "category_expenses": get_category_expense_breakdown(year=year, month=month),
-        "category_expense_share": get_category_expense_share(year=year, month=month),
+        "category_expenses": category_expenses,
+        "category_expense_share": category_expense_share,
         "net_worth": get_account_net_worth(),
         "card_statements": get_card_statements(year=year, month=month),
         "goal_summary": get_goal_summary(year=year, month=month),
