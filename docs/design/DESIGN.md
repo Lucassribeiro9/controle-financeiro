@@ -33,6 +33,8 @@ Os nomes viram variáveis CSS trocando `/` por `-` (ex.: `color/bg/canvas` →
 | `color/status/warning-text` | `#4a3b1c` | `#ffd97a` | Texto sobre alerta |
 
 Todas as combinações de texto acima passam AA (4,5:1) no fundo em que são usadas.
+Exceção a evitar: `color/money/expense` claro direto sobre `color/bg/canvas` dá
+4,16:1; valores de despesa ficam sempre dentro de um card (`surface`, 5,01:1).
 
 ## Tipografia
 
