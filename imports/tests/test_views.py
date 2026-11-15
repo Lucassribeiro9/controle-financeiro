@@ -291,7 +291,7 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertContains(response, "Pendente")
         self.assertContains(response, "Despesa")
         self.assertContains(response, "R$ 87,45")
-        self.assertContains(response, 'class="badge badge-warning"', html=False)
+        self.assertContains(response, 'class="status status--warning"', html=False)
         self.assertContains(response, 'class="filter-bar import-filter-bar"', html=False)
         self.assertContains(response, 'class="bulk-action-bar"', html=False)
         self.assertContains(response, 'data-bulk-toggle="selected_imports"', html=False)
