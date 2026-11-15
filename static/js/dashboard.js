@@ -12,11 +12,28 @@
         currency: payload.currency || "BRL",
     });
 
+    // Cores vem dos tokens (--chart-*) do tema ativo; nenhuma cor fixa aqui (spec 017, D3).
+    function chartColors() {
+        const styles = getComputedStyle(document.documentElement);
+        const read = (name) => styles.getPropertyValue(name).trim();
+
+        return {
+            income: read("--chart-income"),
+            expense: read("--chart-expense"),
+            balance: read("--chart-balance"),
+            grid: read("--chart-grid"),
+            text: read("--chart-text"),
+            surface: read("--chart-surface"),
+        };
+    }
+
     const hasValue = (value) => Number(value) !== 0;
     const pointRadius = (context) => (hasValue(context.raw) ? 3 : 0);
     const hoverRadius = (context) => (hasValue(context.raw) ? 6 : 0);
 
-    new Chart(canvas, {
+    const colors = chartColors();
+
+    const chart = new Chart(canvas, {
         data: {
             labels: payload.labels,
             datasets: [
@@ -24,8 +41,8 @@
                     type: "bar",
                     label: "Receitas",
                     data: payload.income,
-                    backgroundColor: "rgba(22, 101, 52, 0.72)",
-                    borderColor: "#166534",
+                    backgroundColor: colors.income,
+                    borderColor: colors.income,
                     borderRadius: 6,
                     borderSkipped: false,
                     maxBarThickness: 26,
@@ -34,8 +51,8 @@
                     type: "bar",
                     label: "Despesas",
                     data: payload.expenses,
-                    backgroundColor: "rgba(180, 35, 24, 0.68)",
-                    borderColor: "#b42318",
+                    backgroundColor: colors.expense,
+                    borderColor: colors.expense,
                     borderRadius: 6,
                     borderSkipped: false,
                     maxBarThickness: 26,
@@ -44,11 +61,11 @@
                     type: "line",
                     label: "Saldo",
                     data: payload.balance,
-                    borderColor: "#0f5fa8",
-                    backgroundColor: "rgba(15, 95, 168, 0.12)",
+                    borderColor: colors.balance,
+                    backgroundColor: colors.balance,
                     fill: false,
-                    pointBackgroundColor: "#0f5fa8",
-                    pointBorderColor: "#ffffff",
+                    pointBackgroundColor: colors.balance,
+                    pointBorderColor: colors.surface,
                     pointBorderWidth: 2,
                     pointRadius,
                     pointHoverRadius: hoverRadius,
@@ -68,7 +85,7 @@
                     labels: {
                         boxWidth: 10,
                         boxHeight: 10,
-                        color: "#1f2937",
+                        color: colors.text,
                         font: {
                             weight: "700",
                         },
@@ -89,17 +106,17 @@
                         display: false,
                     },
                     ticks: {
-                        color: "#526071",
+                        color: colors.text,
                         maxRotation: 0,
                     },
                 },
                 y: {
                     beginAtZero: true,
                     grid: {
-                        color: "rgba(82, 96, 113, 0.16)",
+                        color: colors.grid,
                     },
                     ticks: {
-                        color: "#526071",
+                        color: colors.text,
                         callback(value) {
                             return moneyFormatter.format(value);
                         },
@@ -108,4 +125,26 @@
             },
         },
     });
+
+    function applyTheme() {
+        const next = chartColors();
+        const [income, expense, balance] = chart.data.datasets;
+
+        income.backgroundColor = next.income;
+        income.borderColor = next.income;
+        expense.backgroundColor = next.expense;
+        expense.borderColor = next.expense;
+        balance.borderColor = next.balance;
+        balance.backgroundColor = next.balance;
+        balance.pointBackgroundColor = next.balance;
+        balance.pointBorderColor = next.surface;
+
+        chart.options.plugins.legend.labels.color = next.text;
+        chart.options.scales.x.ticks.color = next.text;
+        chart.options.scales.y.ticks.color = next.text;
+        chart.options.scales.y.grid.color = next.grid;
+        chart.update();
+    }
+
+    document.addEventListener("themechange", applyTheme);
 }());
