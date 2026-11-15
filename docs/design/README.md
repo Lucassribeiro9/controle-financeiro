@@ -8,6 +8,8 @@ com a responsividade (#240 a #242).
 
 | Caminho | O que é |
 |---|---|
+| `DESIGN.md` | Tokens, tipografia e componentes finais dos dois temas (fonte para a Etapa 3) |
+| [Figma](https://www.figma.com/design/ZXFAOIcnPMhKz8AwLhY7Oe) | Variáveis, componentes e telas (8 de celular e 4 de desktop, claro e escuro) |
 | `reference/wise.DESIGN.md` | DESIGN.md da Wise, cópia sem alteração do pacote `getdesign@0.6.26` (VoltAgent/awesome-design-md, MIT) |
 | `reference/mercury.DESIGN.md` | DESIGN.md da Mercury, mesma origem |
 | `wireframes/fin-34-wireframes-celular.excalidraw` | Rascunho de estrutura no celular (360px): 12 telas, navegação e variantes de tabela da ADR-014 |
@@ -45,5 +47,5 @@ app saem das decisões abaixo. Os wireframes abrem em https://excalidraw.com
 
 ## Pendente
 
-- Telas e componentes no Figma, com variáveis para os dois temas.
-- `DESIGN.md` próprio do app, consolidando os tokens finais.
+- Telas só em wireframe, sem versão no Figma: detalhe do lançamento, importar
+  extrato, lista de faturas e folha "Mais".
