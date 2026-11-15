@@ -136,8 +136,8 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 ### Referência visual
 
-- Deve existir **um artefato de referência** no repositório (HTML estático em `docs/design/ui-preview-home.html` ou screenshots equivalentes em `docs/design/`), espelhando a direção Monarch (estrutura), Maybe (sobriedade) e Rocket Money (alertas).
-- Tokens e semântica visual ficam documentados em `docs/design/tokens.md`, não apenas nesta spec.
+- A referência visual é `docs/design/DESIGN.md` e os PNGs do Figma em `docs/design/figma/` (spec 017); a prévia estática `ui-preview-home.html` foi removida na 3.1.
+- Tokens e componentes ficam em `docs/design/DESIGN.md`; `docs/design/tokens.md` guarda a tabela status → variante.
 
 ### Escopo MVP de partials
 
@@ -155,11 +155,12 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 - A tabela de cores da spec **documenta e formaliza** o comportamento atual; mudanças em `STATUS_BADGE_VARIANTS` só entram quando explicitamente registradas em `docs/design/tokens.md`.
 - O partial `status_badge` **reutiliza** o filtro `status_badge_class` em `core/templatetags/money.py`; não duplica mapa de status no template.
-- Status financeiros e status de metas compartilham o mesmo sistema de variantes (`success`, `warning`, `info`, `danger`, `neutral`), com significado documentado por tipo (ex.: `on_track` = informativo/azul, não “saudável/verde”).
+- Status financeiros e status de metas compartilham quatro variantes do DESIGN.md: `positive`, `warning`, `neutral` e `negative` (classes `status status--<variante>`). Atualizado na 3.1 (spec 017, D6): `info` e `neutral` viram Neutro, então previsto, aberto e `on_track` deixam de ser azul. `active_badge_class` segue a mesma regra (`positive` ou `neutral`).
 
 ### Mobile e responsividade
 
 - Breakpoint oficial: **768px**.
+- A partir da 3.1 (spec 017): `filter_bar` aceita `fields_template`, `active_count` e `clear_url` e vira `<details class="filters">`, recolhido abaixo de 768px com o resumo "Filtros (N ativos)" e aberto acima disso, sem JS. Sem `fields_template` renderiza só as ações. Listas viram lista empilhada abaixo de 768px (ADR-014) nas issues de tela.
 - **MVP mobile:** tabelas financeiras densas com **scroll horizontal** no desktop estreito/mobile.
 - **Onda 2 (backlog dentro da 002 ou issue dedicada):** listas em **cards empilhados** para transações e faturas.
 
@@ -191,15 +192,15 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 ### Artefatos de design
 
-- `docs/design/tokens.md` — tokens e semântica de status.
-- `docs/design/ui-preview-home.html` (ou screenshots em `docs/design/`) — referência visual aprovada.
+- `docs/design/DESIGN.md` — tokens, tipografia e componentes (referência visual aprovada).
+- `docs/design/tokens.md` — semântica de status e variantes.
 
 ## Task Breakdown Inicial
 
 - [ ] Issue 002-01: Documentar baseline visual e tokens.
   - Acceptance: `docs/design/tokens.md` + referência visual em `docs/design/`; tabela status → variante alinhada a `STATUS_BADGE_VARIANTS`.
   - Verify: revisão humana; link nesta spec.
-  - Files: `docs/design/tokens.md`, `docs/design/ui-preview-home.html` (ou equivalente), `docs/specs/002-ux-ui-design-system.md`.
+  - Files: `docs/design/tokens.md`, `docs/design/DESIGN.md`, `docs/specs/002-ux-ui-design-system.md`.
 
 - [ ] Issue 002-02: Criar partial `status_badge`.
   - Acceptance: partial reutilizável; usa `status_badge_class`; adotado na home e em pelo menos uma lista.
