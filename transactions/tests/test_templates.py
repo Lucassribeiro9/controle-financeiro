@@ -299,7 +299,7 @@ class FormTemplateTests(TransactionTemplateTestCase):
         html = self.get_html("transactions:edit", self.transaction.id)
 
         detail_url = reverse("transactions:detail", args=[self.transaction.id])
-        self.assertLess(html.index(detail_url, html.index('id="content"')), html.index("<form"))
+        self.assertLess(html.index(detail_url, html.index('id="content"')), html.index('<form class="tx-form"'))
         self.assertIn("Atualizar", html)
 
     def test_general_form_error_uses_alert_error(self):

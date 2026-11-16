@@ -1,70 +1,62 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}{{ transaction.description }} - Lançamento{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/transactions.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1>{{ transaction.description }}</h1>
-            <p class="muted">{{ transaction.date|date_br }}</p>
-        </div>
+    <a class="tx-back" href="{% url 'transactions:list' %}">&lsaquo; Lançamentos</a>
 
-        <a class="button button-secondary" href="{% url 'transactions:list' %}">Voltar</a>
-        {% if can_edit %}
-            <a class="button" href="{% url 'transactions:edit' transaction.id %}">Editar lançamento</a>
-        {% endif %}
-    </header>
+    <section class="card tx-hero">
+        <h1>{{ transaction.description }}</h1>
+        <p class="tx-sub">{{ transaction.date|date_br }}</p>
+        <p class="tx-hero__amount tx-amount tx-amount--{% if transaction.transaction_type == 'income' or transaction.transaction_type == 'adjustment_in' %}income{% elif transaction.transaction_type == 'forecast' %}neutral{% else %}expense{% endif %}">{{ transaction.amount|brl }}</p>
+        {% include "partials/status_badge.html" with status=transaction.status label=transaction.get_status_display %}
+    </section>
 
-    <div class="summary-grid">
-        <div class="metric-card">
-            <span>Valor</span>
-            <strong>{{ transaction.amount|brl }}</strong>
-        </div>
-        <div class="metric-card">
-            <span>Tipo</span>
-            <strong>{{ transaction.get_transaction_type_display }}</strong>
-        </div>
-        <div class="metric-card">
-            <span>Status</span>
-            <strong><span class="{{ transaction.status|status_badge_class }}">{{ transaction.get_status_display }}</span></strong>
-        </div>
-    </div>
-
-    <section class="panel">
-        <h2>Detalhes</h2>
-        <dl class="detail-list">
-            <div>
-                <dt>Conta</dt>
-                <dd>{{ transaction.account|default:"Não informada" }}</dd>
+    <section class="card tx-details" aria-labelledby="tx-details-title">
+        <h2 id="tx-details-title">Detalhes</h2>
+        <dl class="summary-rows">
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Tipo</dt>
+                <dd class="summary-rows__value">{{ transaction.get_transaction_type_display }}</dd>
             </div>
-            <div>
-                <dt>Cartão</dt>
-                <dd>{{ transaction.card|default:"Não informado" }}</dd>
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Conta</dt>
+                <dd class="summary-rows__value">{{ transaction.account|default:"Não informada" }}</dd>
             </div>
-            <div>
-                <dt>Categoria</dt>
-                <dd>{{ transaction.category|default:"Não informada" }}</dd>
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Cartão</dt>
+                <dd class="summary-rows__value">{{ transaction.card|default:"Não informado" }}</dd>
             </div>
-            <div>
-                <dt>Fatura</dt>
-                <dd>{{ transaction.statement|default:"Não vinculada" }}</dd>
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Categoria</dt>
+                <dd class="summary-rows__value">{{ transaction.category|default:"Não informada" }}</dd>
             </div>
-            <div>
-                <dt>Criado em</dt>
-                <dd>{{ transaction.created_at|date_br }}</dd>
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Fatura</dt>
+                <dd class="summary-rows__value">{{ transaction.statement|default:"Não vinculada" }}</dd>
             </div>
-            <div>
-                <dt>Atualizado em</dt>
-                <dd>{{ transaction.updated_at|date_br }}</dd>
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Criado em</dt>
+                <dd class="summary-rows__value">{{ transaction.created_at|date_br }}</dd>
+            </div>
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Atualizado em</dt>
+                <dd class="summary-rows__value">{{ transaction.updated_at|date_br }}</dd>
             </div>
         </dl>
-
-        {% if transaction.notes %}
-            <div class="notes-block">
-                <h2>Observações</h2>
-                <p>{{ transaction.notes }}</p>
-            </div>
-        {% endif %}
     </section>
+
+    {% if transaction.notes %}
+        <section class="card tx-notes" aria-labelledby="tx-notes-title">
+            <h2 id="tx-notes-title">Observações</h2>
+            <p>{{ transaction.notes }}</p>
+        </section>
+    {% endif %}
+
+    {% if can_edit %}
+        <a class="btn btn--primary tx-edit" href="{% url 'transactions:edit' transaction.id %}">Editar lançamento</a>
+    {% endif %}
 {% endblock %}

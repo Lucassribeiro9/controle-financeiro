@@ -1,59 +1,47 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static %}
 
 {% block title %}Lançamentos - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/transactions.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="tx-header">
+        <div class="tx-header__title">
             <h1>Lançamentos</h1>
-            <p class="muted">{{ month }}/{{ year }}</p>
+            <p class="tx-sub">{{ month }}/{{ year }} · {{ transactions|length }} no período</p>
         </div>
 
-        <div class="action-row">
-            <a class="button button-secondary" href="{% url 'transactions:transfers' %}">Ver transferências</a>
-            <a class="button" href="{% url 'transactions:create' %}">Novo lançamento</a>
+        <div class="tx-header__actions">
+            <a class="btn btn--secondary" href="{% url 'transactions:transfers' %}">Ver transferências</a>
+            <a class="btn btn--primary" href="{% url 'transactions:create' %}">Novo lançamento</a>
         </div>
     </header>
 
-    <section class="page-section">
-        <form class="period-form" method="get" action="{% url 'transactions:list' %}">
-            <label>
-                <span>Mês</span>
+    <form class="tx-filters" method="get" action="{% url 'transactions:list' %}">
+        <div class="tx-period">
+            <label class="field">
+                <span class="field__label">Mês</span>
                 <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
             </label>
-            <label>
-                <span>Ano</span>
+            <label class="field">
+                <span class="field__label">Ano</span>
                 <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
             </label>
-            <label>
-                <span>Status</span>
-                <select name="status">
-                    <option value="">Todos</option>
-                    {% for value, label in status_choices %}
-                        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>
-                <span>Tipo</span>
-                <select name="transaction_type">
-                    <option value="">Todos</option>
-                    {% for value, label in transaction_type_choices %}
-                        <option value="{{ value }}" {% if transaction_type == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            
-            {% include "partials/filter_bar.html" with clear_url="/transactions/" %}
-        </form>
-    </section>
+            <button class="btn btn--secondary" type="submit">Aplicar período</button>
+        </div>
 
-    <section class="panel page-section">
-        {% if transactions %}
+        {# Mes e ano sao periodo e nao contam como filtro ativo (R-15). #}
+        {% with status_on=status|yesno:"1,0" type_on=transaction_type|yesno:"1,0" %}
+            {% include "partials/filter_bar.html" with fields_template="transactions/_filtros.html" active_count=status_on|add:type_on clear_url="/transactions/" %}
+        {% endwith %}
+    </form>
+
+    {% if transactions %}
+        <section class="card tx-card">
             {% include "partials/transaction_table.html" with transactions=transactions detail_query=detail_query %}
-        {% else %}
-            {% include "partials/empty_state.html" with title="Nenhum lançamento encontrado" description="Tente ajustar os filtros ou criar um novo lançamento." cta_label="Novo lançamento" cta_url="/transactions/create/" %}
-        {% endif %}
-    </section>
+        </section>
+    {% else %}
+        {% include "partials/empty_state.html" with title="Nenhum lançamento encontrado" description="Tente ajustar os filtros ou criar um novo lançamento." cta_label="Novo lançamento" cta_url="/transactions/create/" %}
+    {% endif %}
 {% endblock %}
