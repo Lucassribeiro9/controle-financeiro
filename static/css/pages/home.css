@@ -303,6 +303,15 @@
     overflow-wrap: anywhere;
 }
 
+.home__alert .status--warning {
+    background: var(--color-bg-surface);
+}
+
+.home__alert-text {
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
 .home__alert-value {
     font-weight: 600;
     text-align: right;
