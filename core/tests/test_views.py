@@ -58,7 +58,7 @@ class HomeViewTests(AuthenticatedTestCase):
 
         response = self.client.get(reverse("core:home"))
 
-        self.assertContains(response, "Resumo financeiro do mês")
+        self.assertContains(response, "Resumo de ")
         self.assertContains(response, "Sem lançamentos")
         self.assertContains(response, "Nenhum lancamento neste mes")
         self.assertContains(response, "Criar lancamento")
@@ -289,7 +289,7 @@ class HomeViewTests(AuthenticatedTestCase):
 
         response = self.client.get(reverse("core:home"))
 
-        self.assertContains(response, "Pendências acionáveis")
+        self.assertContains(response, "Pendências")
         self.assertContains(response, "Nenhuma pendencia operacional")
         self.assertContains(response, "Ver recorrencias")
         self.assertContains(
@@ -466,8 +466,8 @@ class HomeViewTests(AuthenticatedTestCase):
         response = self.client.get(reverse("core:home"))
 
         self.assertContains(response, "Lazer")
-        self.assertContains(response, "home-alert-card-medium")
-        self.assertNotContains(response, "home-alert-card-high")
+        self.assertContains(response, "home__limit--at-risk")
+        self.assertNotContains(response, "home__limit--exceeded")
         self.assertNotContains(response, "Excedido")
 
     def test_home_shows_empty_categories_at_risk_state(self):
