@@ -99,3 +99,93 @@ class BaseTemplateHeadTests(TestCase):
         response = self.client.get(reverse("login"))
 
         self.assertNotIn("theme", response.cookies)
+
+
+class BaseTemplateBodyTests(TestCase):
+    """Casca do <body> (spec 017, 3.2): topo, sidebar, main, barra inferior e blocos."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = get_user_model().objects.create_user(username="lucas", password="x")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def get_html(self, url="core:home"):
+        return self.client.get(reverse(url)).content.decode()
+
+    def body(self, html):
+        return re.search(r"<body[^>]*>(.*?)</body>", html, re.S).group(1)
+
+    def render(self, template_source):
+        from django.template import Context, Template
+        from django.test import RequestFactory
+
+        request = RequestFactory().get("/")
+        request.user = self.user
+        return Template(template_source).render(Context({"request": request, "user": self.user}))
+
+    def test_body_defaults_to_nav_mode(self):
+        self.assertRegex(self.get_html(), r'<body class="shell-nav">')
+
+    def test_shell_mode_block_becomes_body_class(self):
+        html = self.render('{% extends "base.html" %}{% block shell_mode %}task{% endblock %}')
+
+        self.assertRegex(html, r'<body class="shell-task">')
+
+    def test_topbar_actions_block_renders_inside_the_topbar(self):
+        html = self.render(
+            '{% extends "base.html" %}{% block topbar_actions %}<b id="x">Nov/2026</b>{% endblock %}'
+        )
+        topbar = re.search(r'<header class="topbar".*?</header>', html, re.S).group(0)
+
+        self.assertIn('<b id="x">Nov/2026</b>', topbar)
+
+    def test_existing_blocks_stay_stable(self):
+        source = BASE_TEMPLATE.read_text(encoding="utf-8")
+
+        for block in ("title", "page_css", "content", "scripts"):
+            with self.subTest(block=block):
+                self.assertIn("{% block " + block + " %}", source)
+
+    def test_skip_link_is_first_and_main_is_the_target(self):
+        body = self.body(self.get_html()).lstrip()
+
+        self.assertTrue(body.startswith('<a class="skip-link" href="#content">'))
+        self.assertRegex(body, r'<main id="content" class="shell__main" tabindex="-1">')
+
+    def test_shell_order_in_body(self):
+        body = self.body(self.get_html())
+        order = [
+            body.index('class="topbar"'),
+            body.index('class="sidebar"'),
+            body.index('<main id="content"'),
+            body.index('class="bottom-nav"'),
+            body.index('id="more-sheet"'),
+        ]
+
+        self.assertEqual(order, sorted(order))
+
+    def test_layout_js_is_deferred_after_theme_js(self):
+        html = self.get_html()
+
+        self.assertRegex(html, r'<script src="[^"]*js/layout\.js" defer></script>')
+        self.assertLess(html.index("js/theme.js"), html.index("js/layout.js"))
+        self.assertGreater(html.index("js/layout.js"), html.index("<body"))
+
+    def test_anonymous_shell_has_only_brand_in_topbar(self):
+        self.client.logout()
+        html = self.get_html("login")
+        topbar = re.search(r'<header class="topbar".*?</header>', html, re.S).group(0)
+
+        self.assertIn("brand-mark", topbar)
+        self.assertNotIn("<button", topbar)
+        self.assertNotIn('class="bottom-nav"', html)
+        self.assertNotIn("layout.js", html)
+
+    def test_legacy_shell_classes_are_gone(self):
+        html = self.get_html()
+
+        for name in ("app-shell", "app-sidebar", "mobile-topbar", "mobile-menu", "app-nav-link"):
+            with self.subTest(name=name):
+                self.assertNotIn(name, html)

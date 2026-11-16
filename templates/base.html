@@ -29,48 +29,32 @@
     {% block page_css %}{% endblock %}
     <script src="{% static 'js/theme.js' %}" defer></script>
 </head>
-<body>
+<body class="shell-{% if user.is_authenticated %}{% block shell_mode %}nav{% endblock %}{% else %}public{% endif %}">
     <a class="skip-link" href="#content">Pular para o conteúdo</a>
 
-    <header class="mobile-topbar">
-        <a class="mobile-brand" href="/">
-            <span class="app-brand-mark">CF</span>
-            <span>
-                <strong>Controle Financeiro</strong>
-                <small>Visão pessoal</small>
-            </span>
+    {# Topo do celular: marca e, opcionalmente, acoes da tela (periodo, voltar). Some na sidebar do desktop. #}
+    <header class="topbar">
+        <a class="topbar__brand" href="/" aria-label="Controle Financeiro, início">
+            <span class="brand-mark">CF</span>
+            {% if not user.is_authenticated %}<strong>Controle Financeiro</strong>{% endif %}
         </a>
-
-        {% if user.is_authenticated %}
-        <details class="mobile-menu">
-            <summary>
-                <span class="menu-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M4 7h16"></path>
-                        <path d="M4 12h16"></path>
-                        <path d="M4 17h16"></path>
-                    </svg>
-                </span>
-                <span>Menu</span>
-            </summary>
-
-            <nav class="mobile-nav-panel" aria-label="Navegação principal">
-                {% include "partials/nav_links.html" with nav_id="mobile" %}
-            </nav>
-        </details>
-        {% endif %}
+        <div class="topbar__actions">{% block topbar_actions %}{% endblock %}</div>
     </header>
 
-    <div class="app-shell">
+    <div class="shell">
         {% include "partials/sidebar.html" %}
 
-        <main id="content" class="app-main" tabindex="-1">
+        <main id="content" class="shell__main" tabindex="-1">
             {% include "partials/messages.html" %}
 
             {% block content %}{% endblock %}
         </main>
     </div>
 
+    {% include "partials/bottom_nav.html" %}
+    {% include "partials/more_sheet.html" %}
+
+    {% if user.is_authenticated %}<script src="{% static 'js/layout.js' %}" defer></script>{% endif %}
     <script src="{% static 'js/app.js' %}"></script>
     {% block scripts %}{% endblock %}
 </body>

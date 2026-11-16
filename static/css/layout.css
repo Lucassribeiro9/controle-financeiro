@@ -1,5 +1,371 @@
 /*
  * Casca do app: sidebar, topo do celular, barra inferior, folha "Mais" e area de
- * conteudo. Dono: item 3.2 (#291, spec 017, D1). Vazio na 3.1; o link ja existe em
- * base.html para a 3.2 nao precisar mexer na ordem dos arquivos.
+ * conteudo. Dono: item 3.2 (#291, spec 017, D1). So tokens (sem literal de cor).
+ *
+ * Mobile primeiro; o desktop entra em min-width: 768px. O <body> recebe uma classe
+ * de modo (base.html, bloco shell_mode): shell-nav (padrao), shell-task (tela de
+ * tarefa, sem topo nem barra inferior no celular) e shell-public (sem login).
+ *
+ * Contrato para as telas: --shell-bottom-inset e a folga que a barra inferior
+ * ocupa (altura da barra mais a area segura). Barras fixas das telas devem somar
+ * essa variavel ao seu `bottom`.
  */
+
+body {
+    --bottom-nav-height: 64px;
+    --shell-bottom-inset: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+}
+
+.shell-task,
+.shell-public {
+    --shell-bottom-inset: 0px;
+}
+
+/* Casca */
+.shell {
+    min-height: 100vh;
+}
+
+.shell__main {
+    min-width: 0;
+    padding: var(--space-lg) var(--space-lg) calc(var(--space-lg) + var(--shell-bottom-inset));
+}
+
+.shell__main:focus {
+    outline: none;
+}
+
+/* Marca */
+.brand-mark {
+    align-items: center;
+    background: var(--color-action-primary);
+    border-radius: var(--radius-pill);
+    color: var(--color-text-on-primary);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: var(--font-size-caption);
+    font-weight: 700;
+    height: 36px;
+    justify-content: center;
+    width: 36px;
+}
+
+/* Topo do celular */
+.topbar {
+    align-items: center;
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+    min-height: 56px;
+    padding: var(--space-sm) var(--space-lg) 0;
+}
+
+.topbar__brand {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+.topbar__actions {
+    align-items: center;
+    display: flex;
+    gap: var(--space-sm);
+    margin-left: auto;
+}
+
+.shell-task .topbar {
+    display: none;
+}
+
+/* Itens de navegacao (sidebar e folha) */
+.nav-item {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-pill);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    min-height: 44px;
+    padding: var(--space-sm) var(--space-lg);
+    text-align: left;
+    width: 100%;
+}
+
+.nav-item:hover {
+    background: var(--color-bg-surface-muted);
+}
+
+.nav-item[aria-current="page"] {
+    background: var(--color-bg-brand-pale);
+    font-weight: 600;
+}
+
+/* Sidebar: so no desktop */
+.sidebar {
+    display: none;
+}
+
+/* Barra inferior */
+.bottom-nav {
+    align-items: center;
+    background: var(--color-bg-surface);
+    border-top: 1px solid var(--color-border-default);
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1.4fr)) 64px minmax(0, 1fr) minmax(0, 0.9fr);
+    left: 0;
+    min-height: var(--bottom-nav-height);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    position: fixed;
+    right: 0;
+    z-index: 10;
+}
+
+.shell-task .bottom-nav {
+    display: none;
+}
+
+.bottom-nav__item {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    font-size: var(--font-size-caption);
+    gap: 2px;
+    height: var(--bottom-nav-height);
+    justify-content: center;
+    line-height: var(--line-height-caption);
+    min-width: 0;
+    padding: 0;
+}
+
+.bottom-nav__item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bottom-nav__item[aria-current] {
+    color: var(--color-text-primary);
+    font-weight: 700;
+}
+
+.bottom-nav__item svg,
+.bottom-nav__add svg {
+    fill: none;
+    height: 24px;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    width: 24px;
+}
+
+.bottom-nav__add {
+    align-items: center;
+    background: var(--color-action-primary);
+    border-radius: var(--radius-pill);
+    color: var(--color-text-on-primary);
+    display: flex;
+    height: 52px;
+    justify-content: center;
+    justify-self: center;
+    width: 52px;
+}
+
+/* Seletor de tema (.segmented do components.css) */
+.theme-switch {
+    display: flex;
+}
+
+.theme-switch .segmented__item {
+    flex: 1 1 0;
+    padding-left: var(--space-sm);
+    padding-right: var(--space-sm);
+}
+
+/* Folha "Mais": popover nativo. O proprio elemento e a camada que escurece o
+   conteudo, parada acima da barra para o botao Mais continuar tocavel. */
+.more-sheet {
+    background: color-mix(in srgb, var(--color-text-primary) 45%, transparent);
+    border: 0;
+    height: auto;
+    inset: 0 0 var(--shell-bottom-inset);
+    margin: 0;
+    max-height: none;
+    max-width: none;
+    overflow: hidden;
+    padding: 0;
+    position: fixed;
+    width: auto;
+}
+
+.more-sheet:popover-open {
+    align-items: flex-end;
+    display: flex;
+}
+
+.more-sheet__panel {
+    animation: more-sheet-in 0.2s ease-out;
+    background: var(--color-bg-surface);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 85%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-lg);
+    width: 100%;
+}
+
+.more-sheet__group {
+    display: grid;
+    gap: var(--space-xs);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.more-sheet__group > .theme-switch {
+    grid-column: 1 / -1;
+    margin-bottom: var(--space-sm);
+}
+
+.more-sheet__group form {
+    margin: 0;
+}
+
+.more-sheet__label {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    letter-spacing: 0.06em;
+    line-height: var(--line-height-caption);
+    margin: var(--space-lg) var(--space-lg) var(--space-xs);
+    text-transform: uppercase;
+}
+
+.more-sheet__panel > .more-sheet__label:first-child {
+    margin-top: 0;
+}
+
+body:has(.more-sheet:popover-open) {
+    overflow: hidden;
+}
+
+@keyframes more-sheet-in {
+    from {
+        transform: translateY(24px);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .more-sheet__panel {
+        animation: none;
+    }
+}
+
+/* Desktop: sidebar de 240px e margem de conteudo de 40px */
+@media (min-width: 768px) {
+    .shell {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+    }
+
+    .shell-public .shell {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .shell__main {
+        padding: var(--space-2xl) 40px;
+    }
+
+    .shell-nav .topbar,
+    .shell-task .topbar,
+    .bottom-nav,
+    .more-sheet,
+    .more-sheet:popover-open {
+        display: none;
+    }
+
+    .sidebar {
+        background: var(--color-bg-surface);
+        border-right: 1px solid var(--color-border-default);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-lg);
+        height: 100vh;
+        overflow-y: auto;
+        padding: var(--space-xl) var(--space-lg);
+        position: sticky;
+        top: 0;
+        width: 240px;
+    }
+
+    .nav-item {
+        min-height: 40px;
+    }
+
+    .sidebar__brand {
+        align-items: center;
+        display: flex;
+        gap: var(--space-md);
+        padding: 0 var(--space-xs);
+    }
+
+    .sidebar__nav {
+        display: grid;
+        gap: var(--space-xs);
+    }
+
+    .sidebar__group {
+        display: grid;
+        gap: 2px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .sidebar__label {
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-caption);
+        letter-spacing: 0.06em;
+        line-height: var(--line-height-caption);
+        margin: var(--space-lg) var(--space-lg) var(--space-xs);
+        text-transform: uppercase;
+    }
+
+    .sidebar__footer {
+        display: grid;
+        gap: var(--space-sm);
+        margin-top: auto;
+    }
+
+    .sidebar__footer-links {
+        align-items: center;
+        color: var(--color-text-secondary);
+        display: flex;
+        gap: var(--space-xs);
+    }
+
+    .sidebar__logout {
+        margin: 0;
+    }
+
+    .nav-item--small {
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-caption);
+        min-height: 32px;
+        padding: var(--space-xs) var(--space-sm);
+        width: auto;
+    }
+}

@@ -105,7 +105,8 @@ class AnonymousAccessTests(TestCase):
         response = self.client.get(reverse("login"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "registration/login.html")
-        self.assertNotContains(response, "app-nav-link")
+        self.assertNotContains(response, "nav-item")
+        self.assertNotContains(response, "bottom-nav")
 
     def test_admin_keeps_its_own_login(self):
         response = self.client.get("/admin/")
