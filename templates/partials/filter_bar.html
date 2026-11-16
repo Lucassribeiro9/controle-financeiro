@@ -1,12 +1,28 @@
-{# Componente de barra de filtros reutilizável #}
-{# Parâmetros: action_url, clear_url #}
-{# Os campos de input devem ser inseridos dentro da tag form no template pai. #}
+{# Barra de filtros reutilizável (.filters do components.css) #}
+{# Parâmetros (todos opcionais): fields_template, active_count, clear_url #}
+{# Com fields_template, vira <details> recolhível abaixo de 768px com o resumo #}
+{# "Filtros (N ativos)", aberto acima disso, sem JS. #}
+{# Sem fields_template, renderiza só as ações e os campos ficam no template pai #}
+{# (dentro do <form>), como antes. #}
 
-<div class="filter-bar-wrapper">
-    <div class="action-row" style="margin-top: 10px;">
-        <button class="button" type="submit">Filtrar</button>
+{% if fields_template %}
+    <details class="filters">
+        <summary class="filters__summary">Filtros{% if active_count %} ({{ active_count }} {% if active_count == 1 %}ativo{% else %}ativos{% endif %}){% endif %}</summary>
+        <div class="filters__body">
+            {% include fields_template %}
+            <div class="filters__actions">
+                <button class="btn btn--primary" type="submit">Filtrar</button>
+                {% if clear_url %}
+                    <a class="btn btn--secondary" href="{{ clear_url }}">Limpar filtros</a>
+                {% endif %}
+            </div>
+        </div>
+    </details>
+{% else %}
+    <div class="filters__actions">
+        <button class="btn btn--primary" type="submit">Filtrar</button>
         {% if clear_url %}
-            <a class="button button-secondary" href="{{ clear_url }}">Limpar filtros</a>
+            <a class="btn btn--secondary" href="{{ clear_url }}">Limpar filtros</a>
         {% endif %}
     </div>
-</div>
+{% endif %}

@@ -1,0 +1,5 @@
+/*
+ * Casca do app: sidebar, topo do celular, barra inferior, folha "Mais" e area de
+ * conteudo. Dono: item 3.2 (#291, spec 017, D1). Vazio na 3.1; o link ja existe em
+ * base.html para a 3.2 nao precisar mexer na ordem dos arquivos.
+ */

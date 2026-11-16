@@ -366,7 +366,7 @@ class StatementViewTests(AuthenticatedTestCase):
         self.assertContains(response, self.card.name)
         self.assertContains(response, f"{statement.month}/{statement.year}")
         self.assertContains(response, "Pendente")
-        self.assertContains(response, 'class="badge badge-warning"', html=False)
+        self.assertContains(response, 'class="status status--warning"', html=False)
 
     def test_statement_list_page_shows_computed_summary_values(self):
         """Lista de faturas deve mostrar valores calculados das compras vinculadas."""

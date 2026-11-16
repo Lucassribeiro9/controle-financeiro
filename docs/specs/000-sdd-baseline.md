@@ -14,7 +14,7 @@ Esta baseline e obrigatoria para as proximas issues do projeto.
 - Django 6.0.5.
 - SQLite no MVP.
 - Django templates.
-- CSS em `static/css/app.css`.
+- CSS em camadas, sem build: `tokens.css`, `base.css`, `app.css` (legado, congelado; sai na 3.9), `components.css`, `layout.css` e `pages/<app>.css`, com um dono por arquivo (spec 017, D1). Inter local em `static/vendor/inter/`.
 - Chart.js em telas de dashboard/relatorio quando o grafico ajudar a decisao.
 - Testes seguindo a estrutura atual do projeto.
 - Docker/Docker Compose para execucao local padronizada.
@@ -98,7 +98,8 @@ reports/        -> dashboards e relatorios
 imports/        -> importacao e revisao de arquivos
 insights/       -> sugestoes automaticas
 templates/      -> base e partials compartilhados
-static/         -> CSS e assets estaticos
+static/         -> CSS em camadas (tokens, base, components, layout, pages), JS, Inter e Chart.js em vendor/
+scripts/        -> ferramentas locais fora do CI (visual_check.py)
 docs/specs/     -> specs SDD
 ```
 

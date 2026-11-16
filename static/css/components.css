@@ -1,0 +1,431 @@
+/*
+ * Componentes do DESIGN.md (FIN-34). Dono: item 3.1; telas novas usam estas classes
+ * e so acrescentam ajustes em static/css/pages/<app>.css (spec 017, D1).
+ * Nomes que nao existem no app.css legado, para o legado nao vazar estilo aqui.
+ * Sem sombra: elevacao por contraste de superficie (card sobre canvas).
+ */
+
+/* Botao: .btn--primary, .btn--secondary, .btn--tertiary */
+.btn {
+    align-items: center;
+    background: var(--color-action-primary);
+    border: 1px solid transparent;
+    border-radius: var(--radius-xl);
+    color: var(--color-text-on-primary);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-weight: 600;
+    gap: var(--space-sm);
+    justify-content: center;
+    line-height: 20px;
+    min-height: 44px;
+    padding: 10px 20px;
+    text-align: center;
+}
+
+.btn:hover {
+    filter: brightness(0.95);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.btn--primary {
+    background: var(--color-action-primary);
+    color: var(--color-text-on-primary);
+}
+
+.btn--secondary {
+    background: var(--color-action-secondary);
+    color: var(--color-text-primary);
+}
+
+.btn--tertiary {
+    background: transparent;
+    border-color: var(--color-border-strong);
+    color: var(--color-text-primary);
+}
+
+/* Status: .status--positive, --warning, --neutral, --negative */
+.status {
+    align-items: center;
+    background: var(--color-bg-surface-muted);
+    border-radius: var(--radius-pill);
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    gap: 6px;
+    line-height: var(--line-height-caption);
+    padding: 4px 10px;
+    white-space: nowrap;
+}
+
+.status--positive {
+    background: var(--color-money-income-bg);
+    color: var(--color-money-income);
+}
+
+.status--warning {
+    background: var(--color-status-warning-bg);
+    color: var(--color-status-warning-text);
+}
+
+.status--neutral {
+    background: var(--color-bg-surface-muted);
+    color: var(--color-text-secondary);
+}
+
+.status--negative {
+    background: var(--color-money-expense-bg);
+    color: var(--color-money-expense-strong);
+}
+
+/* Card e card de saldo */
+.card {
+    background: var(--color-bg-surface);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+}
+
+.balance-card {
+    background: var(--color-bg-surface);
+    border-radius: var(--radius-xl);
+    display: grid;
+    gap: var(--space-md);
+    padding: var(--space-xl);
+}
+
+.balance-card__label {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
+.balance-card__amount {
+    font-size: var(--font-size-balance);
+    font-weight: var(--font-weight-display);
+    line-height: var(--line-height-balance);
+}
+
+.balance-card__split {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+}
+
+.balance-card__income {
+    color: var(--color-money-income);
+    font-weight: 600;
+}
+
+.balance-card__expense {
+    color: var(--color-money-expense);
+    font-weight: 600;
+}
+
+/* Campo */
+.field {
+    display: grid;
+    gap: var(--space-sm);
+}
+
+.field__label {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    line-height: var(--line-height-caption);
+}
+
+.field input,
+.field select,
+.field textarea {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font: inherit;
+    min-height: 44px;
+    padding: 10px 14px;
+    width: 100%;
+}
+
+.field__error {
+    color: var(--color-money-expense-strong);
+    font-size: var(--font-size-caption);
+}
+
+/* Alerta: .alert--info, --success, --warning, --error */
+.alert {
+    background: var(--color-bg-surface-muted);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-primary);
+    display: grid;
+    gap: var(--space-xs);
+    padding: var(--space-md) var(--space-lg);
+}
+
+.alert__title {
+    font-weight: 600;
+}
+
+.alert__detail {
+    color: var(--color-text-secondary);
+}
+
+.alert--success {
+    background: var(--color-money-income-bg);
+    color: var(--color-money-income);
+}
+
+.alert--warning {
+    background: var(--color-status-warning-bg);
+    color: var(--color-status-warning-text);
+}
+
+.alert--error {
+    background: var(--color-money-expense-bg);
+    color: var(--color-money-expense-strong);
+}
+
+/* Controle segmentado e seletor de periodo */
+.segmented {
+    background: var(--color-action-secondary);
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    gap: var(--space-xs);
+    padding: var(--space-xs);
+}
+
+.segmented__item {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-pill);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-weight: 600;
+    justify-content: center;
+    min-height: 36px;
+    padding: 6px 16px;
+}
+
+.segmented__item[aria-pressed="true"],
+.segmented__item[aria-current="true"] {
+    background: var(--color-bg-surface);
+}
+
+.period-picker {
+    align-items: center;
+    background: var(--color-action-secondary);
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    gap: var(--space-sm);
+    min-height: 40px;
+    padding: 4px 8px;
+}
+
+.period-picker__label {
+    font-weight: 600;
+    min-width: 0;
+    text-align: center;
+}
+
+/*
+ * Filtros (issue 242): <details class="filters"> com resumo "Filtros (N ativos)".
+ * Abaixo de 768px recolhido; a partir de 768px o conteudo aparece aberto sem JS,
+ * via ::details-content. Sem esse recurso o resumo continua visivel e clicavel.
+ */
+.filters {
+    background: var(--color-bg-surface);
+    border-radius: var(--radius-lg);
+}
+
+.filters__summary {
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+    padding: var(--space-md) var(--space-lg);
+}
+
+.filters__summary::-webkit-details-marker {
+    display: none;
+}
+
+.filters__body {
+    align-items: end;
+    display: grid;
+    gap: var(--space-md);
+    padding: 0 var(--space-lg) var(--space-lg);
+}
+
+.filters__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+@media (min-width: 768px) {
+    .filters__body {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        padding-top: var(--space-lg);
+    }
+
+    .filters__actions {
+        grid-column: 1 / -1;
+    }
+
+    @supports selector(::details-content) {
+        .filters::details-content {
+            content-visibility: visible;
+            display: block;
+            height: auto;
+        }
+
+        .filters__summary {
+            display: none;
+        }
+    }
+}
+
+/* Lista de registros: tabela no desktop, lista empilhada no celular (ADR-014) */
+.list-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.list-table th,
+.list-table td {
+    border-bottom: 1px solid var(--color-border-default);
+    padding: var(--space-md) var(--space-md) var(--space-md) 0;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.list-table th {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    line-height: var(--line-height-caption);
+}
+
+.list-table__amount {
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+    .list-table,
+    .list-table tbody {
+        display: block;
+    }
+
+    .list-table thead {
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        position: absolute;
+        width: 1px;
+    }
+
+    .list-table tr {
+        border-bottom: 1px solid var(--color-border-default);
+        display: grid;
+        gap: var(--space-xs) var(--space-md);
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: var(--space-md) 0;
+    }
+
+    .list-table th,
+    .list-table td {
+        border: 0;
+        padding: 0;
+    }
+
+    .list-table__amount {
+        grid-column: 2;
+        grid-row: 1;
+    }
+}
+
+/* Linhas rotulo e valor (tabela-resumo do relatorio) */
+.summary-rows {
+    display: grid;
+    margin: 0;
+}
+
+.summary-rows__row {
+    align-items: baseline;
+    border-bottom: 1px solid var(--color-border-default);
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+    padding: var(--space-md) 0;
+}
+
+.summary-rows__row:last-child {
+    border-bottom: 0;
+}
+
+.summary-rows__label {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.summary-rows__value {
+    font-weight: 600;
+    margin: 0;
+    text-align: right;
+}
+
+/* Progresso */
+.progress {
+    background: var(--color-bg-surface-muted);
+    border-radius: var(--radius-pill);
+    height: 8px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.progress__bar {
+    background: var(--color-text-primary);
+    border-radius: var(--radius-pill);
+    display: block;
+    height: 100%;
+}
+
+.progress--over .progress__bar {
+    background: var(--color-money-expense);
+}
+
+/* Estado vazio */
+.empty {
+    align-items: center;
+    background: var(--color-bg-surface-muted);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    justify-content: space-between;
+    margin: 0;
+    padding: var(--space-lg);
+}
+
+.empty__title {
+    color: var(--color-text-primary);
+    display: block;
+    font-weight: 600;
+}
+
+.empty__description {
+    display: block;
+    margin-top: var(--space-xs);
+}

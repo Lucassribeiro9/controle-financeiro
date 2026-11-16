@@ -1,54 +1,52 @@
 # Design Tokens - Controle Financeiro
 
-Este documento define a linguagem visual e os padrões de interface do projeto, servindo como fonte única de verdade para cores, tipografia, espaçamento e comportamento da UI.
+Os tokens de cor, tipografia, forma e espaço, nos temas claro e escuro, estão em
+[`DESIGN.md`](DESIGN.md) e são implementados em `static/css/tokens.css`
+(`color/bg/canvas` vira `--color-bg-canvas`). Este arquivo guarda só o que o
+`DESIGN.md` não cobre: a semântica de status e as regras de formatação.
 
-## 1. Cores Semânticas
+Os testes de `core/tests/test_static_css.py` leem a tabela de cores do `DESIGN.md` e
+conferem `tokens.css` nos dois temas; mudar uma cor é mudar as duas fontes juntas.
 
-As cores seguem uma lógica funcional para facilitar a compreensão imediata do estado financeiro ou operacional.
+## 1. Status
 
-| Variante | Cor (CSS Variable) | Significado | Exemplos de Status |
-| :--- | :--- | :--- | :--- |
-| **Success** | `--success` | Positivo, concluído, saudável | `paid`, `confirmed`, `completed`, `active` |
-| **Warning** | `--warning` | Atenção, pendente, parcial | `pending`, `partial`, `duplicate` |
-| **Info** | `--info` | Informativo, previsto, aberto | `forecasted`, `open`, `on_track` |
-| **Danger** | `--danger` | Erro, risco, atrasado | `late`, `at_risk`, `missed` |
-| **Neutral** | `--neutral` | Inativo, cancelado, ignorado | `canceled`, `ignored`, `inactive`, `silenced` |
+O mapeamento entre o status do banco e a variante visual vive em
+`STATUS_BADGE_VARIANTS`, em `core/templatetags/money.py`; o filtro `status_badge_class`
+devolve `status status--<variante>` (componente `.status` de `components.css`).
+`active_badge_class` usa `positive` para ativo e `neutral` para inativo.
 
-### Mapeamento de Status
-O mapeamento oficial entre o banco de dados e as classes visuais é definido no filtro `status_badge_class` em `core/templatetags/money.py`.
+| Variante | Significado | Status |
+| :--- | :--- | :--- |
+| `positive` | Concluído, saudável | `active`, `achieved`, `approved`, `confirmed`, `completed`, `paid` |
+| `warning` | Atenção, pendente, parcial | `pending`, `partially_paid`, `partial`, `duplicate` |
+| `negative` | Erro, risco, atrasado | `late`, `missed`, `at_risk` |
+| `neutral` | Previsto, aberto, inativo, cancelado, ignorado | `open`, `forecasted`, `forecast`, `on_track`, `canceled`, `cancelled`, `discarded`, `ignored`, `inactive`, `silenced` |
 
-## 2. Formatação de Dados
+Status sem entrada na tabela caem em `neutral`. As antigas variantes `info` (azul)
+e `neutral` colapsaram em Neutro (spec 017, D6).
 
-A consistência na exibição de valores financeiros e datas é crucial para a legibilidade.
+## 2. Formatação de dados
 
-### Valores Monetários
-- **Moeda:** Sempre em Real (R$) ou Dólar (US$) dependendo da conta.
-- **Separadores:** Padrão pt-BR (ponto para milhar, vírgula para decimal).
-- **Precisão:** 2 casas decimais obrigatórias para valores transacionais.
+### Valores monetários
+- **Moeda:** Real (R$) ou Dólar (US$) conforme a conta.
+- **Separadores:** padrão pt-BR (ponto para milhar, vírgula para decimal).
+- **Precisão:** 2 casas decimais para valores transacionais.
 
 ### Percentuais
-- **Participação/Share:** Exibido como **número inteiro sem decimal** (ex: "32%") em contextos de gráficos ou resumos de share.
-- **Taxas (CDI/Juros):** Mantém decimais conforme a necessidade de precisão (ex: "11,25% a.a.").
+- **Participação/share:** número inteiro sem decimal (ex.: "32%").
+- **Taxas:** mantêm decimais quando a precisão importa (ex.: "11,25% a.a.").
 
-### Datas e Períodos
+### Datas e períodos
 - **Datas curtas:** `DD/MM/AAAA`.
-- **Período Legível:** Títulos de seção e dashboards devem usar o formato `Nome do Mês/AAAA` (ex: "Maio/2026").
-- **Formato Numérico Compacto:** `M/AAAA` (ex: "5/2026") restrito a controles de filtro e inputs compactos.
+- **Período legível:** `Nome do Mês/AAAA` (ex.: "Maio/2026") em títulos.
+- **Numérico compacto:** `M/AAAA` só em filtros e controles compactos.
 
-## 3. Breakpoints e Responsividade
+## 3. Breakpoint e componentes
 
-A interface deve ser operacional e funcional em diferentes tamanhos de tela.
-
-- **Mobile First:** Priorizar a legibilidade em dispositivos menores.
-- **Breakpoint Principal:** `768px`.
-- **Comportamento de Tabelas:**
-    - No Desktop: Tabelas densas com scroll quando necessário.
-    - No Mobile (< 768px): Scroll horizontal para tabelas financeiras ou empilhamento de cards em listas específicas.
-
-## 4. Componentes (Partials)
-
-Os componentes reutilizáveis devem ser implementados em `templates/partials/`:
-
-- `empty_state.html`: Usado quando não há dados, deve sempre conter um título, descrição e uma chamada para ação (CTA).
-- `status_badge.html`: Renderiza o badge com a cor semântica correta.
-- `filter_bar.html`: Barra de filtros com botão "Limpar Filtros".
+- Breakpoint principal: `768px`. Abaixo dele, listas viram lista empilhada (ADR-014) e
+  filtros ficam recolhidos.
+- Partials compartilhados em `templates/partials/`: `status_badge.html`,
+  `empty_state.html`, `filter_bar.html` e `messages.html`, sobre as classes de
+  `static/css/components.css`.
+- Tokens do gráfico (`--chart-income`, `--chart-expense`, `--chart-balance`,
+  `--chart-grid`, `--chart-text`, `--chart-surface`) são lidos por `static/js/dashboard.js`.
