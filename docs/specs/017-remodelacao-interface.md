@@ -8,7 +8,7 @@ Absorve #240 (tabelas no celular), #241 (revisao de importacoes no celular) e #2
 
 ## Contexto
 
-A interface atual vive num unico `static/css/app.css` (1445 linhas, 46 cores fixas fora das variaveis), fonte do sistema, sidebar azul-marinho e menu `<details>` no celular. O design novo esta pronto (DESIGN.md, 12 telas no Figma, wireframes das 4 restantes). Falta levar isso ao codigo sem SPA, com templates Django, e de um jeito que as telas sejam remodeladas em paralelo por sessoes diferentes sem conflito de merge.
+A interface atual vive num unico `static/css/app.css` (1445 linhas, 46 literais de cor, 20 deles fora do `:root`), fonte do sistema, sidebar azul-marinho e menu `<details>` no celular. O design novo esta pronto (DESIGN.md, 12 telas no Figma, wireframes das 4 restantes). Falta levar isso ao codigo sem SPA, com templates Django, e de um jeito que as telas sejam remodeladas em paralelo por sessoes diferentes sem conflito de merge.
 
 ## Objetivo
 
@@ -68,7 +68,7 @@ Arquivos novos em `static/css/`, cada um com um dono:
 
 ### D5. Migracao
 
-- O CSS antigo convive ate a 3.9. A 3.1 troca as variaveis do `app.css` por aliases dos tokens novos (`--bg: var(--color-bg-canvas)`, ...) e as 46 cores fixas por variaveis. Assim toda tela ainda nao remodelada ja fica com a paleta, a Inter e os dois temas, sem quebrar.
+- O CSS antigo convive ate a 3.9. A 3.1 troca as variaveis do `app.css` por aliases dos tokens novos (`--bg: var(--color-bg-canvas)`, ...) e os literais de cor fora do `:root` por variaveis. Assim toda tela ainda nao remodelada ja fica com a paleta, a Inter e os dois temas, sem quebrar.
 - Depois da 3.1 ninguem edita `app.css`. Cada issue de tela troca as classes antigas pelas novas nos seus templates; a 3.9 apaga `app.css`, tira o link de `base.html` e confere que nenhum template usa classe que so existia nele.
 
 ### D6. Outras decisoes

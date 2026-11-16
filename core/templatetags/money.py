@@ -13,24 +13,26 @@ from django.utils.dateparse import parse_datetime
 
 register = template.Library()
 
+# Variantes do componente `.status` do DESIGN.md (spec 017, D6): Positivo, Atencao,
+# Neutro e Negativo. Previsto, aberto e em dia (antes "info") viram Neutro.
 STATUS_BADGE_VARIANTS = {
-    "active": "success",
-    "achieved": "success",
-    "approved": "success",
-    "confirmed": "success",
-    "completed": "success",
-    "paid": "success",
+    "active": "positive",
+    "achieved": "positive",
+    "approved": "positive",
+    "confirmed": "positive",
+    "completed": "positive",
+    "paid": "positive",
     "pending": "warning",
     "partially_paid": "warning",
     "partial": "warning",
     "duplicate": "warning",
-    "open": "info",
-    "forecasted": "info",
-    "forecast": "info",
-    "on_track": "info",
-    "late": "danger",
-    "missed": "danger",
-    "at_risk": "danger",
+    "open": "neutral",
+    "forecasted": "neutral",
+    "forecast": "neutral",
+    "on_track": "neutral",
+    "late": "negative",
+    "missed": "negative",
+    "at_risk": "negative",
     "canceled": "neutral",
     "cancelled": "neutral",
     "discarded": "neutral",
@@ -149,18 +151,18 @@ def annual_rate(value, decimal_places=2):
 
 @register.filter
 def status_badge_class(value):
-    """Retorna a classe visual apropriada para um status."""
+    """Retorna as classes do componente `.status` para um status."""
 
     normalized = _normalize_status_key(value)
     variant = STATUS_BADGE_VARIANTS.get(normalized, "neutral")
-    return f"badge badge-{variant}"
+    return f"status status--{variant}"
 
 
 @register.filter
 def active_badge_class(value):
     """Retorna a classe visual para estados ativo/inativo."""
 
-    return "badge badge-success" if value else "badge badge-neutral"
+    return "status status--positive" if value else "status status--neutral"
 
 
 def _decimal(value):

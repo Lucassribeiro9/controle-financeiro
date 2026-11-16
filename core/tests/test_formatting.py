@@ -15,6 +15,7 @@ from core.templatetags.money import currency
 from core.templatetags.money import date_br
 from core.templatetags.money import month_name
 from core.templatetags.money import percentage
+from core.templatetags.money import STATUS_BADGE_VARIANTS
 from core.templatetags.money import status_badge_class
 from core.templatetags.money import active_badge_class
 
@@ -44,12 +45,28 @@ class FormattingFilterTests(SimpleTestCase):
         self.assertEqual(annual_rate(Decimal("0.11")), "11,00% a.a.")
 
     def test_status_badge_class_maps_common_operational_states(self):
-        self.assertEqual(status_badge_class("paid"), "badge badge-success")
-        self.assertEqual(status_badge_class("pending"), "badge badge-warning")
-        self.assertEqual(status_badge_class("forecasted"), "badge badge-info")
-        self.assertEqual(status_badge_class("ignored"), "badge badge-neutral")
-        self.assertEqual(active_badge_class(True), "badge badge-success")
-        self.assertEqual(active_badge_class(False), "badge badge-neutral")
+        self.assertEqual(status_badge_class("paid"), "status status--positive")
+        self.assertEqual(status_badge_class("pending"), "status status--warning")
+        self.assertEqual(status_badge_class("forecasted"), "status status--neutral")
+        self.assertEqual(status_badge_class("late"), "status status--negative")
+        self.assertEqual(status_badge_class("ignored"), "status status--neutral")
+        self.assertEqual(status_badge_class("sem-mapa"), "status status--neutral")
+        self.assertEqual(active_badge_class(True), "status status--positive")
+        self.assertEqual(active_badge_class(False), "status status--neutral")
+
+    def test_every_status_maps_to_one_of_the_four_design_variants(self):
+        variants = {"positive", "warning", "neutral", "negative"}
+
+        self.assertEqual(set(STATUS_BADGE_VARIANTS.values()) - variants, set())
+        for status in STATUS_BADGE_VARIANTS:
+            with self.subTest(status=status):
+                css_class = status_badge_class(status)
+                self.assertRegex(css_class, r"^status status--(positive|warning|neutral|negative)$")
+
+    def test_info_and_open_states_became_neutral(self):
+        for status in ("open", "forecasted", "forecast", "on_track"):
+            with self.subTest(status=status):
+                self.assertEqual(STATUS_BADGE_VARIANTS[status], "neutral")
 
 
 class FormattingFieldTests(SimpleTestCase):

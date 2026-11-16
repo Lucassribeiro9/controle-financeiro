@@ -168,3 +168,6 @@ staticfiles/
 
 # Worktrees locais do Claude Code (não versionar)
 .claude/worktrees/
+
+# Capturas locais do scripts/visual_check.py
+.visual-check/

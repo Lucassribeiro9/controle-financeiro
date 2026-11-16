@@ -111,7 +111,7 @@ class GoalViewTests(AuthenticatedTestCase):
         self.assertEqual([goal.pk for goal in shown], [self.monthly_goal.pk])
         self.assertEqual(shown[0].current_amount, Decimal("250.00"))
         self.assertEqual(shown[0].status, MonthlyGoal.Status.AT_RISK)
-        self.assertContains(response, 'class="badge badge-danger"', html=False)
+        self.assertContains(response, 'class="status status--negative"', html=False)
         self.assertEqual(
             MonthlyGoal.objects.values().get(pk=self.monthly_goal.pk), before
         )

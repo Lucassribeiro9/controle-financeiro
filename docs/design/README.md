@@ -15,7 +15,7 @@ com a responsividade (#240 a #242).
 | `wireframes/fin-34-wireframes-celular.excalidraw` | Rascunho de estrutura no celular (360px): 12 telas, navegação e variantes de tabela da ADR-014 |
 | `wireframes/fin-34-wireframes-desktop.excalidraw` | Rascunho de estrutura no desktop (1280px): início, lançamentos, revisão de importações e relatório |
 | `wireframes/*.png` | Prévia estática dos dois arquivos acima |
-| `tokens.md`, `ui-preview-home.html` | Tokens e prévia da interface atual (#118); serão substituídos pelos tokens novos |
+| `tokens.md` | Semântica de status e variantes do componente `.status`; aponta para o `DESIGN.md` (a prévia `ui-preview-home.html` foi removida na 3.1) |
 
 Os arquivos `reference/` são material de consulta, não regra ativa: os tokens do
 app saem das decisões abaixo. Os wireframes abrem em https://excalidraw.com
