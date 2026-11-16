@@ -1,13 +1,27 @@
-<aside class="app-sidebar" aria-label="Navegação principal">
-    <a class="app-brand" href="/">
-        <span class="app-brand-mark">CF</span>
-        <span>
-            <strong>Controle Financeiro</strong>
-            <small>Visão pessoal</small>
-        </span>
+{# Sidebar do desktop (768px ou mais). So com usuario autenticado. #}
+{% if user.is_authenticated %}
+{% load navigation %}
+{% nav_state as nav %}
+<aside class="sidebar">
+    <a class="sidebar__brand" href="/">
+        <span class="brand-mark">CF</span>
+        <strong>Controle Financeiro</strong>
     </a>
 
-    <nav class="app-nav">
-        {% include "partials/nav_links.html" with nav_id="sidebar" %}
+    <nav class="sidebar__nav" aria-label="Navegação principal">
+        {% include "partials/nav_links.html" %}
     </nav>
+
+    <div class="sidebar__footer">
+        {% include "partials/theme_switch.html" %}
+        <div class="sidebar__footer-links">
+            <a class="nav-item nav-item--small" href="/admin/"{% if nav.section == "admin" %} aria-current="page"{% endif %}>Admin</a>
+            <span aria-hidden="true">·</span>
+            <form class="sidebar__logout" method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="nav-item nav-item--small" type="submit">Sair</button>
+            </form>
+        </div>
+    </div>
 </aside>
+{% endif %}

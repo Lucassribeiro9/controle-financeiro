@@ -1,0 +1,40 @@
+{# Folha "Mais" do celular: popover nativo aberto pelo botao Mais da barra inferior. So com usuario autenticado. #}
+{% if user.is_authenticated %}
+{% load navigation %}
+{% nav_state as nav %}
+<div id="more-sheet" class="more-sheet" popover>
+    <nav class="more-sheet__panel" aria-label="Mais telas">
+        <ul class="more-sheet__group">
+            <li><a class="nav-item" href="/reports/month/"{% if nav.section == "reports" %} aria-current="page"{% endif %}>Relatório</a></li>
+            <li><a class="nav-item" href="/goals/"{% if nav.section == "goals" %} aria-current="page"{% endif %}>Objetivos</a></li>
+        </ul>
+
+        <p id="more-money" class="more-sheet__label">Dinheiro</p>
+        <ul class="more-sheet__group" aria-labelledby="more-money">
+            <li><a class="nav-item" href="/accounts/"{% if nav.section == "accounts" %} aria-current="page"{% endif %}>Contas</a></li>
+            <li><a class="nav-item" href="/cards/"{% if nav.section == "cards" %} aria-current="page"{% endif %}>Cartões</a></li>
+            <li><a class="nav-item" href="/transactions/transfers/"{% if nav.section == "transfers" %} aria-current="page"{% endif %}>Transferências</a></li>
+            <li><a class="nav-item" href="/installments/"{% if nav.section == "installments" %} aria-current="page"{% endif %}>Parcelamentos</a></li>
+            <li><a class="nav-item" href="/recurrences/month/page/"{% if nav.section == "recurrences" %} aria-current="page"{% endif %}>Recorrências</a></li>
+        </ul>
+
+        <p id="more-data" class="more-sheet__label">Dados</p>
+        <ul class="more-sheet__group" aria-labelledby="more-data">
+            <li><a class="nav-item" href="/imports/review/page/"{% if nav.section == "imports" %} aria-current="page"{% endif %}>Importações</a></li>
+            <li><a class="nav-item" href="/categories/"{% if nav.section == "categories" %} aria-current="page"{% endif %}>Categorias</a></li>
+            <li><a class="nav-item" href="/institutions/"{% if nav.section == "institutions" %} aria-current="page"{% endif %}>Instituições</a></li>
+            <li><a class="nav-item" href="/insights/page/"{% if nav.section == "insights" %} aria-current="page"{% endif %}>Insights</a></li>
+        </ul>
+
+        <p id="more-system" class="more-sheet__label">Sistema</p>
+        <div class="more-sheet__group" role="group" aria-labelledby="more-system">
+            {% include "partials/theme_switch.html" %}
+            <a class="nav-item" href="/admin/"{% if nav.section == "admin" %} aria-current="page"{% endif %}>Admin</a>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="nav-item" type="submit">Sair</button>
+            </form>
+        </div>
+    </nav>
+</div>
+{% endif %}

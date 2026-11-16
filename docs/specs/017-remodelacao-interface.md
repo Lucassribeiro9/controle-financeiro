@@ -38,13 +38,14 @@ Arquivos novos em `static/css/`, cada um com um dono:
 | `base.css` | `@font-face` da Inter, reset, elementos (`body`, `h1`-`h3`, `a`, `input`, `select`, `button`), foco, `skip-link` | 3.1 |
 | `components.css` | Componentes do DESIGN.md e padroes compartilhados (lista abaixo) | 3.1 |
 | `layout.css` | Casca do app: sidebar, topo do celular, barra inferior, folha "Mais", area de conteudo | 3.2 |
+| `static/js/layout.js` | JS da casca: controle de tema (sincroniza com `theme.js`) e folha "Mais" | 3.2 |
 | `pages/<app>.css` | Ajustes so daquela tela/app (`home.css`, `transactions.css`, `cards.css`, `imports.css`, `reports.css`, `accounts.css`, ...) | issue dona do app |
 | `app.css` | Legado, congelado depois da 3.1 | 3.1 (aliases), 3.9 (remove) |
 
 - `base.html` carrega, nesta ordem: `tokens.css`, `base.css`, `app.css` (ate a 3.9), `components.css`, `layout.css`, e o bloco `{% block page_css %}`. Cada template de tela inclui o seu `pages/<app>.css` nesse bloco. Sem `@import` (carregamento em paralelo; o `CompressedManifestStaticFilesStorage` de producao versiona cada arquivo).
 - Componentes novos usam nomes de classe que nao existem no `app.css`, para o legado nao vazar estilo neles: `.btn` (`--primary`, `--secondary`, `--tertiary`), `.status` (`--positive`, `--warning`, `--neutral`, `--negative`), `.card`, `.balance-card`, `.field`, `.alert`, `.segmented`, `.period-picker`, `.filters` (recolhivel, #242), `.list-table` (tabela no desktop, lista empilhada no celular), `.summary-rows` (rotulo e valor do relatorio), `.progress`, `.empty`.
 - Uma issue de tela so edita: os templates do seu app, o seu `pages/<app>.css`, os testes do seu app e, se precisar de JS proprio, `static/js/pages/<app>.js`. Nao edita `tokens.css`, `base.css`, `components.css`, `layout.css`, `app.css`, `app.js`, `base.html` nem partials compartilhados. Se faltar um componente, a sessao registra no PR e resolve com classe em `pages/<app>.css`; a 3.9 promove o que se repetir.
-- JS: `app.js` (comportamento de formulario) continua como esta e fica congelado depois da 3.1; JS de tela vai em `static/js/pages/<app>.js`.
+- JS: `app.js` (comportamento de formulario) continua como esta e fica congelado depois da 3.1; JS de tela vai em `static/js/pages/<app>.js`. O JS da casca (tema e folha "Mais") e `static/js/layout.js` (dono 3.2), carregado com `defer` no `<body>`, depois do `theme.js`.
 
 ### D2. Troca de tema
 
@@ -103,6 +104,17 @@ Arquivos novos em `static/css/`, cada um com um dono:
 - R-11: QUANDO o usuario tocar em Mais, ENTAO a folha SHALL listar as demais telas e o controle de tema, e SHALL fechar com toque fora, Esc ou novo toque em Mais.
 - R-12: O conteudo SHALL NOT ficar escondido atras da barra inferior.
 
+### Contrato da casca para as telas (3.3 a 3.8b)
+
+Registrado na ADR-019. O `base.html` ganha dois blocos opcionais e aditivos; `title`, `page_css`, `content` e `scripts` seguem iguais.
+
+- `{% block topbar_actions %}` (vazio): lado direito do topo do celular (periodo, voltar). Some no desktop, onde a sidebar assume.
+- `{% block shell_mode %}nav{% endblock %}`: vira a classe `shell-<modo>` no `<body>`. `nav` e o padrao. Uma tela de tarefa (ex.: novo lancamento) declara `{% block shell_mode %}task{% endblock %}`: abaixo de 768px esconde o topo e a barra inferior e zera a folga; no desktop a sidebar continua. Sem login o modo e `public` (so a marca no topo).
+- `--shell-bottom-inset` (CSS): altura da barra inferior mais a area segura abaixo de 768px, 0 acima e nos modos `task` e `public`. O `main` ja soma essa folga; barra fixa de tela soma ao seu `bottom`.
+- Margem do conteudo: 16px no celular e 40px no desktop, vindas do `.shell__main`. Telas nao repetem o padding externo.
+- Item ativo da navegacao: tag `nav_state` (`core/templatetags/navigation.py`), por namespace e path, sem consulta ao banco. Telas nao marcam item ativo.
+- Controle de tema: `.theme-switch` (`.segmented` com `aria-pressed`), escondido ate o `layout.js` revelar.
+
 ### Telas (3.3 a 3.8b)
 
 - R-13: EM 375, 900 e 1280px, nos dois temas, nenhuma pagina SHALL ter `scrollWidth` maior que a largura da janela.
@@ -134,7 +146,7 @@ Branches no padrao de `.github/BRANCHING.md` (`<prefixo>/<numero>-<descricao>`).
 | Item | Issue (Jira) | Titulo | Depende de | Arquivos (dono) | Paralelo com | Branch |
 | ---- | ------------ | ------ | ---------- | --------------- | ------------ | ------ |
 | 3.1 | #290 (FIN-48) | `feat(ui): fundacao visual com tokens, Inter e temas claro e escuro` | spec 017 | `static/css/tokens.css`, `base.css`, `components.css`, `app.css` (aliases); `static/js/theme.js`, `dashboard.js`; `static/vendor/inter/`; `templates/base.html` (head); partials `status_badge`, `empty_state`, `filter_bar`, `messages`; `core/templatetags/money.py`; `scripts/visual_check.py`, `requirements-dev.txt`, `.gitignore`; `docs/design/tokens.md` (aponta para DESIGN.md), remove `ui-preview-home.html`; specs 000 e 002 | nada | `feat/290-fundacao-visual` |
-| 3.2 | #291 (FIN-49) | `feat(ui): navegacao com sidebar, barra inferior e folha Mais` | 3.1 | `static/css/layout.css`; `templates/base.html` (body); partials `sidebar`, `nav_links`, novos `bottom_nav`, `more_sheet`, `theme_switch`; testes de `core` da navegacao | nada | `feat/291-navegacao` |
+| 3.2 | #291 (FIN-49) | `feat(ui): navegacao com sidebar, barra inferior e folha Mais` | 3.1 | `static/css/layout.css`; `static/js/layout.js`; `core/templatetags/navigation.py`; `templates/base.html` (body); partials `sidebar`, `nav_links`, novos `bottom_nav`, `more_sheet`, `theme_switch`; testes de `core` da navegacao | nada | `feat/291-navegacao` |
 | 3.3 | #292 (FIN-50) | `feat(home): inicio no visual novo` | 3.2 | `core/templates/core/home.html`, `summary_detail.html`; `static/css/pages/home.css`; `core/tests/` da home | 3.4, 3.5, 3.6, 3.7, 3.8a, 3.8b | `feat/292-inicio-visual-novo` |
 | 3.4 | #293 (FIN-51) | `feat(transactions): lancamentos no visual novo com lista empilhada e filtros recolhiveis` | 3.2 | `transactions/templates/transactions/*`; partial `transaction_table`; `static/css/pages/transactions.css`; `static/js/pages/transactions.js` (se precisar); `transactions/tests/` | 3.3, 3.5, 3.6, 3.7, 3.8a, 3.8b | `feat/293-lancamentos-visual-novo` |
 | 3.5 | #294 (FIN-52) | `feat(cards): faturas e cartoes no visual novo` | 3.2 | `cards/templates/cards/*`; `static/css/pages/cards.css`; `cards/tests/` | 3.3, 3.4, 3.6, 3.7, 3.8a, 3.8b | `feat/294-faturas-cartoes-visual-novo` |

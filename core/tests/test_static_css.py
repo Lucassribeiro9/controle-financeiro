@@ -272,10 +272,86 @@ class ComponentsCssTests(SimpleTestCase):
 
 
 class LayoutCssTests(SimpleTestCase):
-    def test_layout_css_exists_as_placeholder_owned_by_navigation(self):
-        css = read(CSS_DIR / "layout.css")
-        self.assertIn("3.2", css)
-        self.assertNotRegex(css, r"\{")
+    """3.2: casca do app (sidebar, topo, barra inferior, folha Mais) so com tokens."""
+
+    def setUp(self):
+        self.css = read(CSS_DIR / "layout.css")
+        self.classes = class_names(self.css)
+
+    def test_has_no_color_literals(self):
+        self.assertNotRegex(re.sub(r"/\*.*?\*/", "", self.css, flags=re.S), COLOR_LITERAL)
+
+    def test_defines_the_shell_classes(self):
+        for name in (
+            "shell",
+            "shell__main",
+            "topbar",
+            "sidebar",
+            "nav-item",
+            "bottom-nav",
+            "more-sheet",
+            "theme-switch",
+            "brand-mark",
+        ):
+            with self.subTest(name=name):
+                self.assertIn(name, self.classes)
+
+    def test_does_not_reuse_legacy_class_names(self):
+        legacy = class_names(read(CSS_PATH))
+        legacy_in_layout = {
+            name for name in self.classes if name.startswith(("app-", "mobile-")) or name in legacy
+        }
+        self.assertEqual(legacy_in_layout, set())
+
+    def test_desktop_is_declared_from_768px_up(self):
+        self.assertIn("@media (min-width: 768px)", self.css)
+        self.assertNotIn("@media (max-width", self.css)
+        self.assertRegex(self.css, r"\.sidebar\s*\{[^}]*\b240px")
+
+    def test_content_margins_are_16_and_40(self):
+        self.assertIn("var(--space-lg)", self.css)
+        self.assertRegex(self.css, r"\b40px\b")
+
+    def test_bottom_inset_variable_uses_safe_area(self):
+        self.assertIn("--shell-bottom-inset", self.css)
+        self.assertIn("env(safe-area-inset-bottom", self.css)
+
+    def test_task_mode_hides_topbar_and_bottom_nav_on_mobile(self):
+        self.assertRegex(self.css, r"\.shell-task\s+\.bottom-nav")
+        self.assertRegex(self.css, r"\.shell-task\s+\.topbar")
+
+    def test_sheet_locks_scroll_and_respects_reduced_motion(self):
+        self.assertIn(":has(", self.css)
+        self.assertIn(":popover-open", self.css)
+        self.assertIn("prefers-reduced-motion", self.css)
+
+
+class LayoutScriptTests(SimpleTestCase):
+    """3.2: layout.js so sincroniza o controle de tema e a folha; sem rede nem cookie."""
+
+    forbidden = re.compile(r"document\.cookie|fetch\(|XMLHttpRequest|sendBeacon|WebSocket")
+
+    def setUp(self):
+        self.source = read(STATIC / "js" / "layout.js")
+
+    def test_has_no_network_or_cookie(self):
+        self.assertNotRegex(self.source, self.forbidden)
+
+    def test_has_no_color_literals(self):
+        self.assertNotRegex(self.source, COLOR_LITERAL)
+
+    def test_syncs_theme_switch_with_theme_js(self):
+        self.assertIn("window.Theme", self.source)
+        self.assertIn("themechange", self.source)
+        self.assertIn("data-theme-choice", self.source)
+        self.assertIn("aria-pressed", self.source)
+
+    def test_manages_the_sheet(self):
+        self.assertIn("more-sheet", self.source)
+        self.assertIn("toggle", self.source)
+        self.assertIn("aria-expanded", self.source)
+        self.assertIn("hidePopover", self.source)
+        self.assertIn("min-width: 768px", self.source)
 
 
 class ThemeScriptTests(SimpleTestCase):
