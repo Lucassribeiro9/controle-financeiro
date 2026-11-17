@@ -1,0 +1,179 @@
+/*
+ * Previsoes recorrentes (spec 017, item 3.7, issue 298). Dono: app recurrences.
+ * Usa os componentes do components.css (.card, .list-table, .status, .btn, .field,
+ * .empty) e so acrescenta o que falta, com prefixo fc-. So tokens: nenhuma cor literal.
+ *
+ * Periodo: no celular vai no topo (<details class="fc-period"> em topbar_actions, sem JS);
+ * a partir de 768px o topo some e o formulario aparece no cabecalho (.fc-period-inline).
+ */
+
+.fc-header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md) var(--space-lg);
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+}
+
+.fc-header__title {
+    min-width: 0;
+}
+
+.fc-sub {
+    color: var(--color-text-secondary);
+    display: block;
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
+.fc-header__title .fc-sub {
+    margin-top: var(--space-xs);
+}
+
+/* Periodo */
+.fc-period-fields {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.fc-period-fields .field {
+    width: 120px;
+}
+
+.fc-period-inline {
+    display: none;
+}
+
+.fc-period {
+    position: relative;
+}
+
+.fc-period__summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 4px var(--space-lg);
+}
+
+.fc-period__summary::-webkit-details-marker {
+    display: none;
+}
+
+.fc-period__summary::after {
+    content: "\25BE";
+    font-size: var(--font-size-caption);
+    margin-left: var(--space-xs);
+}
+
+.fc-period__panel {
+    border: 1px solid var(--color-border-default);
+    min-width: 260px;
+    padding: var(--space-lg);
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-sm));
+    z-index: 5;
+}
+
+.fc-period__panel .fc-period-fields {
+    display: grid;
+}
+
+.fc-period__panel .field {
+    width: auto;
+}
+
+/* Tabela */
+.fc-card {
+    min-width: 0;
+}
+
+.fc-cell-desc strong {
+    display: block;
+}
+
+.fc-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.fc-actions form {
+    margin: 0;
+}
+
+.fc-adjust {
+    align-items: center;
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.fc-adjust__field {
+    width: 110px;
+}
+
+.fc-sr-only {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+@media (max-width: 767.98px) {
+    /* list-table vira grid de 2 colunas; ordem: descricao e valor, data e status, acoes */
+    .fc-cell-desc {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .fc-cell-amount {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .fc-cell-date {
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-caption);
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .fc-cell-status {
+        grid-column: 2;
+        grid-row: 2;
+        justify-self: end;
+    }
+
+    .fc-cell-actions {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        margin-top: var(--space-sm);
+    }
+
+    .fc-actions .fc-adjust {
+        flex: 1 1 100%;
+    }
+
+    .fc-adjust__field {
+        flex: 1;
+        width: auto;
+    }
+}
+
+@media (min-width: 768px) {
+    .fc-period-inline {
+        display: block;
+    }
+
+    .fc-cell-actions {
+        min-width: 360px;
+    }
+}

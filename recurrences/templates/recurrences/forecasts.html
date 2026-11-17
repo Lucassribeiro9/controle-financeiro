@@ -1,80 +1,82 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}Previsões recorrentes - {{ month }}/{{ year }}{% endblock %}
 
-{% block content %}
-    <header class="page-header">
-        <div>
-            <h1>Previsões recorrentes</h1>
-            <p class="muted">{{ month }}/{{ year }}</p>
-        </div>
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/recurrences.css' %}">{% endblock %}
 
-        <form class="period-form" method="get" action="{% url 'recurrences:forecasts-filter-page' %}">
-            <label>
-                <span>Mês</span>
-                <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
-            </label>
-            <label>
-                <span>Ano</span>
-                <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
-            </label>
-            <button class="button" type="submit">Filtrar</button>
-        </form>
+{% block topbar_actions %}
+    {% url 'recurrences:forecasts-filter-page' as filter_url %}
+    <details class="fc-period">
+        <summary class="period-picker fc-period__summary">{{ month|stringformat:"02d" }}/{{ year }}</summary>
+        <div class="card fc-period__panel">
+            {% include "recurrences/_period.html" with action=filter_url %}
+        </div>
+    </details>
+{% endblock %}
+
+{% block content %}
+    {% url 'recurrences:forecasts-filter-page' as filter_url %}
+    <header class="fc-header">
+        <div class="fc-header__title">
+            <h1>Previsões recorrentes</h1>
+            <p class="fc-sub">{{ month }}/{{ year }}</p>
+        </div>
+        <div class="fc-period-inline">{% include "recurrences/_period.html" with action=filter_url %}</div>
     </header>
 
-    <div class="item-list">
-        {% for forecast in forecasts %}
-            <article class="forecast-card">
-                <div>
-                    <div class="card-title-row">
-                        <h2>{{ forecast.description }}</h2>
-                        <span class="{{ forecast.status|status_badge_class }}">{{ forecast.get_status_display }}</span>
-                    </div>
+    {% if forecasts %}
+        <section class="card fc-card">
+            <table class="list-table fc-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Data</th>
+                        <th scope="col">Previsão</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="list-table__amount">Valor</th>
+                        <th scope="col">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for forecast in forecasts %}
+                        <tr>
+                            <td class="fc-cell-date">{{ forecast.date|date_br }}</td>
+                            <td class="fc-cell-desc">
+                                <strong>{{ forecast.description }}</strong>
+                                <span class="fc-sub">{{ forecast.account|default:"Conta não informada" }}{% if forecast.card %} · {{ forecast.card }}{% endif %}</span>
+                            </td>
+                            <td class="fc-cell-status">
+                                <span class="{{ forecast.status|status_badge_class }}">{{ forecast.get_status_display }}</span>
+                            </td>
+                            <td class="list-table__amount fc-cell-amount">{{ forecast.amount|brl }}</td>
+                            <td class="fc-cell-actions">
+                                <div class="fc-actions">
+                                    <form method="post" action="{% url 'recurrences:confirm-forecast' forecast.id %}">
+                                        {% csrf_token %}
+                                        <button class="btn btn--primary" type="submit">Confirmar</button>
+                                    </form>
 
-                    <dl class="detail-list">
-                        <div>
-                            <dt>Data</dt>
-                            <dd>{{ forecast.date|date_br }}</dd>
-                        </div>
-                        <div>
-                            <dt>Valor</dt>
-                            <dd>{{ forecast.amount|brl }}</dd>
-                        </div>
-                        <div>
-                            <dt>Conta</dt>
-                            <dd>{{ forecast.account|default:"Não informada" }}</dd>
-                        </div>
-                        <div>
-                            <dt>Cartão</dt>
-                            <dd>{{ forecast.card|default:"Não informado" }}</dd>
-                        </div>
-                    </dl>
-                </div>
+                                    <form method="post" action="{% url 'recurrences:ignore-forecast' forecast.id %}">
+                                        {% csrf_token %}
+                                        <button class="btn btn--secondary" type="submit">Ignorar</button>
+                                    </form>
 
-                <div class="action-row">
-                    <form method="post" action="{% url 'recurrences:confirm-forecast' forecast.id %}">
-                        {% csrf_token %}
-                        <button class="button" type="submit">Confirmar</button>
-                    </form>
-
-                    <form method="post" action="{% url 'recurrences:ignore-forecast' forecast.id %}">
-                        {% csrf_token %}
-                        <button class="button button-secondary" type="submit">Ignorar</button>
-                    </form>
-
-                    <form class="inline-form" method="post" action="{% url 'recurrences:adjust-forecast' forecast.id %}">
-                        {% csrf_token %}
-                        <label class="sr-only" for="amount-{{ forecast.id }}">Novo valor</label>
-                        <input id="amount-{{ forecast.id }}" name="amount" type="text" inputmode="decimal" placeholder="0,00" value="{{ forecast.amount|decimal_ptbr }}" required>
-                        <button class="button button-secondary" type="submit">Ajustar</button>
-                    </form>
-                </div>
-            </article>
-        {% empty %}
-            <section class="panel">
-                <p class="empty">Nenhuma previsão recorrente no período.</p>
-            </section>
-        {% endfor %}
-    </div>
+                                    <form class="fc-adjust" method="post" action="{% url 'recurrences:adjust-forecast' forecast.id %}">
+                                        {% csrf_token %}
+                                        <label class="field fc-adjust__field">
+                                            <span class="field__label fc-sr-only">Novo valor</span>
+                                            <input id="amount-{{ forecast.id }}" name="amount" type="text" inputmode="decimal" placeholder="0,00" value="{{ forecast.amount|decimal_ptbr }}" required>
+                                        </label>
+                                        <button class="btn btn--tertiary" type="submit">Ajustar</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        {% include "partials/empty_state.html" with title="Nenhuma previsão recorrente no período." description="As previsões do mês aparecem aqui para confirmar, ignorar ou ajustar." %}
+    {% endif %}
 {% endblock %}
