@@ -1,64 +1,68 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}Transferências - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/transactions.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="tx-header">
+        <div class="tx-header__title">
             <h1>Transferências</h1>
-            <p class="muted">{{ month }}/{{ year }}</p>
+            <p class="tx-sub">{{ month }}/{{ year }}</p>
         </div>
 
-        <div class="action-row">
-            <a class="button button-secondary" href="{% url 'transactions:list' %}">Ver lançamentos</a>
-            <a class="button" href="{% url 'transactions:transfer-create' %}">Nova transferência</a>
+        <div class="tx-header__actions">
+            <a class="btn btn--secondary" href="{% url 'transactions:list' %}">Ver lançamentos</a>
+            <a class="btn btn--primary" href="{% url 'transactions:transfer-create' %}">Nova transferência</a>
         </div>
     </header>
 
-    <form class="period-form" method="get" action="{% url 'transactions:transfers' %}">
-        <label>
-            <span>Mês</span>
-            <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
-        </label>
-        <label>
-            <span>Ano</span>
-            <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
-        </label>
-        <button class="button" type="submit">Filtrar</button>
+    <form class="tx-filters" method="get" action="{% url 'transactions:transfers' %}">
+        <div class="tx-period">
+            <label class="field">
+                <span class="field__label">Mês</span>
+                <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
+            </label>
+            <label class="field">
+                <span class="field__label">Ano</span>
+                <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
+            </label>
+            <button class="btn btn--secondary" type="submit">Aplicar período</button>
+        </div>
     </form>
 
-    <section class="panel page-section">
-        {% if transfers %}
-            <table class="data-table">
+    {% if transfers %}
+        <section class="card tx-card">
+            <table class="list-table">
                 <thead>
                     <tr>
                         <th>Descrição</th>
-                        <th>Data</th>
-                        <th>Origem</th>
-                        <th>Destino</th>
-                        <th>Valor</th>
+                        <th class="tx-date">Data</th>
+                        <th class="tx-account">Origem</th>
+                        <th class="tx-account">Destino</th>
+                        <th class="list-table__amount">Valor</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for transfer in transfers %}
-                        <tr>
-                            <td>
+                        <tr class="tx-row tx-row--static">
+                            <td class="tx-main">
                                 {{ transfer.description }}
                                 {% if transfer.notes %}
-                                    <p class="muted">{{ transfer.notes }}</p>
+                                    <p class="tx-sub">{{ transfer.notes }}</p>
                                 {% endif %}
                             </td>
-                            <td>{{ transfer.date|date_br }}</td>
-                            <td>{{ transfer.from_account }}</td>
-                            <td>{{ transfer.destination_account }}</td>
-                            <td>{{ transfer.amount|brl }}</td>
+                            <td class="tx-date">{{ transfer.date|date_br }}</td>
+                            <td class="tx-account">{{ transfer.from_account }}</td>
+                            <td class="tx-account tx-arrow">{{ transfer.destination_account }}</td>
+                            <td class="list-table__amount tx-amount">{{ transfer.amount|brl }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        {% else %}
-            <p class="empty">Nenhuma transferência encontrada.</p>
-        {% endif %}
-    </section>
+        </section>
+    {% else %}
+        <p class="empty">Nenhuma transferência encontrada.</p>
+    {% endif %}
 {% endblock %}
