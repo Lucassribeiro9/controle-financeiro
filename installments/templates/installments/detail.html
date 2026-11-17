@@ -1,92 +1,96 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}{{ plan.description }} - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/installments.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="screen-head">
+        <div class="screen-head__title">
             <h1>{{ plan.description }}</h1>
-            <p class="muted">{{ plan.card }}</p>
+            <p class="soft-text">{{ plan.card }}</p>
         </div>
 
-        <a class="button button-secondary" href="{% url 'installments:list' %}">Voltar</a>
+        <div class="screen-head__actions">
+            <a class="btn btn--tertiary" href="{% url 'installments:list' %}">Voltar</a>
+        </div>
     </header>
 
-    <section class="panel">
-        <div class="card-title-row">
-            <h2>Resumo</h2>
-            <span class="{{ plan.status|status_badge_class }}">{{ plan.get_status_display }}</span>
-        </div>
+    <div class="card-stack">
+        <section class="card">
+            <div class="card-head">
+                <h2>Resumo</h2>
+                <span class="{{ plan.status|status_badge_class }}">{{ plan.get_status_display }}</span>
+            </div>
 
-        <dl class="detail-list">
-            <div>
-                <dt>Total</dt>
-                <dd>{{ plan.total_amount|brl }}</dd>
-            </div>
-            <div>
-                <dt>Parcela base</dt>
-                <dd>{{ plan.installment_amount|brl }}</dd>
-            </div>
-            <div>
-                <dt>Parcelas</dt>
-                <dd>{{ progress.generated_count }}/{{ plan.total_installments }}</dd>
-            </div>
-            <div>
-                <dt>Pagas</dt>
-                <dd>{{ progress.paid_count }}</dd>
-            </div>
-            <div>
-                <dt>Primeira parcela</dt>
-                <dd>{{ plan.first_installment_date|date_br }}</dd>
-            </div>
-            <div>
-                <dt>Categoria</dt>
-                <dd>{{ plan.category|default:"Não vinculada" }}</dd>
-            </div>
-        </dl>
-    </section>
-
-    {% if plan.status != "canceled" %}
-        <section class="panel page-section">
-            <h2>Ações</h2>
-            <div class="action-row">
-                <a class="button button-danger" href="{% url 'installments:cancel' plan.id %}">Cancelar parcelamento</a>
-            </div>
+            <dl class="summary-rows">
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Total</dt>
+                    <dd class="summary-rows__value">{{ plan.total_amount|brl }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Parcela base</dt>
+                    <dd class="summary-rows__value">{{ plan.installment_amount|brl }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Parcelas</dt>
+                    <dd class="summary-rows__value">{{ progress.generated_count }}/{{ plan.total_installments }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Pagas</dt>
+                    <dd class="summary-rows__value">{{ progress.paid_count }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Primeira parcela</dt>
+                    <dd class="summary-rows__value">{{ plan.first_installment_date|date_br }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Categoria</dt>
+                    <dd class="summary-rows__value">{{ plan.category|default:"Não vinculada" }}</dd>
+                </div>
+            </dl>
         </section>
-    {% endif %}
 
-    <section class="panel page-section">
-        <h2>Parcelas geradas</h2>
-        {% if transactions %}
-            <div class="table-responsive">
-                <table class="data-table">
+        {% if plan.status != "canceled" %}
+            <section class="card">
+                <h2>Ações</h2>
+                <div class="button-bar plan-actions">
+                    <a class="btn btn--danger" href="{% url 'installments:cancel' plan.id %}">Cancelar parcelamento</a>
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="card list-card">
+            <h2>Parcelas geradas</h2>
+            {% if transactions %}
+                <table class="list-table card-section">
                     <thead>
                         <tr>
-                            <th class="cell-count">Parcela</th>
-                            <th class="cell-date">Data</th>
+                            <th>Parcela</th>
+                            <th>Data</th>
                             <th>Fatura</th>
-                            <th class="cell-status">Status</th>
-                            <th class="cell-amount">Valor</th>
+                            <th>Status</th>
+                            <th class="list-table__amount">Valor</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for transaction in transactions %}
                             <tr>
-                                <td class="cell-count">{{ transaction.installment_number }}/{{ plan.total_installments }}</td>
-                                <td class="cell-date">{{ transaction.date|date_br }}</td>
-                                <td>{{ transaction.statement|default:"Não vinculada" }}</td>
-                                <td class="cell-status">
+                                <td class="row-main">{{ transaction.installment_number }}/{{ plan.total_installments }}</td>
+                                <td class="row-meta">{{ transaction.date|date_br }}</td>
+                                <td class="row-meta">{{ transaction.statement|default:"Não vinculada" }}</td>
+                                <td class="row-meta">
                                     <span class="{{ transaction.status|status_badge_class }}">{{ transaction.get_status_display }}</span>
                                 </td>
-                                <td class="cell-amount">{{ transaction.amount|brl }}</td>
+                                <td class="list-table__amount row-value">{{ transaction.amount|brl }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-            </div>
-        {% else %}
-            <p class="empty">Nenhuma parcela gerada.</p>
-        {% endif %}
-    </section>
+            {% else %}
+                {% include "partials/empty_state.html" with title="Nenhuma parcela gerada" description="As parcelas aparecem aqui quando o plano gera lançamentos." %}
+            {% endif %}
+        </section>
+    </div>
 {% endblock %}

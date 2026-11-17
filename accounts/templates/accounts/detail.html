@@ -1,74 +1,87 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}{{ account.name }} - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/accounts.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="screen-head">
+        <div class="screen-head__title">
             <h1>{{ account.name }}</h1>
-            <p class="muted">{{ account.institution }}</p>
+            <p class="soft-text">{{ account.institution }}</p>
         </div>
 
-        <div class="action-row">
-            <a class="button button-secondary" href="{% url 'accounts:adjust_balance' account.id %}">Ajustar saldo</a>
-            <a class="button" href="{% url 'accounts:update' account.id %}">Editar conta</a>
+        <div class="screen-head__actions">
+            <a class="btn btn--secondary" href="{% url 'accounts:adjust_balance' account.id %}">Ajustar saldo</a>
+            <a class="btn btn--primary" href="{% url 'accounts:update' account.id %}">Editar conta</a>
         </div>
     </header>
 
-    <section class="panel">
-        <dl class="detail-list detail-list-compact">
-            <div>
-                <dt>Instituição</dt>
-                <dd>{{ account.institution }}</dd>
-            </div>
-            <div>
-                <dt>Tipo</dt>
-                <dd>{{ account.get_account_type_display }}</dd>
-            </div>
-            <div>
-                <dt>Moeda</dt>
-                <dd>{{ account.currency }}</dd>
-            </div>
-            <div>
-                <dt>Saldo atual</dt>
-                <dd>{{ account.balance|currency:account.currency }}</dd>
-            </div>
-            <div>
-                <dt>Status</dt>
-                <dd>{% if account.is_active %}Ativa{% else %}Inativa{% endif %}</dd>
-            </div>
-            <div>
-                <dt>Atualizada em</dt>
-                <dd>{{ account.updated_at|date_br }}</dd>
-            </div>
-        </dl>
-    </section>
+    <div class="card-stack">
+        <section class="card">
+            <dl class="summary-rows">
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Instituição</dt>
+                    <dd class="summary-rows__value">{{ account.institution }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Tipo</dt>
+                    <dd class="summary-rows__value">{{ account.get_account_type_display }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Moeda</dt>
+                    <dd class="summary-rows__value">{{ account.currency }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Saldo atual</dt>
+                    <dd class="summary-rows__value">{{ account.balance|currency:account.currency }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Status</dt>
+                    <dd class="summary-rows__value">
+                        <span class="{{ account.is_active|active_badge_class }}">{% if account.is_active %}Ativa{% else %}Inativa{% endif %}</span>
+                    </dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Atualizada em</dt>
+                    <dd class="summary-rows__value">{{ account.updated_at|date_br }}</dd>
+                </div>
+            </dl>
+        </section>
 
-    <section class="panel page-section">
-        <h2>Últimos lançamentos</h2>
-        {% if recent_transactions %}
-            <table class="table">
-                <thead>
-                    <tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr>
-                </thead>
-                <tbody>
-                    {% for transaction in recent_transactions %}
+        <section class="card list-card">
+            <h2>Últimos lançamentos</h2>
+            {% if recent_transactions %}
+                <table class="list-table card-section">
+                    <thead>
                         <tr>
-                            <td>{{ transaction.date|date_br }}</td>
-                            <td><a href="{% url 'transactions:detail' transaction.id %}">{{ transaction.description }}</a></td>
-                            <td>{{ transaction.get_transaction_type_display }}</td>
-                            <td>{{ transaction.amount|currency:account.currency }}</td>
+                            <th>Descrição</th>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th class="list-table__amount">Valor</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p class="muted">Nenhum lançamento nesta conta.</p>
-        {% endif %}
-    </section>
+                    </thead>
+                    <tbody>
+                        {% for transaction in recent_transactions %}
+                            <tr>
+                                <td class="row-main">
+                                    <a href="{% url 'transactions:detail' transaction.id %}">{{ transaction.description }}</a>
+                                </td>
+                                <td class="row-meta">{{ transaction.date|date_br }}</td>
+                                <td class="row-meta">{{ transaction.get_transaction_type_display }}</td>
+                                <td class="list-table__amount row-value">{{ transaction.amount|currency:account.currency }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="soft-text card-section">Nenhum lançamento nesta conta.</p>
+            {% endif %}
+        </section>
 
-    <div class="action-row page-section">
-        <a class="button button-secondary" href="{% url 'accounts:list' %}">Voltar</a>
+        <div class="button-bar">
+            <a class="btn btn--tertiary" href="{% url 'accounts:list' %}">Voltar</a>
+        </div>
     </div>
 {% endblock %}

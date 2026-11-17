@@ -187,3 +187,76 @@ class InstallmentViewTests(AuthenticatedTestCase):
 
         messages = [str(m) for m in response.context["messages"]]
         self.assertEqual(messages, ["Parcelamento concluído não pode ser cancelado."])
+
+
+class InstallmentVisualMarkupTests(AuthenticatedTestCase):
+    """Visual novo (spec 017): listas empilhadas, resumo, alerta e botao de perigo."""
+
+    def setUp(self):
+        institution = Institution.objects.create(name="Inter", code="077")
+        account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        card = Card.objects.create(
+            name="Inter Gold",
+            institution=institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+            statement_closing_day=20,
+            statement_due_day=27,
+            payment_account=account,
+        )
+        self.plan = create_installment_plan(
+            description="Notebook",
+            total_amount=Decimal("1000.00"),
+            total_installments=10,
+            first_installment_date=date(2026, 5, 8),
+            card=card,
+            category=Category.objects.create(name="Eletronicos"),
+        )
+
+    def test_list_uses_card_and_list_table(self):
+        response = self.client.get(reverse("installments:list"))
+
+        self.assertContains(response, 'class="card')
+        self.assertContains(response, "list-table")
+        self.assertContains(response, "status status--")
+        self.assertContains(response, "pages/installments.css")
+        self.assertNotContains(response, "data-table")
+        self.assertNotContains(response, "table-responsive")
+
+    def test_list_empty_state_uses_partial(self):
+        InstallmentPlan.objects.all().delete()
+
+        response = self.client.get(reverse("installments:list"))
+
+        self.assertContains(response, "empty__title")
+
+    def test_detail_uses_summary_rows_and_list_table(self):
+        response = self.client.get(reverse("installments:detail", args=[self.plan.id]))
+
+        self.assertContains(response, "summary-rows")
+        self.assertContains(response, "list-table")
+        self.assertContains(response, "btn--danger")
+        self.assertNotContains(response, "detail-list")
+        self.assertNotContains(response, "data-table")
+
+    def test_cancel_confirmation_uses_warning_alert_and_danger_button(self):
+        response = self.client.get(reverse("installments:cancel", args=[self.plan.id]))
+
+        self.assertContains(response, "alert alert--warning")
+        self.assertContains(response, "btn btn--danger")
+        self.assertContains(response, "summary-rows")
+        self.assertContains(response, "list-table")
+        self.assertNotContains(response, "message-box")
+        self.assertNotContains(response, "button-danger")
+
+    def test_form_uses_field_component(self):
+        response = self.client.get(reverse("installments:create"))
+
+        self.assertContains(response, 'class="field')
+        self.assertContains(response, "btn btn--primary")
+        self.assertNotContains(response, "form-field")

@@ -1,41 +1,55 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}Ajustar saldo - {{ account.name }} - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/accounts.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="screen-head">
+        <div class="screen-head__title">
             <h1>Ajustar saldo</h1>
-            <p class="muted">{{ account.name }} · saldo atual {{ account.balance|currency:account.currency }}</p>
+            <p class="soft-text">{{ account.name }} · saldo atual {{ account.balance|currency:account.currency }}</p>
         </div>
     </header>
 
-    <section class="panel">
-        <p class="muted">Informe o saldo real da conta. A diferença vira um lançamento de ajuste, sem contar como receita ou gasto.</p>
+    <section class="card form-card">
+        <p class="soft-text">Informe o saldo real da conta. A diferença vira um lançamento de ajuste, sem contar como receita ou gasto.</p>
 
-        <form class="form-grid" method="post">
+        <form class="form-stack" method="post">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-                <div class="app-message">
-                    {{ form.non_field_errors }}
+                <div class="alert alert--error" role="alert">
+                    {% for error in form.non_field_errors %}
+                        <span class="alert__detail">{{ error }}</span>
+                    {% endfor %}
                 </div>
             {% endif %}
 
             {% for field in form %}
-                <label class="form-field" for="{{ field.id_for_label }}">
-                    <span>{{ field.label }}</span>
-                    {{ field }}
-                    {% if field.errors %}
-                        <small class="field-error">{{ field.errors|join:", " }}</small>
-                    {% endif %}
-                </label>
+                {% if field.field.widget.input_type == "checkbox" %}
+                    <label class="field field--check" for="{{ field.id_for_label }}">
+                        {{ field }}
+                        <span class="field__label">{{ field.label }}</span>
+                        {% if field.errors %}
+                            <small class="field__error">{{ field.errors|join:", " }}</small>
+                        {% endif %}
+                    </label>
+                {% else %}
+                    <label class="field" for="{{ field.id_for_label }}">
+                        <span class="field__label">{{ field.label }}</span>
+                        {{ field }}
+                        {% if field.errors %}
+                            <small class="field__error">{{ field.errors|join:", " }}</small>
+                        {% endif %}
+                    </label>
+                {% endif %}
             {% endfor %}
 
-            <div class="action-row">
-                <button class="button" type="submit">Ajustar saldo</button>
-                <a class="button button-secondary" href="{% url 'accounts:detail' account.id %}">Cancelar</a>
+            <div class="button-bar">
+                <button class="btn btn--primary" type="submit">Ajustar saldo</button>
+                <a class="btn btn--tertiary" href="{% url 'accounts:detail' account.id %}">Cancelar</a>
             </div>
         </form>
     </section>
