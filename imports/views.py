@@ -14,6 +14,7 @@ from core.forms import normalize_decimal
 from core.forms import parse_br_date
 from transactions.models import Transaction
 
+from .forms import ImportReviewFilterForm
 from .importers import CSV_PROFILE_CHOICES, get_importer_for_source_type
 from .models import ImportedTransaction
 from .selectors import IMPORT_REVIEW_TABS
@@ -401,15 +402,15 @@ def upload_import_page(request: HttpRequest):
 def review_imports_page(request: HttpRequest):
     """Renderiza a pagina de revisao de transacoes importadas."""
 
-    imported_transactions_queryset = get_imported_transactions_for_review(
-        **_review_filters_from_request(request)
-    )
+    filter_form = ImportReviewFilterForm(request.GET)
+    filter_form.is_valid()
+    review_filters = filter_form.merge_into(_review_filters_from_request(request))
+    imported_transactions_queryset = get_imported_transactions_for_review(**review_filters)
     page_obj = paginate_imported_transactions_for_review(
         queryset=imported_transactions_queryset,
         page_number=request.GET.get("page"),
     )
     filter_options = get_import_review_filter_options()
-    review_filters = _review_filters_from_request(request)
     active_tab = normalize_review_tab(review_filters.get("tab"))
     tab_counts = get_import_review_tab_counts(**review_filters)
     return render(
@@ -424,6 +425,8 @@ def review_imports_page(request: HttpRequest):
             "empty_message": REVIEW_EMPTY_MESSAGES[active_tab],
             "review_tabs": _build_review_tabs(request, tab_counts, active_tab),
             "active_filters": request.GET,
+            "filter_form": filter_form,
+            "active_filter_count": filter_form.active_count,
             "review_query_string": request.GET.urlencode(),
             "pagination_query_string": _query_string_without_page(request),
             "accounts": FinancialAccount.objects.filter(is_active=True).order_by("name"),
