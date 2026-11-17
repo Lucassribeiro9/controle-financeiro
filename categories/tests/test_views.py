@@ -81,7 +81,9 @@ class CategoryViewTests(AuthenticatedTestCase):
         )
         self.assertEqual(parent_summary.children_count, 2)
         self.assertEqual(parent_summary.monthly_spent, Decimal("175.00"))
-        self.assertContains(response, "<td>2</td>", html=True)
+        self.assertContains(
+            response, "<td class=\"row-meta\" data-label=\"Subcategorias\">2</td>", html=True
+        )
 
     def test_category_create_page_returns_form(self):
         """Deve renderizar formulario de criacao."""
@@ -255,7 +257,7 @@ class CategoryViewTests(AuthenticatedTestCase):
         response = self.client.get(reverse("categories:list"))
         
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "badge-danger")
+        self.assertContains(response, "status--negative")
         self.assertContains(response, "Excedido")
         self.assertContains(response, "R$ 510,00 / R$ 500,00")
 
@@ -416,3 +418,48 @@ class CategoryCreateGoalViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Já existe uma meta para Alimentacao em Outubro/2026.")
         self.assertEqual(MonthlyGoal.objects.count(), 1)
+
+
+class CategoryVisualMarkupTests(AuthenticatedTestCase):
+    """Visual novo (spec 017): lista empilhada, status do componente e campos."""
+
+    def test_list_uses_card_and_list_table(self):
+        Category.objects.create(name="Alimentacao")
+
+        response = self.client.get(reverse("categories:list"))
+
+        self.assertContains(response, 'class="card')
+        self.assertContains(response, "list-table")
+        self.assertContains(response, "pages/categories.css")
+        self.assertNotContains(response, "data-table")
+
+    def test_list_status_uses_active_badge_class(self):
+        Category.objects.create(name="Alimentacao")
+        Category.objects.create(name="Antiga", is_active=False)
+
+        response = self.client.get(reverse("categories:list"))
+
+        self.assertContains(response, 'class="status status--positive"')
+        self.assertContains(response, 'class="status status--neutral"')
+        self.assertNotContains(response, 'class="status"')
+
+    def test_list_empty_state_uses_partial(self):
+        response = self.client.get(reverse("categories:list"))
+
+        self.assertContains(response, "empty__title")
+        self.assertContains(response, "Nenhuma categoria cadastrada")
+
+    def test_forms_use_field_component(self):
+        category = Category.objects.create(name="Alimentacao")
+
+        for name, args in (
+            ("categories:create", []),
+            ("categories:update", [category.id]),
+            ("categories:create_goal", [category.id]),
+        ):
+            with self.subTest(url=name):
+                response = self.client.get(reverse(name, args=args))
+                self.assertContains(response, 'class="field')
+                self.assertContains(response, "btn btn--primary")
+                self.assertNotContains(response, "form-field")
+                self.assertNotContains(response, "form-grid")

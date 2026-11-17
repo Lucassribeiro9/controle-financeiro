@@ -280,3 +280,74 @@ class AccountBalanceAdjustmentViewTests(AuthenticatedTestCase):
         )
 
         self.assertContains(response, self.url)
+
+
+class AccountVisualMarkupTests(AuthenticatedTestCase):
+    """Visual novo (spec 017): lista empilhada no celular e componentes do components.css."""
+
+    def setUp(self):
+        self.inter = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.inter,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+
+    def test_list_uses_card_and_list_table_per_currency(self):
+        response = self.client.get(reverse("accounts:list"))
+
+        self.assertContains(response, 'class="card')
+        self.assertContains(response, "list-table")
+        self.assertContains(response, "list-table__amount")
+        self.assertContains(response, "pages/accounts.css")
+        self.assertNotContains(response, "data-table")
+        self.assertNotContains(response, "table-responsive")
+
+    def test_list_empty_state_uses_partial(self):
+        FinancialAccount.objects.all().delete()
+
+        response = self.client.get(reverse("accounts:list"))
+
+        self.assertContains(response, "empty__title")
+        self.assertContains(response, "Nenhuma conta cadastrada")
+
+    def test_detail_uses_summary_rows_and_list_table(self):
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("50.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date="2026-11-10",
+        )
+
+        response = self.client.get(reverse("accounts:detail", args=[self.account.id]))
+
+        self.assertContains(response, "summary-rows")
+        self.assertContains(response, "list-table")
+        self.assertContains(response, "Mercado")
+        self.assertNotContains(response, "detail-list")
+        self.assertNotContains(response, 'class="table"')
+
+    def test_forms_use_field_component_and_error_alert(self):
+        for name, args in (
+            ("accounts:create", []),
+            ("accounts:update", [self.account.id]),
+            ("accounts:adjust_balance", [self.account.id]),
+        ):
+            with self.subTest(url=name):
+                response = self.client.get(reverse(name, args=args))
+                self.assertContains(response, 'class="field')
+                self.assertContains(response, "field__label")
+                self.assertContains(response, "btn btn--primary")
+                self.assertNotContains(response, "form-field")
+                self.assertNotContains(response, "form-grid")
+
+    def test_form_error_uses_alert_error(self):
+        response = self.client.post(
+            reverse("accounts:adjust_balance", args=[self.account.id]),
+            {"new_balance": ""},
+        )
+
+        self.assertContains(response, "field__error")

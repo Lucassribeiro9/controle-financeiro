@@ -1,57 +1,55 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}Instituições - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/institutions.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="screen-head">
+        <div class="screen-head__title">
             <h1>Instituições</h1>
-            <p class="muted">Bancos, corretoras, carteiras e emissores usados no controle financeiro.</p>
+            <p class="soft-text">Bancos, corretoras, carteiras e emissores usados no controle financeiro.</p>
         </div>
 
-        <a class="button" href="{% url 'institutions:create' %}">Nova instituição</a>
+        <div class="screen-head__actions">
+            <a class="btn btn--primary" href="{% url 'institutions:create' %}">Nova instituição</a>
+        </div>
     </header>
 
-    <section class="panel page-section">
-        {% if institutions %}
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
+    {% if institutions %}
+        <section class="card list-card">
+            <table class="list-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Código</th>
+                        <th>Contas</th>
+                        <th>Cartões</th>
+                        <th class="list-table__amount">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for institution in institutions %}
                         <tr>
-                            <th class="cell-primary">Nome</th>
-                            <th class="cell-code">Código</th>
-                            <th class="cell-status">Status</th>
-                            <th class="cell-count">Contas</th>
-                            <th class="cell-count">Cartões</th>
+                            <td class="row-main">
+                                <a href="{% url 'institutions:update' institution.id %}">{{ institution.name }}</a>
+                                {% if institution.official_name %}
+                                    <p class="soft-text">{{ institution.official_name }}</p>
+                                {% endif %}
+                            </td>
+                            <td class="row-meta" data-label="Código">{{ institution.code|default:"Não informado" }}</td>
+                            <td class="row-meta" data-label="Contas">{{ institution.accounts_count }}</td>
+                            <td class="row-meta" data-label="Cartões">{{ institution.cards_count }}</td>
+                            <td class="list-table__amount row-value">
+                                <span class="{{ institution.is_active|active_badge_class }}">{% if institution.is_active %}Ativa{% else %}Inativa{% endif %}</span>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {% for institution in institutions %}
-                            <tr>
-                                <td class="cell-primary">
-                                    <a href="{% url 'institutions:update' institution.id %}">
-                                        {{ institution.name }}
-                                    </a>
-                                    {% if institution.official_name %}
-                                        <p class="muted">{{ institution.official_name }}</p>
-                                    {% endif %}
-                                </td>
-                                <td class="cell-code">{{ institution.code|default:"Não informado" }}</td>
-                                <td class="cell-status">
-                                    <span class="{{ institution.is_active|active_badge_class }}">
-                                        {% if institution.is_active %}Ativa{% else %}Inativa{% endif %}
-                                    </span>
-                                </td>
-                                <td class="cell-count">{{ institution.accounts_count }}</td>
-                                <td class="cell-count">{{ institution.cards_count }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="empty">Nenhuma instituição cadastrada.</p>
-        {% endif %}
-    </section>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        {% include "partials/empty_state.html" with title="Nenhuma instituição cadastrada" description="Cadastre bancos e corretoras para vincular contas e cartões." cta_label="Nova instituição" cta_url="/institutions/create/" %}
+    {% endif %}
 {% endblock %}

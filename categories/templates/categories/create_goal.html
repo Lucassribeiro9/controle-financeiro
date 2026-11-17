@@ -1,38 +1,53 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Meta Mensal - {{ category.name }} - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/categories.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="screen-head">
+        <div class="screen-head__title">
             <h1>Meta mensal de redução</h1>
-            <p class="muted">Defina um limite de gasto mensal para a categoria <strong>{{ category.name }}</strong>.</p>
+            <p class="soft-text">Defina um limite de gasto mensal para a categoria <strong>{{ category.name }}</strong>.</p>
         </div>
     </header>
 
-    <section class="panel page-section">
-        <form class="form-grid" method="post">
+    <section class="card form-card">
+        <form class="form-stack" method="post">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
-                <div class="app-message">
-                    {{ form.non_field_errors }}
+                <div class="alert alert--error" role="alert">
+                    {% for error in form.non_field_errors %}
+                        <span class="alert__detail">{{ error }}</span>
+                    {% endfor %}
                 </div>
             {% endif %}
 
             {% for field in form %}
-                <label class="form-field" for="{{ field.id_for_label }}">
-                    <span>{{ field.label }}</span>
-                    {{ field }}
-                    {% if field.errors %}
-                        <small class="field-error">{{ field.errors|join:", " }}</small>
-                    {% endif %}
-                </label>
+                {% if field.field.widget.input_type == "checkbox" %}
+                    <label class="field field--check" for="{{ field.id_for_label }}">
+                        {{ field }}
+                        <span class="field__label">{{ field.label }}</span>
+                        {% if field.errors %}
+                            <small class="field__error">{{ field.errors|join:", " }}</small>
+                        {% endif %}
+                    </label>
+                {% else %}
+                    <label class="field" for="{{ field.id_for_label }}">
+                        <span class="field__label">{{ field.label }}</span>
+                        {{ field }}
+                        {% if field.errors %}
+                            <small class="field__error">{{ field.errors|join:", " }}</small>
+                        {% endif %}
+                    </label>
+                {% endif %}
             {% endfor %}
 
-            <div class="action-row">
-                <button class="button" type="submit">Criar meta</button>
-                <a class="button button-secondary" href="{% url 'categories:list' %}">Cancelar</a>
+            <div class="button-bar">
+                <button class="btn btn--primary" type="submit">Criar meta</button>
+                <a class="btn btn--tertiary" href="{% url 'categories:list' %}">Cancelar</a>
             </div>
         </form>
     </section>

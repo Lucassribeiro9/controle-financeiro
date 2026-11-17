@@ -1,0 +1,56 @@
+/*
+ * Login (spec 017, item 3.8a, issue 297). Dono: templates/registration/login.html.
+ * Tela publica: o topo da casca (marca) continua como esta; o miolo segue o Figma
+ * "Celular . Login": titulo, subtitulo e um card centrado de largura limitada.
+ * .form-stack e .soft-text repetem o contrato dos demais arquivos desta issue. So tokens.
+ */
+
+.login-screen {
+    margin: 0 auto;
+    max-width: 400px;
+    padding-top: var(--space-xl);
+}
+
+.login-screen__head {
+    display: grid;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xl);
+    text-align: center;
+}
+
+.login-screen__head h1 {
+    font-size: var(--font-size-title);
+    line-height: var(--line-height-title);
+}
+
+.login-screen__head .soft-text {
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+    margin: 0;
+}
+
+.login-card {
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.form-stack {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.soft-text {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: 0;
+}
+
+.login-card .btn {
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .login-screen {
+        padding-top: var(--space-3xl);
+    }
+}
