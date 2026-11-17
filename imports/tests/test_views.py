@@ -539,12 +539,12 @@ class ImportViewTests(AuthenticatedTestCase):
         self._review_tab_fixture()
 
         treated = self.client.get(reverse("imports:review-page"), {"tab": "tratadas"})
-        self.assertNotContains(treated, "Editar e confirmar")
+        self.assertNotContains(treated, "import-row__edit")
         self.assertNotContains(treated, ">Descartar<", html=False)
         self.assertNotContains(treated, 'class="import-bulk"', html=False)
 
         pending = self.client.get(reverse("imports:review-page"))
-        self.assertContains(pending, "Editar e confirmar")
+        self.assertContains(pending, "import-row__edit")
         self.assertContains(pending, 'class="import-bulk"', html=False)
 
     def test_review_page_forms_carry_tab_filters_and_page(self):
