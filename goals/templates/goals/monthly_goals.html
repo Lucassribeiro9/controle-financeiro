@@ -1,64 +1,55 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}Metas mensais - {{ month }}/{{ year }}{% endblock %}
 
-{% block content %}
-    <header class="page-header">
-        <div>
-            <h1>Metas mensais</h1>
-            <p class="muted">{{ month }}/{{ year }}</p>
-        </div>
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/goals.css' %}">{% endblock %}
 
-        <form class="period-form" method="get" action="{% url 'goals:monthly-goals' %}">
-            <label>
-                <span>Mês</span>
-                <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
-            </label>
-            <label>
-                <span>Ano</span>
-                <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
-            </label>
-            <button class="button" type="submit">Filtrar</button>
-        </form>
+{% block topbar_actions %}{% url 'goals:monthly-goals' as monthly_url %}{% include "goals/_period_topbar.html" with action=monthly_url %}{% endblock %}
+
+{% block content %}
+    {% url 'goals:monthly-goals' as monthly_url %}
+    <header class="gl-header">
+        <div class="gl-header__title">
+            <h1>Metas mensais</h1>
+            <p class="gl-sub">{{ month }}/{{ year }}</p>
+        </div>
+        <div class="gl-period-inline">{% include "goals/_period.html" with action=monthly_url %}</div>
     </header>
 
-    <div class="action-row">
-        <a class="button button-secondary" href="{% url 'goals:list' %}?year={{ year }}&month={{ month }}">Ver objetivos</a>
-    </div>
+    <nav class="segmented gl-tabs" aria-label="Objetivos e metas mensais">
+        <a class="segmented__item" href="{% url 'goals:list' %}?year={{ year }}&month={{ month }}">Objetivos</a>
+        <a class="segmented__item" href="{% url 'goals:monthly-goals' %}?year={{ year }}&month={{ month }}" aria-current="true">Metas mensais</a>
+    </nav>
 
-    <section class="panel page-section">
-        {% if monthly_goals %}
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
+    {% if monthly_goals %}
+        <section class="card gl-table-card">
+            <table class="list-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Objetivo</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="list-table__amount">Atual</th>
+                        <th scope="col" class="list-table__amount">Alvo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for monthly_goal in monthly_goals %}
                         <tr>
-                            <th class="cell-primary">Objetivo</th>
-                            <th class="cell-status">Status</th>
-                            <th class="cell-amount">Atual</th>
-                            <th class="cell-amount">Alvo</th>
+                            <td class="gl-cell-name">
+                                <a href="{% url 'goals:detail' monthly_goal.goal.id %}?year={{ year }}&month={{ month }}">{{ monthly_goal.goal.name }}</a>
+                            </td>
+                            <td class="gl-cell-status">
+                                <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
+                            </td>
+                            <td class="list-table__amount gl-cell-current">{{ monthly_goal.current_amount|brl }}</td>
+                            <td class="list-table__amount gl-cell-target">{{ monthly_goal.target_amount|brl }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {% for monthly_goal in monthly_goals %}
-                            <tr>
-                                <td class="cell-primary">
-                                    <a href="{% url 'goals:detail' monthly_goal.goal.id %}?year={{ year }}&month={{ month }}">
-                                        {{ monthly_goal.goal.name }}
-                                    </a>
-                                </td>
-                                <td class="cell-status">
-                                    <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
-                                </td>
-                                <td class="cell-amount">{{ monthly_goal.current_amount|brl }}</td>
-                                <td class="cell-amount">{{ monthly_goal.target_amount|brl }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="empty">Nenhuma meta mensal no período.</p>
-        {% endif %}
-    </section>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        {% include "partials/empty_state.html" with title="Nenhuma meta mensal no período." description="Defina metas mensais para acompanhar o mês." %}
+    {% endif %}
 {% endblock %}

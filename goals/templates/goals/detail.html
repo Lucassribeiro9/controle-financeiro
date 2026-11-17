@@ -1,132 +1,120 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}{{ goal_summary.goal.name }} - Objetivo{% endblock %}
 
-{% block content %}
-    {% with goal=goal_summary.goal progress=goal_summary.progress %}
-        <header class="page-header">
-            <div>
-                <h1>{{ goal.name }}</h1>
-                <p class="muted">{{ month }}/{{ year }}</p>
-            </div>
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/goals.css' %}">{% endblock %}
 
-            <form class="period-form" method="get" action="{% url 'goals:detail' goal.id %}">
-                <label>
-                    <span>Mês</span>
-                    <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
-                </label>
-                <label>
-                    <span>Ano</span>
-                    <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
-                </label>
-                <button class="button" type="submit">Filtrar</button>
-            </form>
+{% block topbar_actions %}{% url 'goals:detail' goal_summary.goal.id as detail_url %}{% include "goals/_period_topbar.html" with action=detail_url %}{% endblock %}
+
+{% block content %}
+    {% with goal=goal_summary.goal progress=goal_summary.progress monthly=goal_summary.monthly_goals.0 %}
+        {% url 'goals:detail' goal.id as detail_url %}
+        <header class="gl-header">
+            <div class="gl-header__title">
+                <a class="gl-back" href="{% url 'goals:list' %}?year={{ year }}&month={{ month }}">Voltar para objetivos</a>
+                <h1>{{ goal.name }}</h1>
+                <p class="gl-sub">{{ month }}/{{ year }}</p>
+            </div>
+            <div class="gl-period-inline">{% include "goals/_period.html" with action=detail_url %}</div>
         </header>
 
-        <div class="action-row">
-            <a class="button button-secondary" href="{% url 'goals:list' %}?year={{ year }}&month={{ month }}">Voltar para objetivos</a>
-        </div>
+        <section class="card gl-goal gl-hero" aria-label="Resumo do objetivo">
+            <div class="gl-goal__head">
+                <span class="gl-goal__label">Valor atual</span>
+                {% if monthly %}
+                    <span class="{{ monthly.status|status_badge_class }}">{{ monthly.get_status_display }}</span>
+                {% else %}
+                    <span class="status status--neutral">{{ goal.get_goal_type_display }}</span>
+                {% endif %}
+            </div>
+            <p class="gl-goal__amount">{{ progress.current_amount|brl }}</p>
+            <p class="gl-goal__of">de {{ progress.target_amount|brl }} · {{ progress.progress_percent|percentage }}</p>
+            <div class="progress{% if monthly.status == 'at_risk' or monthly.status == 'missed' %} progress--over{% endif %}" role="progressbar" aria-label="Progresso de {{ goal.name }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress.progress_percent|floatformat:'0u' }}">
+                <span class="progress__bar gl-bar" style="width: {{ progress.progress_percent|floatformat:'2u' }}%"></span>
+            </div>
+        </section>
 
-        <div class="summary-grid page-section" aria-label="Resumo do objetivo">
-            <div class="metric-card">
-                <span>Valor atual</span>
-                <strong>{{ progress.current_amount|brl }}</strong>
-            </div>
-            <div class="metric-card">
-                <span>Valor alvo</span>
-                <strong>{{ progress.target_amount|brl }}</strong>
-            </div>
-            <div class="metric-card">
-                <span>Progresso</span>
-                <strong>{{ progress.progress_percent|percentage }}</strong>
-            </div>
-        </div>
-
-        <div class="dashboard-grid">
-            <section class="panel">
-                <h2>Detalhes</h2>
-                <dl class="detail-list detail-list-compact">
-                    <div>
-                        <dt>Tipo</dt>
-                        <dd>{{ goal.get_goal_type_display }}</dd>
+        <div class="gl-columns">
+            <section class="card gl-block">
+                <h2 class="gl-block__title">Detalhes</h2>
+                <dl class="summary-rows">
+                    <div class="summary-rows__row">
+                        <dt class="summary-rows__label">Tipo</dt>
+                        <dd class="summary-rows__value">{{ goal.get_goal_type_display }}</dd>
                     </div>
-                    <div>
-                        <dt>Status</dt>
-                        <dd>{% if goal.is_active %}Ativo{% else %}Inativo{% endif %}</dd>
+                    <div class="summary-rows__row">
+                        <dt class="summary-rows__label">Situação</dt>
+                        <dd class="summary-rows__value">{% if goal.is_active %}Ativo{% else %}Inativo{% endif %}</dd>
                     </div>
-                    <div>
-                        <dt>Restante</dt>
-                        <dd>{{ progress.remaining_amount|brl }}</dd>
+                    <div class="summary-rows__row">
+                        <dt class="summary-rows__label">Restante</dt>
+                        <dd class="summary-rows__value">{{ progress.remaining_amount|brl }}</dd>
                     </div>
-                    <div>
-                        <dt>Início</dt>
-                        <dd>{{ goal.start_date|date_br }}</dd>
+                    <div class="summary-rows__row">
+                        <dt class="summary-rows__label">Início</dt>
+                        <dd class="summary-rows__value">{{ goal.start_date|date_br }}</dd>
                     </div>
-                    <div>
-                        <dt>Data alvo</dt>
-                        <dd>{% if goal.target_date %}{{ goal.target_date|date_br }}{% else %}Não definida{% endif %}</dd>
+                    <div class="summary-rows__row">
+                        <dt class="summary-rows__label">Data alvo</dt>
+                        <dd class="summary-rows__value">{% if goal.target_date %}{{ goal.target_date|date_br }}{% else %}Não definida{% endif %}</dd>
                     </div>
-                    <div>
-                        <dt>Categoria</dt>
-                        <dd>{{ goal.category|default:"Não vinculada" }}</dd>
+                    <div class="summary-rows__row">
+                        <dt class="summary-rows__label">Categoria</dt>
+                        <dd class="summary-rows__value">{{ goal.category|default:"Não vinculada" }}</dd>
                     </div>
                 </dl>
             </section>
 
-            <section class="panel">
-                <h2>Contas vinculadas</h2>
-                    {% if goal.accounts.all %}
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
+            <section class="card gl-block">
+                <h2 class="gl-block__title">Contas vinculadas</h2>
+                {% if goal.accounts.all %}
+                    <table class="list-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Conta</th>
+                                <th scope="col" class="list-table__amount">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for account in goal.accounts.all %}
                                 <tr>
-                                    <th>Conta</th>
-                                    <th class="cell-amount">Saldo</th>
+                                    <td>{{ account }}</td>
+                                    <td class="list-table__amount">{{ account.balance|currency:account.currency }}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {% for account in goal.accounts.all %}
-                                    <tr>
-                                        <td>{{ account }}</td>
-                                        <td class="cell-amount">{{ account.balance|currency:account.currency }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 {% else %}
-                    <p class="empty">Nenhuma conta vinculada.</p>
+                    {% include "partials/empty_state.html" with title="Nenhuma conta vinculada." description="O saldo das contas vinculadas compõe o valor atual." %}
                 {% endif %}
             </section>
 
-            <section class="panel">
-                <h2>Metas do período</h2>
+            <section class="card gl-block">
+                <h2 class="gl-block__title">Metas do período</h2>
                 {% if goal_summary.monthly_goals %}
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
+                    <table class="list-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Status</th>
+                                <th scope="col" class="list-table__amount">Atual</th>
+                                <th scope="col" class="list-table__amount">Alvo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for monthly_goal in goal_summary.monthly_goals %}
                                 <tr>
-                                    <th class="cell-status">Status</th>
-                                    <th class="cell-amount">Atual</th>
-                                    <th class="cell-amount">Alvo</th>
+                                    <td class="gl-cell-status">
+                                        <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
+                                    </td>
+                                    <td class="list-table__amount gl-cell-current">{{ monthly_goal.current_amount|brl }}</td>
+                                    <td class="list-table__amount gl-cell-target">{{ monthly_goal.target_amount|brl }}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {% for monthly_goal in goal_summary.monthly_goals %}
-                                    <tr>
-                                        <td class="cell-status">
-                                            <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
-                                        </td>
-                                        <td class="cell-amount">{{ monthly_goal.current_amount|brl }}</td>
-                                        <td class="cell-amount">{{ monthly_goal.target_amount|brl }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 {% else %}
-                    <p class="empty">Nenhuma meta mensal para este período.</p>
+                    {% include "partials/empty_state.html" with title="Nenhuma meta mensal para este período." description="Escolha outro mês ou defina uma meta mensal." %}
                 {% endif %}
             </section>
         </div>

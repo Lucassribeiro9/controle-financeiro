@@ -1,95 +1,85 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}Objetivos - Controle Financeiro{% endblock %}
 
-{% block content %}
-    <header class="page-header">
-        <div>
-            <h1>Objetivos</h1>
-            <p class="muted">Acompanhe objetivos ativos e progresso do período.</p>
-        </div>
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/goals.css' %}">{% endblock %}
 
-        <form class="period-form" method="get" action="{% url 'goals:list' %}">
-            <label>
-                <span>Mês</span>
-                <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
-            </label>
-            <label>
-                <span>Ano</span>
-                <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
-            </label>
-            <button class="button" type="submit">Filtrar</button>
-        </form>
+{% block topbar_actions %}{% url 'goals:list' as list_url %}{% include "goals/_period_topbar.html" with action=list_url %}{% endblock %}
+
+{% block content %}
+    {% url 'goals:list' as list_url %}
+    <header class="gl-header">
+        <div class="gl-header__title">
+            <h1>Objetivos</h1>
+            <p class="gl-sub">Acompanhe objetivos ativos e progresso do período.</p>
+        </div>
+        <div class="gl-period-inline">{% include "goals/_period.html" with action=list_url %}</div>
     </header>
 
-    <div class="action-row">
-        <a class="button button-secondary" href="{% url 'goals:monthly-goals' %}?year={{ year }}&month={{ month }}">Ver metas mensais</a>
-    </div>
+    <nav class="segmented gl-tabs" aria-label="Objetivos e metas mensais">
+        <a class="segmented__item" href="{% url 'goals:list' %}?year={{ year }}&month={{ month }}" aria-current="true">Objetivos</a>
+        <a class="segmented__item" href="{% url 'goals:monthly-goals' %}?year={{ year }}&month={{ month }}">Metas mensais</a>
+    </nav>
 
-    <div class="item-list page-section">
+    <div class="gl-list">
         {% for item in goal_summaries %}
-            {% with goal=item.goal progress=item.progress %}
-                <article class="goal-card">
-                    <div>
-                        <div class="card-title-row">
-                            <h2>
-                                <a href="{% url 'goals:detail' goal.id %}?year={{ year }}&month={{ month }}">{{ goal.name }}</a>
-                            </h2>
-                            <span class="tag">{{ goal.get_goal_type_display }}</span>
-                        </div>
-
-                        <dl class="detail-list">
-                            <div>
-                                <dt>Valor alvo</dt>
-                                <dd>{{ goal.target_amount|brl }}</dd>
-                            </div>
-                            <div>
-                                <dt>Valor atual</dt>
-                                <dd>{{ progress.current_amount|brl }}</dd>
-                            </div>
-                            <div>
-                                <dt>Progresso</dt>
-                                <dd>{{ progress.progress_percent|percentage }}</dd>
-                            </div>
-                            <div>
-                                <dt>Início</dt>
-                                <dd>{{ goal.start_date|date_br }}</dd>
-                            </div>
-                            <div>
-                                <dt>Data alvo</dt>
-                                <dd>{% if goal.target_date %}{{ goal.target_date|date_br }}{% else %}Não definida{% endif %}</dd>
-                            </div>
-                            <div>
-                                <dt>Status</dt>
-                                <dd>{% if goal.is_active %}Ativo{% else %}Inativo{% endif %}</dd>
-                            </div>
-                            <div>
-                                <dt>Categoria</dt>
-                                <dd>{{ goal.category|default:"Não vinculada" }}</dd>
-                            </div>
-                            <div>
-                                <dt>Contas</dt>
-                                <dd>
-                                    {% for account in goal.accounts.all %}
-                                        {{ account }}{% if not forloop.last %}, {% endif %}
-                                    {% empty %}
-                                        Não vinculadas
-                                    {% endfor %}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>Restante</dt>
-                                <dd>{{ progress.remaining_amount|brl }}</dd>
-                            </div>
-                        </dl>
+            {% with goal=item.goal progress=item.progress monthly=item.monthly_goals.0 %}
+                <article class="card gl-goal">
+                    <div class="gl-goal__head">
+                        <h2 class="gl-goal__name">
+                            <a href="{% url 'goals:detail' goal.id %}?year={{ year }}&month={{ month }}">{{ goal.name }}</a>
+                        </h2>
+                        {% if monthly %}
+                            <span class="{{ monthly.status|status_badge_class }}">{{ monthly.get_status_display }}</span>
+                        {% else %}
+                            <span class="status status--neutral">{{ goal.get_goal_type_display }}</span>
+                        {% endif %}
                     </div>
+
+                    <p class="gl-goal__amount">{{ progress.current_amount|brl }}</p>
+                    <p class="gl-goal__of">de {{ progress.target_amount|brl }} · {{ progress.progress_percent|percentage }}</p>
+
+                    <div class="progress{% if monthly.status == 'at_risk' or monthly.status == 'missed' %} progress--over{% endif %}" role="progressbar" aria-label="Progresso de {{ goal.name }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress.progress_percent|floatformat:'0u' }}">
+                        <span class="progress__bar gl-bar" style="width: {{ progress.progress_percent|floatformat:'2u' }}%"></span>
+                    </div>
+
+                    <dl class="gl-legend">
+                        <div>
+                            <dt>Tipo</dt>
+                            <dd>{{ goal.get_goal_type_display }}</dd>
+                        </div>
+                        <div>
+                            <dt>Restante</dt>
+                            <dd>{{ progress.remaining_amount|brl }}</dd>
+                        </div>
+                        <div>
+                            <dt>Início</dt>
+                            <dd>{{ goal.start_date|date_br }}</dd>
+                        </div>
+                        <div>
+                            <dt>Data alvo</dt>
+                            <dd>{% if goal.target_date %}{{ goal.target_date|date_br }}{% else %}Não definida{% endif %}</dd>
+                        </div>
+                        <div>
+                            <dt>Situação</dt>
+                            <dd>{% if goal.is_active %}Ativo{% else %}Inativo{% endif %}</dd>
+                        </div>
+                        <div>
+                            <dt>Categoria</dt>
+                            <dd>{{ goal.category|default:"Não vinculada" }}</dd>
+                        </div>
+                        <div>
+                            <dt>Contas</dt>
+                            <dd>
+                                {% for account in goal.accounts.all %}{{ account }}{% if not forloop.last %}, {% endif %}{% empty %}Não vinculadas{% endfor %}
+                            </dd>
+                        </div>
+                    </dl>
                 </article>
             {% endwith %}
         {% empty %}
-            <section class="panel">
-                <p class="empty">Nenhum objetivo ativo cadastrado.</p>
-            </section>
+            {% include "partials/empty_state.html" with title="Nenhum objetivo ativo cadastrado." description="Os objetivos criados aparecem aqui com o progresso do período." %}
         {% endfor %}
     </div>
 {% endblock %}
