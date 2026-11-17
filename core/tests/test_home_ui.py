@@ -227,10 +227,10 @@ class HomeSummarySwitchTests(AuthenticatedTestCase):
             self.assertIs(radio.parent, cards.parent)
 
     def test_group_has_an_accessible_name(self):
-        fieldset = next(el for el in self.main.walk() if el.tag == "fieldset")
-        legend = next(el for el in fieldset.walk() if el.tag == "legend")
+        group = next(el for el in self.main.walk() if el.attrs.get("role") == "radiogroup")
 
-        self.assertTrue("".join(legend.text).strip())
+        self.assertTrue(group.attrs.get("aria-label", "").strip())
+        self.assertIn("home__switch", group.classes)
 
     def test_three_cards_always_in_html_linking_to_detail(self):
         cards = [el for el in self.main.walk() if "home__card" in el.classes]
@@ -241,7 +241,7 @@ class HomeSummarySwitchTests(AuthenticatedTestCase):
             [reverse("core:summary_detail", args=[card]) for card in CARDS],
         )
 
-    def test_switch_has_no_script_and_no_requests(self):
+    def test_switch_has_no_script_and_no_form(self):
         html = self.client.get(reverse("core:home")).content.decode()
         main_html = html[html.index('<main'):html.index("</main>")]
 

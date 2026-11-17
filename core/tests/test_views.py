@@ -58,7 +58,7 @@ class HomeViewTests(AuthenticatedTestCase):
 
         response = self.client.get(reverse("core:home"))
 
-        self.assertContains(response, "Resumo de ")
+        self.assertContains(response, "Resumo financeiro do mês")
         self.assertContains(response, "Sem lançamentos")
         self.assertContains(response, "Nenhum lancamento neste mes")
         self.assertContains(response, "Criar lancamento")

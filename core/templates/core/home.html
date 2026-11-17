@@ -27,13 +27,12 @@
         {% endif %}
 
         {# Seletor sem JS: os radios sao irmaos dos cards e o CSS mostra o card marcado abaixo de 768px. #}
-        <fieldset class="home__picker">
-            <legend class="home__sr-only">Escolha o resumo exibido</legend>
+        <div class="home__picker">
             <input class="home__switch-input" type="radio" name="home-summary-card" id="home-summary-realized" value="realized" checked>
             <input class="home__switch-input" type="radio" name="home-summary-card" id="home-summary-pending" value="pending">
             <input class="home__switch-input" type="radio" name="home-summary-card" id="home-summary-forecasted" value="forecasted">
 
-            <div class="home__switch">
+            <div class="home__switch" role="radiogroup" aria-label="Escolha o resumo exibido">
                 <label class="home__switch-label" for="home-summary-realized">Realizado</label>
                 <label class="home__switch-label" for="home-summary-pending">Pendente</label>
                 <label class="home__switch-label" for="home-summary-forecasted">Previsto</label>
@@ -88,7 +87,7 @@
                     <span class="home__cta">Ver lançamentos →</span>
                 </a>
             </div>
-        </fieldset>
+        </div>
     </section>
 
     <div class="home__columns">
