@@ -27,49 +27,40 @@
         };
     }
 
-    const hasValue = (value) => Number(value) !== 0;
-    const pointRadius = (context) => (hasValue(context.raw) ? 3 : 0);
-    const hoverRadius = (context) => (hasValue(context.raw) ? 6 : 0);
-
     const colors = chartColors();
 
+    // Saldo do mes nao e uma serie: aparece so no tooltip, com as cores do tema.
+    const tooltipStyle = (palette) => ({
+        backgroundColor: palette.surface,
+        titleColor: palette.text,
+        bodyColor: palette.text,
+        borderColor: palette.grid,
+        borderWidth: 1,
+        footerColor: palette.balance,
+    });
+
     const chart = new Chart(canvas, {
+        type: "bar",
         data: {
             labels: payload.labels,
             datasets: [
                 {
-                    type: "bar",
                     label: "Receitas",
                     data: payload.income,
                     backgroundColor: colors.income,
                     borderColor: colors.income,
                     borderRadius: 6,
                     borderSkipped: false,
-                    maxBarThickness: 26,
+                    maxBarThickness: 20,
                 },
                 {
-                    type: "bar",
                     label: "Despesas",
                     data: payload.expenses,
                     backgroundColor: colors.expense,
                     borderColor: colors.expense,
                     borderRadius: 6,
                     borderSkipped: false,
-                    maxBarThickness: 26,
-                },
-                {
-                    type: "line",
-                    label: "Saldo",
-                    data: payload.balance,
-                    borderColor: colors.balance,
-                    backgroundColor: colors.balance,
-                    fill: false,
-                    pointBackgroundColor: colors.balance,
-                    pointBorderColor: colors.surface,
-                    pointBorderWidth: 2,
-                    pointRadius,
-                    pointHoverRadius: hoverRadius,
-                    tension: 0.28,
+                    maxBarThickness: 20,
                 },
             ],
         },
@@ -81,21 +72,28 @@
             },
             plugins: {
                 legend: {
-                    align: "end",
+                    align: "start",
+                    position: "bottom",
                     labels: {
                         boxWidth: 10,
                         boxHeight: 10,
                         color: colors.text,
                         font: {
-                            weight: "700",
+                            weight: "600",
                         },
                         useBorderRadius: true,
+                        borderRadius: 2,
                     },
                 },
                 tooltip: {
+                    ...tooltipStyle(colors),
                     callbacks: {
                         label(context) {
                             return `${context.dataset.label}: ${moneyFormatter.format(context.parsed.y || 0)}`;
+                        },
+                        footer(items) {
+                            const balance = payload.balance[items[0].dataIndex] || 0;
+                            return `Saldo: ${moneyFormatter.format(balance)}`;
                         },
                     },
                 },
@@ -128,17 +126,14 @@
 
     function applyTheme() {
         const next = chartColors();
-        const [income, expense, balance] = chart.data.datasets;
+        const [income, expense] = chart.data.datasets;
 
         income.backgroundColor = next.income;
         income.borderColor = next.income;
         expense.backgroundColor = next.expense;
         expense.borderColor = next.expense;
-        balance.borderColor = next.balance;
-        balance.backgroundColor = next.balance;
-        balance.pointBackgroundColor = next.balance;
-        balance.pointBorderColor = next.surface;
 
+        Object.assign(chart.options.plugins.tooltip, tooltipStyle(next));
         chart.options.plugins.legend.labels.color = next.text;
         chart.options.scales.x.ticks.color = next.text;
         chart.options.scales.y.ticks.color = next.text;

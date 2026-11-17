@@ -157,7 +157,7 @@ class AuthenticatedAccessTests(TestCase):
             reverse("login"), {"username": "lucas", "password": "errada"}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "app-message")
+        self.assertContains(response, "alert--error")
 
     def test_logout_requires_post_and_ends_session(self):
         self.client.force_login(self.user)

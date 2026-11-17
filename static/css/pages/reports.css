@@ -1,0 +1,151 @@
+/*
+ * Relatorio mensal (issue 296, spec 017). Classes locais .report-*; so tokens,
+ * sem literal de cor. Mobile primeiro; desktop a partir de 768px.
+ */
+
+.report-header {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+    margin: var(--space-sm) 0 var(--space-lg);
+}
+
+.report-header__subtitle {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    margin: var(--space-xs) 0 0;
+}
+
+.report-header__actions {
+    align-items: center;
+    display: flex;
+    gap: var(--space-md);
+}
+
+.report-header__new,
+.report-period--desktop {
+    display: none;
+}
+
+/* Seletor de periodo: <details> sem JS */
+.report-period {
+    position: relative;
+}
+
+.report-period > summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.report-period > summary::-webkit-details-marker {
+    display: none;
+}
+
+.report-period__form {
+    border: 1px solid var(--color-border-default);
+    display: grid;
+    gap: var(--space-md);
+    min-width: 220px;
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-sm));
+    z-index: 5;
+}
+
+/* Grades */
+.report-grid,
+.report-summaries {
+    display: grid;
+    gap: var(--space-lg);
+    margin-top: var(--space-lg);
+}
+
+.report-summaries {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.report-grid h2,
+.report-summaries h2 {
+    margin: 0 0 var(--space-md);
+}
+
+.report-card__head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    justify-content: space-between;
+    margin-bottom: var(--space-md);
+}
+
+.report-card__head h2 {
+    margin: 0;
+}
+
+/* Grafico: altura fixa para o Chart.js nao crescer sem limite */
+.report-chart__canvas {
+    height: 260px;
+    position: relative;
+}
+
+/* Gastos por categoria */
+.report-categories__alert {
+    margin-bottom: var(--space-md);
+}
+
+.report-category-list {
+    display: grid;
+    gap: var(--space-md);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.report-category__head {
+    align-items: baseline;
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+    margin-bottom: var(--space-xs);
+}
+
+.report-category__value {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+}
+
+.report-category__bar {
+    background: var(--color-action-primary);
+}
+
+/* Linhas com status abaixo do valor */
+.report-row__meta {
+    align-items: center;
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--font-size-caption);
+    font-weight: 400;
+    gap: var(--space-xs);
+    justify-content: flex-end;
+    margin-top: var(--space-xs);
+}
+
+@media (min-width: 768px) {
+    .report-header__new {
+        display: inline-flex;
+    }
+
+    .report-period--desktop {
+        display: block;
+    }
+
+    .report-period--mobile {
+        display: none;
+    }
+
+    .report-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

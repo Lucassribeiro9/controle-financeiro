@@ -10,6 +10,7 @@ from cards.models import Card, CardStatement
 from categories.models import Category
 from goals.models import Goal, MonthlyGoal
 from institutions.models import Institution
+from reports import selectors as reports_selectors
 from reports.selectors import (
     get_account_net_worth,
     get_card_statements,
@@ -262,6 +263,7 @@ class ReportSelectorTests(TestCase):
         self.assertEqual(share[0]["percentage"], 75)
         self.assertEqual(share[1]["category_name"], "Transporte")
         self.assertEqual(share[1]["percentage"], 25)
+        self.assertNotIn("color", share[0])
 
     def test_monthly_cashflow_series_returns_visual_periods(self):
         """Deve montar serie mensal com saldo e altura das barras."""
@@ -531,6 +533,7 @@ class ReportSelectorTests(TestCase):
         self.assertIsNone(dashboard["uncategorized_expense_alert"])
         self.assertEqual(dashboard["category_expenses"][0]["total_amount"], Decimal("300.00"))
         self.assertEqual(dashboard["category_expense_share"][0]["percentage"], 100)
+        self.assertNotIn("colors", dashboard["chartjs_payload"]["categories"])
 
     def _create_expense(self, *, amount, category=None, day=10):
         return Transaction.objects.create(
@@ -561,6 +564,11 @@ class ReportSelectorTests(TestCase):
         # em risco. Patrimonio e extratos sao querysets lazy.
         with self.assertNumQueries(6):
             get_monthly_dashboard(year=2026, month=5)
+
+    def test_chart_colors_palette_was_removed(self):
+        """Cor de categoria vem do CSS do tema, nao de hex no selector (D3)."""
+
+        self.assertFalse(hasattr(reports_selectors, "CHART_COLORS"))
 
     def test_monthly_dashboard_keeps_context_keys(self):
         """Deve manter as chaves consumidas pelo template."""

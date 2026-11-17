@@ -1,72 +1,68 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}Contas - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/accounts.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="screen-head">
+        <div class="screen-head__title">
             <h1>Contas</h1>
-            <p class="muted">Saldos por conta, tipo, instituição e moeda.</p>
+            <p class="soft-text">Saldos por conta, tipo, instituição e moeda.</p>
         </div>
 
-        <a class="button" href="{% url 'accounts:create' %}">Nova conta</a>
+        <div class="screen-head__actions">
+            <a class="btn btn--primary" href="{% url 'accounts:create' %}">Nova conta</a>
+        </div>
     </header>
 
-    <div class="item-list page-section">
+    <div class="card-stack">
         {% for summary in account_summary %}
-            <section class="panel">
-                <div class="card-title-row">
+            <section class="card list-card">
+                <div class="card-head">
                     <div>
                         <h2>{{ summary.currency }}</h2>
-                        <p class="muted">{{ summary.currency_label }}</p>
+                        <p class="soft-text">{{ summary.currency_label }}</p>
                     </div>
-                    <div>
-                        <strong>{{ summary.total_balance|currency:summary.currency }}</strong>
-                        <p class="muted">
+                    <div class="card-head__aside">
+                        <strong class="currency-total">{{ summary.total_balance|currency:summary.currency }}</strong>
+                        <p class="soft-text">
                             {{ summary.active_count }} ativa(s), {{ summary.inactive_count }} inativa(s)
                             {% if summary.inactive_count %}· inativas fora do total{% endif %}
                         </p>
                     </div>
                 </div>
 
-                <div class="table-responsive page-section">
-                    <table class="data-table">
-                        <thead>
+                <table class="list-table">
+                    <thead>
+                        <tr>
+                            <th>Conta</th>
+                            <th>Instituição</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                            <th class="list-table__amount">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in summary.accounts %}
                             <tr>
-                                <th class="cell-primary">Conta</th>
-                                <th>Instituição</th>
-                                <th>Tipo</th>
-                                <th class="cell-status">Status</th>
-                                <th class="cell-amount">Saldo</th>
+                                <td class="row-main">
+                                    <a href="{% url 'accounts:detail' account.id %}">{{ account.name }}</a>
+                                </td>
+                                <td class="row-meta">{{ account.institution }}</td>
+                                <td class="row-meta">{{ account.get_account_type_display }}</td>
+                                <td class="row-meta">
+                                    <span class="{{ account.is_active|active_badge_class }}">{% if account.is_active %}Ativa{% else %}Inativa{% endif %}</span>
+                                </td>
+                                <td class="list-table__amount row-value">{{ account.balance|currency:account.currency }}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for account in summary.accounts %}
-                                <tr>
-                                    <td class="cell-primary">
-                                        <a href="{% url 'accounts:detail' account.id %}">
-                                            {{ account.name }}
-                                        </a>
-                                    </td>
-                                    <td>{{ account.institution }}</td>
-                                    <td>{{ account.get_account_type_display }}</td>
-                                    <td class="cell-status">
-                                        <span class="{{ account.is_active|active_badge_class }}">
-                                            {% if account.is_active %}Ativa{% else %}Inativa{% endif %}
-                                        </span>
-                                    </td>
-                                    <td class="cell-amount">{{ account.balance|currency:account.currency }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </section>
         {% empty %}
-            <section class="panel">
-                <p class="empty">Nenhuma conta cadastrada.</p>
-            </section>
+            {% include "partials/empty_state.html" with title="Nenhuma conta cadastrada" description="Cadastre a primeira conta para acompanhar seus saldos." cta_label="Nova conta" cta_url="/accounts/create/" %}
         {% endfor %}
     </div>
 {% endblock %}

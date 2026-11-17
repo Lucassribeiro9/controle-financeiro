@@ -1,39 +1,44 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Entrar - Controle Financeiro{% endblock %}
 
+{% block shell_mode %}task{% endblock %}
+
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/login.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <div class="login-screen">
+        <header class="login-screen__head">
             <h1>Entrar</h1>
-            <p class="muted">Informe suas credenciais para acessar o Controle Financeiro.</p>
-        </div>
-    </header>
+            <p class="soft-text">Entre para ver suas finanças</p>
+        </header>
 
-    <section class="panel">
-        <form class="form-grid" method="post" action="{% url 'login' %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ next }}">
+        <section class="card login-card">
+            <form class="form-stack" method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
 
-            {% if form.non_field_errors %}
-                <div class="app-message">
-                    {{ form.non_field_errors }}
-                </div>
-            {% endif %}
+                {% if form.non_field_errors %}
+                    <div class="alert alert--error" role="alert">
+                        {% for error in form.non_field_errors %}
+                            <span class="alert__detail">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-            {% for field in form %}
-                <label class="form-field" for="{{ field.id_for_label }}">
-                    <span>{{ field.label }}</span>
-                    {{ field }}
-                    {% if field.errors %}
-                        <small class="field-error">{{ field.errors|join:", " }}</small>
-                    {% endif %}
-                </label>
-            {% endfor %}
+                {% for field in form %}
+                    <label class="field" for="{{ field.id_for_label }}">
+                        <span class="field__label">{{ field.label }}</span>
+                        {{ field }}
+                        {% if field.errors %}
+                            <small class="field__error">{{ field.errors|join:", " }}</small>
+                        {% endif %}
+                    </label>
+                {% endfor %}
 
-            <div class="action-row">
-                <button class="button" type="submit">Entrar</button>
-            </div>
-        </form>
-    </section>
+                <button class="btn btn--primary" type="submit">Entrar</button>
+            </form>
+        </section>
+    </div>
 {% endblock %}

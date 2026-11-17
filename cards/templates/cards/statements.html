@@ -1,59 +1,57 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}Faturas - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/cards.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1>Faturas</h1>
-            <p class="muted">Acompanhe valores esperados, fechados e pagos.</p>
-        </div>
-
-        <a class="button button-secondary" href="{% url 'cards:list' %}">Ver cartões</a>
-    </header>
-
-    <section class="panel page-section">
-        {% if statements %}
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th class="cell-primary">Cartão</th>
-                            <th class="cell-period">Mês/Ano</th>
-                            <th class="cell-amount">Esperado</th>
-                            <th class="cell-amount">Fechado</th>
-                            <th class="cell-amount">Pago</th>
-                            <th class="cell-status">Status</th>
-                            <th class="cell-date">Vencimento</th>
-                            <th>Conta pagamento</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for statement in statements %}
-                            <tr>
-                                <td class="cell-primary">
-                                    <a href="{% url 'cards:statement-detail' statement.id %}">
-                                        {{ statement.card }}
-                                    </a>
-                                    <p class="muted">{{ statement.card.institution }}</p>
-                                </td>
-                                <td class="cell-period">{{ statement.month }}/{{ statement.year }}</td>
-                                <td class="cell-amount">{{ statement.summary.expected_amount|brl }}</td>
-                                <td class="cell-amount">{{ statement.summary.closed_amount|brl }}</td>
-                                <td class="cell-amount">{{ statement.summary.paid_amount|brl }}</td>
-                                <td class="cell-status">
-                                    <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
-                                </td>
-                                <td class="cell-date">{{ statement.due_date|date_br }}</td>
-                                <td>{{ statement.payment_account|default:"Não vinculada" }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="cards-page">
+        <header class="cards-head">
+            <div class="cards-head__text">
+                <h1>Faturas</h1>
+                <p class="cards-head__sub">Acompanhe valores esperados, fechados e pagos.</p>
             </div>
+
+            <div class="cards-head__actions">
+                <a class="btn btn--secondary" href="{% url 'cards:list' %}">Ver cartões</a>
+            </div>
+        </header>
+
+        {% if statements %}
+            <ul class="cards-grid">
+                {% for statement in statements %}
+                    <li class="card cards-item">
+                        <div class="cards-item__head">
+                            <a class="cards-item__title" href="{% url 'cards:statement-detail' statement.id %}">{{ statement.card }} · {{ statement.month }}/{{ statement.year }}</a>
+                            <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
+                        </div>
+                        <p class="cards-amount">{{ statement.summary.expected_amount|brl }}</p>
+                        <p class="cards-muted">{{ statement.card.institution }} · vence {{ statement.due_date|date_br }}</p>
+
+                        {% if statement.card.credit_limit and statement.card.credit_limit > 0 %}
+                            {% include "cards/_progress.html" with value=statement.summary.expected_amount limit=statement.card.credit_limit caption=True %}
+                        {% endif %}
+
+                        <dl class="summary-rows">
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Fechado</dt>
+                                <dd class="summary-rows__value">{{ statement.summary.closed_amount|brl }}</dd>
+                            </div>
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Pago</dt>
+                                <dd class="summary-rows__value">{{ statement.summary.paid_amount|brl }}</dd>
+                            </div>
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Conta pagamento</dt>
+                                <dd class="summary-rows__value">{{ statement.payment_account|default:"Não vinculada" }}</dd>
+                            </div>
+                        </dl>
+                    </li>
+                {% endfor %}
+            </ul>
         {% else %}
             <p class="empty">Nenhuma fatura encontrada.</p>
         {% endif %}
-    </section>
+    </div>
 {% endblock %}

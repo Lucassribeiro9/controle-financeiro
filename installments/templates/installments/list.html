@@ -1,57 +1,57 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}Parcelamentos - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/installments.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="screen-head">
+        <div class="screen-head__title">
             <h1>Parcelamentos</h1>
-            <p class="muted">Compras parceladas geradas como compras no cartão.</p>
+            <p class="soft-text">Compras parceladas geradas como compras no cartão.</p>
         </div>
 
-        <a class="button" href="{% url 'installments:create' %}">Novo parcelamento</a>
+        <div class="screen-head__actions">
+            <a class="btn btn--primary" href="{% url 'installments:create' %}">Novo parcelamento</a>
+        </div>
     </header>
 
-    <section class="panel page-section">
-        {% if installment_plans %}
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
+    {% if installment_plans %}
+        <section class="card list-card">
+            <table class="list-table">
+                <thead>
+                    <tr>
+                        <th>Descrição</th>
+                        <th>Cartão</th>
+                        <th>Parcelas</th>
+                        <th>Primeira parcela</th>
+                        <th>Status</th>
+                        <th class="list-table__amount">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in installment_plans %}
                         <tr>
-                            <th class="cell-primary">Descrição</th>
-                            <th>Cartão</th>
-                            <th class="cell-amount">Total</th>
-                            <th class="cell-count">Parcelas</th>
-                            <th class="cell-date">Primeira parcela</th>
-                            <th class="cell-status">Status</th>
+                            <td class="row-main">
+                                <a href="{% url 'installments:detail' plan.id %}">{{ plan.description }}</a>
+                                {% if plan.category %}
+                                    <p class="soft-text">{{ plan.category }}</p>
+                                {% endif %}
+                            </td>
+                            <td class="row-meta">{{ plan.card }}</td>
+                            <td class="row-meta">{{ plan.generated_count }}/{{ plan.total_installments }}</td>
+                            <td class="row-meta">{{ plan.first_installment_date|date_br }}</td>
+                            <td class="row-meta">
+                                <span class="{{ plan.status|status_badge_class }}">{{ plan.get_status_display }}</span>
+                            </td>
+                            <td class="list-table__amount row-value">{{ plan.total_amount|brl }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {% for plan in installment_plans %}
-                            <tr>
-                                <td class="cell-primary">
-                                    <a href="{% url 'installments:detail' plan.id %}">
-                                        {{ plan.description }}
-                                    </a>
-                                    {% if plan.category %}
-                                        <p class="muted">{{ plan.category }}</p>
-                                    {% endif %}
-                                </td>
-                                <td>{{ plan.card }}</td>
-                                <td class="cell-amount">{{ plan.total_amount|brl }}</td>
-                                <td class="cell-count">{{ plan.generated_count }}/{{ plan.total_installments }}</td>
-                                <td class="cell-date">{{ plan.first_installment_date|date_br }}</td>
-                                <td class="cell-status">
-                                    <span class="{{ plan.status|status_badge_class }}">{{ plan.get_status_display }}</span>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="empty">Nenhum parcelamento ativo encontrado.</p>
-        {% endif %}
-    </section>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        {% include "partials/empty_state.html" with title="Nenhum parcelamento ativo encontrado" description="Crie um parcelamento para gerar as parcelas no cartão." cta_label="Novo parcelamento" cta_url="/installments/create/" %}
+    {% endif %}
 {% endblock %}

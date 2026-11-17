@@ -159,3 +159,43 @@ class InstitutionViewTests(AuthenticatedTestCase):
         self.assertTemplateUsed(response, "institutions/form.html")
         self.assertContains(response, "Já existe uma instituição com este código.")
         self.assertEqual(Institution.objects.count(), 1)
+
+
+class InstitutionVisualMarkupTests(AuthenticatedTestCase):
+    """Visual novo (spec 017): lista empilhada e campos do components.css."""
+
+    def test_list_uses_card_and_list_table(self):
+        Institution.objects.create(name="Inter", code="077", official_name="Banco Inter S.A.")
+
+        response = self.client.get(reverse("institutions:list"))
+
+        self.assertContains(response, 'class="card')
+        self.assertContains(response, "list-table")
+        self.assertContains(response, "Banco Inter S.A.")
+        self.assertContains(response, "pages/institutions.css")
+        self.assertNotContains(response, "data-table")
+        self.assertNotContains(response, "table-responsive")
+
+    def test_list_empty_state_uses_partial(self):
+        response = self.client.get(reverse("institutions:list"))
+
+        self.assertContains(response, "empty__title")
+        self.assertContains(response, "Nenhuma instituição cadastrada")
+
+    def test_form_uses_field_component(self):
+        response = self.client.get(reverse("institutions:create"))
+
+        self.assertContains(response, 'class="field')
+        self.assertContains(response, "btn btn--primary")
+        self.assertNotContains(response, "form-field")
+        self.assertNotContains(response, "form-grid")
+
+    def test_form_error_uses_field_error(self):
+        Institution.objects.create(name="Inter", code="077")
+
+        response = self.client.post(
+            reverse("institutions:create"), {"name": "Inter", "code": "", "is_active": "on"}
+        )
+
+        self.assertContains(response, "field__error")
+        self.assertNotContains(response, "field-error")

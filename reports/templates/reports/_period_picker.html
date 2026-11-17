@@ -1,0 +1,19 @@
+{# Seletor de periodo sem JS: <details> com o formulario GET de mes e ano. #}
+<details class="report-period {{ extra_class }}">
+    <summary class="period-picker">
+        <span class="period-picker__label">{{ period_label }}</span>
+        <span aria-hidden="true">▾</span>
+    </summary>
+    <form class="report-period__form card" method="get" action="{% url 'reports:monthly-dashboard-page' %}">
+        <input name="range" type="hidden" value="{{ range_months }}">
+        <label class="field">
+            <span class="field__label">Mês</span>
+            <input name="month" type="text" inputmode="numeric" pattern="\d*" value="{{ month }}" required>
+        </label>
+        <label class="field">
+            <span class="field__label">Ano</span>
+            <input name="year" type="text" inputmode="numeric" pattern="\d*" value="{{ year }}" required>
+        </label>
+        <button class="btn btn--primary" type="submit">Filtrar</button>
+    </form>
+</details>
