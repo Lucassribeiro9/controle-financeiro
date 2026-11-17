@@ -76,7 +76,7 @@
             {% if transactions %}
                 <ul class="cards-tx">
                     {% for transaction in transactions %}
-                        {% if transaction.transaction_type == "income" or transaction.transaction_type == "adjustment_in" %}
+                        {% if transaction.transaction_type == "statement_payment" %}
                             <li class="cards-tx__row">
                                 <span class="cards-tx__icon cards-tx__icon--in" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>

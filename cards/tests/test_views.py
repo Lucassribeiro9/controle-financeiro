@@ -473,6 +473,49 @@ class StatementViewTests(NewVisualMixin, AuthenticatedTestCase):
 
         self.assertContains(response, "Nenhuma fatura encontrada.")
         self.assertContains(response, 'class="empty"', html=False)
+        self.assertNewVisual(response)
+
+    def test_statement_detail_empty_transactions_state(self):
+        """Fatura sem transacoes mostra o estado vazio no visual novo."""
+
+        statement = CardStatement.objects.create(
+            card=self.card,
+            year=2026,
+            month=5,
+            closing_date="2026-05-20",
+            due_date="2026-05-27",
+        )
+
+        response = self.client.get(
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
+        )
+
+        self.assertContains(response, "Nenhuma transação vinculada a esta fatura.")
+        self.assertContains(response, 'class="empty"', html=False)
+        self.assertNewVisual(response)
+
+    def test_statement_detail_shows_statement_payment_as_credit(self):
+        """Pagamento vinculado e credito da fatura: sinal +, icone e classe de credito."""
+
+        statement = self._create_statement(amount=Decimal("250.00"))
+        Transaction.objects.create(
+            description="Pagamento da fatura",
+            amount=Decimal("100.00"),
+            transaction_type=Transaction.TransactionType.STATEMENT_PAYMENT,
+            status=Transaction.PaymentStatus.PAID,
+            card=self.card,
+            statement=statement,
+            date=timezone.localdate(),
+        )
+
+        response = self.client.get(
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
+        )
+
+        self.assertContains(response, '<span class="cards-tx__amount cards-tx__amount--in">+ R$ 100,00</span>', html=False)
+        self.assertContains(response, 'class="cards-tx__icon cards-tx__icon--in"', html=False)
+        self.assertContains(response, '<span class="cards-tx__amount">− R$ 250,00</span>', html=False)
+        self.assertNewVisual(response)
 
     def test_statement_detail_shows_limit_progress_and_back_link(self):
         """Detalhe mostra o valor em destaque, o progresso e o link de voltar."""
