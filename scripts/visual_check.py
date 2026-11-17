@@ -24,8 +24,6 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-from playwright.sync_api import sync_playwright
-
 URLS = [
     "/",
     "/transactions/",
@@ -98,6 +96,8 @@ def check_page(page, base_url: str, url: str, out_file: Path) -> dict:
 
 
 def run(args) -> int:
+    from playwright.sync_api import sync_playwright
+
     username = os.environ.get("VISUAL_CHECK_USERNAME")
     password = os.environ.get("VISUAL_CHECK_PASSWORD")
     if not username or not password:
