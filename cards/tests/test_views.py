@@ -1,10 +1,12 @@
 """Tests das views do app cards."""
 
+import re
 from unittest.mock import patch
 from datetime import timedelta
 from decimal import Decimal
 
 from core.testing import AuthenticatedTestCase
+from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -16,7 +18,46 @@ from institutions.models import Institution
 from transactions.models import Transaction
 
 
-class CardViewTests(AuthenticatedTestCase):
+# Classes do app.css legado que as telas de cartoes nao podem mais usar (FIN-52, spec 017).
+LEGACY_CLASSES = {
+    "panel", "page-header", "page-section", "button", "button-secondary", "data-table",
+    "table-responsive", "metric-card", "detail-list", "summary-grid", "card-title-row",
+    "form-grid", "form-field", "field-error", "action-row", "app-message", "inline-form",
+    "limit-bar", "limit-bar-fill", "limit-bar-over", "cell-primary", "cell-amount",
+    "cell-count", "cell-date", "cell-status", "cell-period", "muted", "sr-only",
+}
+
+
+def used_classes(response):
+    """Conjunto de classes CSS usadas no HTML da resposta."""
+
+    html = response.content.decode()
+    return {
+        name
+        for attr in re.findall(r'class="([^"]*)"', html)
+        for name in attr.split()
+    }
+
+
+class NewVisualMixin:
+    """Contrato visual das telas de cartoes: casca, CSS da pagina e sem classes legadas."""
+
+    def assertNewVisual(self, response, *, shell="nav"):
+        self.assertContains(response, "css/pages/cards.css")
+        self.assertContains(response, f'class="shell-{shell}"', html=False)
+        self.assertEqual(used_classes(response) & LEGACY_CLASSES, set())
+        self.assertFalse(
+            {name for name in used_classes(response) if name.startswith("cards-")}
+            - self.local_classes()
+        )
+
+    @staticmethod
+    def local_classes():
+        css = (settings.BASE_DIR / "static/css/pages/cards.css").read_text()
+        return set(re.findall(r"\.(cards-[\w-]+)", css))
+
+
+class CardViewTests(NewVisualMixin, AuthenticatedTestCase):
     """Garante telas de listagem, criacao e edicao de cartoes."""
 
     def setUp(self):
@@ -86,7 +127,10 @@ class CardViewTests(AuthenticatedTestCase):
         self.assertContains(response, "5.000,00")
         self.assertContains(response, "350,00")
         self.assertContains(response, "4.650,00")
-        self.assertContains(response, 'class="limit-bar"', html=False)
+        self.assertContains(response, 'class="progress"', html=False)
+        self.assertContains(response, 'role="progressbar"', html=False)
+        self.assertContains(response, 'aria-valuenow="7"', html=False)
+        self.assertNewVisual(response)
 
         limits = get_card_limits(card)
         self.assertEqual(limits["credit_limit"], Decimal("5000.00"))
@@ -125,7 +169,8 @@ class CardViewTests(AuthenticatedTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Limite excedido")
-        self.assertContains(response, 'class="limit-bar-fill limit-bar-over"', html=False)
+        self.assertContains(response, 'class="progress progress--over"', html=False)
+        self.assertNewVisual(response)
 
     def test_card_list_page_does_not_show_credit_summary_for_non_credit_cards(self):
         """Cartoes nao credito nao devem mostrar indicadores de limite de credito."""
@@ -142,7 +187,35 @@ class CardViewTests(AuthenticatedTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Não se aplica")
-        self.assertNotContains(response, 'class="limit-bar"', html=False)
+        self.assertNotContains(response, 'role="progressbar"', html=False)
+        self.assertNewVisual(response)
+
+    def test_card_empty_states_use_new_visual(self):
+        """Sem cartoes, a lista mostra o estado vazio do design system."""
+
+        response = self.client.get(reverse("cards:list"))
+
+        self.assertContains(response, "Nenhum cartão cadastrado.")
+        self.assertContains(response, 'class="empty"', html=False)
+        self.assertNewVisual(response)
+
+    def test_card_update_page_uses_task_shell(self):
+        """Edicao de cartao usa a casca de tarefa e o link de cancelar."""
+
+        card = Card.objects.create(
+            name="Inter Gold",
+            institution=self.institution,
+            card_type=Card.CardType.CREDIT,
+            credit_limit=Decimal("5000.00"),
+        )
+
+        response = self.client.get(reverse("cards:update", kwargs={"card_id": card.id}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNewVisual(response, shell="task")
+        self.assertContains(response, "Editar cartão")
+        self.assertContains(response, 'class="field"', html=False)
+        self.assertContains(response, reverse("cards:list"))
 
     def test_card_create_page_returns_form(self):
         """Deve renderizar formulario de criacao de cartao."""
@@ -152,6 +225,7 @@ class CardViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "cards/form.html")
         self.assertContains(response, "Novo cartão")
+        self.assertNewVisual(response, shell="task")
         self.assertContains(response, 'data-conditional-form="card"', html=False)
         self.assertContains(response, 'data-conditional-source="card-type"', html=False)
         self.assertContains(response, 'data-conditional-field="card-credit"', html=False)
@@ -331,7 +405,7 @@ class CardViewTests(AuthenticatedTestCase):
         self.assertNotContains(response, "999,00")
 
 
-class StatementViewTests(AuthenticatedTestCase):
+class StatementViewTests(NewVisualMixin, AuthenticatedTestCase):
     """Garante telas de faturas e pagamento via service."""
 
     def setUp(self):
@@ -367,6 +441,78 @@ class StatementViewTests(AuthenticatedTestCase):
         self.assertContains(response, f"{statement.month}/{statement.year}")
         self.assertContains(response, "Pendente")
         self.assertContains(response, 'class="status status--warning"', html=False)
+        self.assertNewVisual(response)
+
+    def test_statement_list_page_shows_progress_against_card_limit(self):
+        """Cada fatura mostra o quanto ela pesa no limite do cartao."""
+
+        self._create_statement(amount=Decimal("1250.00"))
+
+        response = self.client.get(reverse("cards:statements"))
+
+        self.assertContains(response, 'class="progress"', html=False)
+        self.assertContains(response, 'aria-valuenow="25"', html=False)
+        self.assertContains(response, "25% do limite")
+
+    def test_statement_list_page_without_credit_limit_has_no_progress(self):
+        """Sem limite cadastrado nao ha barra de progresso."""
+
+        self.card.credit_limit = None
+        self.card.save(update_fields=["credit_limit"])
+        self._create_statement()
+
+        response = self.client.get(reverse("cards:statements"))
+
+        self.assertNotContains(response, 'role="progressbar"', html=False)
+        self.assertNewVisual(response)
+
+    def test_statement_list_page_empty_state(self):
+        """Sem faturas, mostra o estado vazio."""
+
+        response = self.client.get(reverse("cards:statements"))
+
+        self.assertContains(response, "Nenhuma fatura encontrada.")
+        self.assertContains(response, 'class="empty"', html=False)
+
+    def test_statement_detail_shows_limit_progress_and_back_link(self):
+        """Detalhe mostra o valor em destaque, o progresso e o link de voltar."""
+
+        statement = self._create_statement(amount=Decimal("1250.00"))
+
+        response = self.client.get(
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
+        )
+
+        self.assertContains(response, "25% do limite de R$ 5.000,00")
+        self.assertContains(response, 'class="progress"', html=False)
+        self.assertContains(response, "Voltar para faturas")
+        self.assertContains(response, reverse("cards:statements"))
+        self.assertContains(response, "R$ 1.250,00")
+
+    def test_statement_detail_progress_goes_over_limit(self):
+        """Fatura acima do limite usa a variante de excesso."""
+
+        statement = self._create_statement(amount=Decimal("6000.00"))
+
+        response = self.client.get(
+            reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
+        )
+
+        self.assertContains(response, 'class="progress progress--over"', html=False)
+
+    def test_statement_detail_keeps_post_close_and_get_pay_forms(self):
+        """Fechar continua POST com CSRF e pagar continua GET com campo opcional."""
+
+        statement = self._create_statement()
+        statement_url = reverse("cards:statement-detail", kwargs={"statement_id": statement.id})
+        pay_url = reverse("cards:pay-statement", kwargs={"statement_id": statement.id})
+
+        response = self.client.get(statement_url)
+
+        self.assertContains(response, 'name="csrfmiddlewaretoken"', html=False)
+        self.assertContains(response, f'method="post" action="{statement_url}"', html=False)
+        self.assertContains(response, f'method="get" action="{pay_url}"', html=False)
+        self.assertContains(response, 'name="amount"', html=False)
 
     def test_statement_list_page_shows_computed_summary_values(self):
         """Lista de faturas deve mostrar valores calculados das compras vinculadas."""
@@ -470,7 +616,11 @@ class StatementViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "cards/statement_detail.html")
         self.assertContains(response, self.card.name)
-        self.assertContains(response, "Valor fechado")
+        self.assertNewVisual(response)
+        self.assertContains(response, "Pagar fatura")
+        self.assertContains(response, "Fechar fatura")
+        self.assertContains(response, "Transações vinculadas")
+        self.assertContains(response, "Mercado")
         self.assertContains(response, "Previsto")
         self.assertContains(response, "Fechado")
         self.assertContains(response, "Pago")
@@ -597,6 +747,8 @@ class StatementViewTests(AuthenticatedTestCase):
         self.assertContains(response, "R$ 350,00")
         self.assertContains(response, "Saldo projetado após pagamento")
         self.assertContains(response, "R$ 650,00")
+        self.assertNewVisual(response, shell="task")
+        self.assertContains(response, 'name="amount" value="350.00"', html=False)
 
     def test_get_pay_statement_without_amount_uses_remaining_balance(self):
         """Deve usar o saldo restante se o valor nao for informado no GET."""
