@@ -41,7 +41,8 @@ class MonthlyDashboardViewTests(AuthenticatedTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "reports/monthly_dashboard.html")
-        self.assertContains(response, "Dashboard financeiro")
+        self.assertContains(response, "<h1>Relatório</h1>", html=True)
+        self.assertContains(response, "css/pages/reports.css")
         self.assertContains(response, "dashboard-chart-data")
         self.assertContains(response, "vendor/chartjs/chart.umd.min.js")
         self.assertContains(response, "js/dashboard.js")
@@ -239,3 +240,120 @@ class MonthlyDashboardViewTests(AuthenticatedTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Nenhum limite sob atenção no período.")
 
+
+
+class MonthlyDashboardVisualMarkupTests(AuthenticatedTestCase):
+    """Garante a marcacao do visual novo (spec 017, R-19)."""
+
+    url_name = "reports:monthly-dashboard"
+
+    def setUp(self):
+        self.institution = Institution.objects.create(name="Inter", code="077")
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=self.institution,
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("1000.00"),
+        )
+        self.category = Category.objects.create(name="Alimentacao")
+
+    def get(self, year=2026, month=5, **query):
+        return self.client.get(
+            reverse(self.url_name, kwargs={"year": year, "month": month}),
+            data=query,
+        )
+
+    def test_page_uses_new_components_and_no_legacy_classes(self):
+        response = self.get()
+
+        for expected in ("balance-card", "segmented", "report-grid", "<details"):
+            self.assertContains(response, expected)
+        for legacy in (
+            "metric-card",
+            "chart-panel",
+            "dashboard-grid",
+            "summary-grid",
+            "data-table",
+            "donut-meter",
+            "insight-alert",
+            "segment-control",
+            "panel-title-row",
+        ):
+            self.assertNotContains(response, legacy)
+
+    def test_empty_month_renders_empty_states(self):
+        response = self.get(year=2020, month=1)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nenhuma despesa no período.")
+        self.assertContains(response, "Nenhuma fatura no período.")
+        self.assertContains(response, "Nenhuma meta mensal no período.")
+        self.assertContains(response, "dashboard-chart-data")
+
+    def test_period_label_and_range_title(self):
+        response = self.get(range=6)
+
+        self.assertContains(response, "Evolução (6 meses)")
+        self.assertContains(
+            response, 'class="segmented__item" aria-current="true"', count=1
+        )
+
+    def test_category_share_uses_progress_without_inline_color(self):
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 10),
+        )
+
+        response = self.get()
+
+        self.assertContains(response, "report-category__bar")
+        self.assertContains(response, "width: 100%")
+        self.assertNotContains(response, "--share-color")
+
+    def test_uncategorized_alert_uses_alert_warning(self):
+        Transaction.objects.create(
+            description="Sem categoria",
+            amount=Decimal("300.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            date=date(2026, 5, 10),
+        )
+
+        response = self.get()
+
+        self.assertContains(response, "alert alert--warning")
+        self.assertContains(response, "dos gastos estão sem categoria.")
+
+    def test_summary_lists_use_summary_rows_and_status_component(self):
+        goal = Goal.objects.create(
+            name="Limite Alimentacao",
+            goal_type=Goal.GoalType.REDUCTION,
+            target_amount=Decimal("500.00"),
+            start_date=date(2026, 5, 1),
+            category=self.category,
+        )
+        MonthlyGoal.objects.create(
+            goal=goal, year=2026, month=5, target_amount=Decimal("500.00")
+        )
+        Transaction.objects.create(
+            description="Mercado",
+            amount=Decimal("410.00"),
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            status=Transaction.PaymentStatus.PAID,
+            account=self.account,
+            category=self.category,
+            date=date(2026, 5, 10),
+        )
+
+        response = self.get()
+
+        self.assertContains(response, "summary-rows")
+        self.assertContains(response, "status status--warning")
+        self.assertNotContains(response, "badge badge-")
+        self.assertNotContains(response, "<table")
