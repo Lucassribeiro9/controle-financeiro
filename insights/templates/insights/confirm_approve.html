@@ -1,37 +1,45 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}Meta já existe - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/insights.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1>Meta já existe</h1>
-            <p class="muted">
-                {{ insight.category.name }} já tem uma meta para {{ monthly_goal.month }}/{{ monthly_goal.year }}.
-                Deseja alterar o valor?
-            </p>
-        </div>
+    <header class="ins-header">
+        <h1>Meta já existe</h1>
+        <p class="ins-sub">
+            {{ insight.category.name }} já tem uma meta para {{ monthly_goal.month }}/{{ monthly_goal.year }}.
+            Deseja alterar o valor?
+        </p>
     </header>
 
-    <section class="panel">
-        <p>Valor atual da meta: <strong>{{ monthly_goal.target_amount|brl }}</strong></p>
-        <p>Valor sugerido pelo insight: <strong>{{ insight.suggested_amount|brl }}</strong></p>
+    <section class="card ins-confirm">
+        <dl class="summary-rows">
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Valor atual da meta</dt>
+                <dd class="summary-rows__value">{{ monthly_goal.target_amount|brl }}</dd>
+            </div>
+            <div class="summary-rows__row">
+                <dt class="summary-rows__label">Valor sugerido pelo insight</dt>
+                <dd class="summary-rows__value">{{ insight.suggested_amount|brl }}</dd>
+            </div>
+        </dl>
 
-        <div class="action-row">
+        <div class="ins-actions">
             <form method="post" action="{% url 'insights:approve' insight.id %}">
                 {% csrf_token %}
                 <input type="hidden" name="existing_goal_action" value="update">
-                <button class="button" type="submit">Alterar para o valor sugerido</button>
+                <button class="btn btn--primary" type="submit">Alterar para o valor sugerido</button>
             </form>
 
             <form method="post" action="{% url 'insights:approve' insight.id %}">
                 {% csrf_token %}
                 <input type="hidden" name="existing_goal_action" value="keep">
-                <button class="button button-secondary" type="submit">Manter o valor atual</button>
+                <button class="btn btn--secondary" type="submit">Manter o valor atual</button>
             </form>
 
-            <a class="button button-secondary" href="{% url 'insights:page' %}">Cancelar</a>
+            <a class="btn btn--tertiary" href="{% url 'insights:page' %}">Cancelar</a>
         </div>
     </section>
 {% endblock %}

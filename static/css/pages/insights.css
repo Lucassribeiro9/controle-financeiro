@@ -1,0 +1,82 @@
+/*
+ * Insights e confirmacao de aprovacao (spec 017, item 3.7, issue 298). Dono: app insights.
+ * Usa .card, .status, .summary-rows, .btn e .empty do components.css e so acrescenta o que
+ * falta, com prefixo ins-. So tokens: nenhuma cor literal. Silenciar usa .btn--tertiary.
+ */
+
+.ins-header {
+    margin-bottom: var(--space-lg);
+}
+
+.ins-sub {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: var(--space-xs) 0 0;
+}
+
+.ins-list {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.ins-item,
+.ins-confirm {
+    display: grid;
+    gap: var(--space-md);
+    min-width: 0;
+}
+
+.ins-item__head {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+}
+
+.ins-item__title {
+    font-size: var(--font-size-section);
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.ins-item__message {
+    margin: 0;
+}
+
+.ins-item__suggested {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.ins-item__suggested strong {
+    color: var(--color-text-primary);
+}
+
+.ins-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.ins-actions form {
+    margin: 0;
+}
+
+@media (max-width: 767.98px) {
+    .ins-actions .btn,
+    .ins-actions form {
+        flex: 1 1 100%;
+    }
+}
+
+@media (min-width: 768px) {
+    .ins-list {
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    }
+
+    .ins-confirm {
+        max-width: 560px;
+    }
+}

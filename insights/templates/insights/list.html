@@ -1,53 +1,48 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}Insights - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/insights.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1>Insights</h1>
-            <p class="muted">Revise sugestões pendentes antes de aplicar mudanças.</p>
-        </div>
+    <header class="ins-header">
+        <h1>Insights</h1>
+        <p class="ins-sub">Revise sugestões pendentes antes de aplicar mudanças.</p>
     </header>
 
-    <div class="item-list">
+    <div class="ins-list">
         {% for insight in insights %}
-            <article class="insight-card">
-                <div>
-                    <div class="card-title-row">
-                        <h2>{{ insight.title }}</h2>
-                        <span class="{{ insight.status|status_badge_class }}">{{ insight.get_status_display }}</span>
-                    </div>
-                    <p>{{ insight.message }}</p>
-
-                    {% if insight.suggested_amount %}
-                        <p class="muted">Valor sugerido: {{ insight.suggested_amount|brl }}</p>
-                    {% endif %}
+            <article class="card ins-item">
+                <div class="ins-item__head">
+                    <h2 class="ins-item__title">{{ insight.title }}</h2>
+                    <span class="{{ insight.status|status_badge_class }}">{{ insight.get_status_display }}</span>
                 </div>
+                <p class="ins-item__message">{{ insight.message }}</p>
 
-                <div class="action-row">
+                {% if insight.suggested_amount %}
+                    <p class="ins-item__suggested">Valor sugerido: <strong>{{ insight.suggested_amount|brl }}</strong></p>
+                {% endif %}
+
+                <div class="ins-actions">
                     <form method="post" action="{% url 'insights:approve' insight.id %}">
                         {% csrf_token %}
-                        <button class="button" type="submit">Aprovar</button>
+                        <button class="btn btn--primary" type="submit">Aprovar</button>
                     </form>
 
                     <form method="post" action="{% url 'insights:ignore' insight.id %}">
                         {% csrf_token %}
-                        <button class="button button-secondary" type="submit">Ignorar</button>
+                        <button class="btn btn--secondary" type="submit">Ignorar</button>
                     </form>
 
                     <form method="post" action="{% url 'insights:silence' insight.id %}">
                         {% csrf_token %}
-                        <button class="button button-danger" type="submit">Silenciar</button>
+                        <button class="btn btn--tertiary" type="submit">Silenciar</button>
                     </form>
                 </div>
             </article>
         {% empty %}
-            <section class="panel">
-                <p class="empty">Nenhum insight pendente no momento.</p>
-            </section>
+            {% include "partials/empty_state.html" with title="Nenhum insight pendente no momento." description="Novas sugestões aparecem aqui quando houver padrões nos seus gastos." %}
         {% endfor %}
     </div>
-
 {% endblock %}
