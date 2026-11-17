@@ -94,7 +94,7 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertContains(response, "CSV")
         self.assertContains(response, "XLSX")
         self.assertContains(response, "OFX")
-        self.assertContains(response, "Enviar arquivo")
+        self.assertContains(response, "Enviar para revisão")
         self.assertContains(response, self.account.name)
 
     def test_upload_import_page_post_redirects_to_review(self):
@@ -292,8 +292,8 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertContains(response, "Despesa")
         self.assertContains(response, "R$ 87,45")
         self.assertContains(response, 'class="status status--warning"', html=False)
-        self.assertContains(response, 'class="filter-bar import-filter-bar"', html=False)
-        self.assertContains(response, 'class="bulk-action-bar"', html=False)
+        self.assertContains(response, 'class="filters"', html=False)
+        self.assertContains(response, 'class="import-bulk"', html=False)
         self.assertContains(response, 'data-bulk-toggle="selected_imports"', html=False)
         self.assertContains(response, "Selecionar todos")
         self.assertContains(response, "Aplicar conta")
@@ -383,8 +383,10 @@ class ImportViewTests(AuthenticatedTestCase):
         self.assertNotContains(response, "Descartado")
         self.assertNotContains(response, "Antigo")
         self.assertNotContains(response, '<select name="status">', html=False)
-        self.assertContains(response, 'name="start_date" type="date" value="2026-05-01"', html=False)
-        self.assertContains(response, 'name="end_date" type="date" value="2026-05-31"', html=False)
+        self.assertContains(response, 'name="start_date"', html=False)
+        self.assertContains(response, 'value="01/05/2026"', html=False)
+        self.assertContains(response, 'value="31/05/2026"', html=False)
+        self.assertNotContains(response, 'type="date"', html=False)
 
     def test_review_imports_page_paginates_review_items(self):
         """Deve paginar a revisao de importacoes."""
@@ -539,11 +541,11 @@ class ImportViewTests(AuthenticatedTestCase):
         treated = self.client.get(reverse("imports:review-page"), {"tab": "tratadas"})
         self.assertNotContains(treated, "Editar e confirmar")
         self.assertNotContains(treated, ">Descartar<", html=False)
-        self.assertNotContains(treated, 'class="bulk-action-bar"', html=False)
+        self.assertNotContains(treated, 'class="import-bulk"', html=False)
 
         pending = self.client.get(reverse("imports:review-page"))
         self.assertContains(pending, "Editar e confirmar")
-        self.assertContains(pending, 'class="bulk-action-bar"', html=False)
+        self.assertContains(pending, 'class="import-bulk"', html=False)
 
     def test_review_page_forms_carry_tab_filters_and_page(self):
         """Os formularios de acao devolvem a query completa da tela."""
@@ -1356,3 +1358,178 @@ class CsvProfileViewTests(AuthenticatedTestCase):
         self.assertContains(response, 'value="nubank"')
         self.assertContains(response, 'value="inter"')
         self.assertEqual(ImportedTransaction.objects.count(), 0)
+
+
+class ImportVisualMarkupTests(AuthenticatedTestCase):
+    """Visual novo de upload e revisao (issue 295, spec 017)."""
+
+    def setUp(self):
+        self.account = FinancialAccount.objects.create(
+            name="Conta corrente",
+            institution=Institution.objects.create(name="Inter", code="077"),
+            account_type=FinancialAccount.AccountType.CHECKING,
+            balance=Decimal("100.00"),
+        )
+
+    def _create(self, description, *, status=ImportedTransaction.Status.PENDING, day=10):
+        return ImportedTransaction.objects.create(
+            source_file_name="extrato.csv",
+            source_type=ImportedTransaction.SourceType.CSV,
+            raw_description=description,
+            normalized_description=description,
+            amount=Decimal("10.00"),
+            date=date(2026, 5, day),
+            status=status,
+            suggested_account=self.account,
+            suggested_transaction_type=Transaction.TransactionType.EXPENSE,
+        )
+
+    def _main_html(self, response):
+        html = response.content.decode()
+        return html[html.index("<main") : html.index("</main>")]
+
+    def _legacy_classes_in(self, html):
+        import re
+
+        css = (Path(__file__).resolve().parents[2] / "static/css/app.css").read_text()
+        legacy = set(re.findall(r"\.([a-zA-Z][\w-]*)", re.sub(r"/\*.*?\*/", "", css, flags=re.S)))
+        used = set()
+        for value in re.findall(r'class="([^"]*)"', html):
+            used.update(value.split())
+        return sorted(used & legacy)
+
+    # Upload
+    def test_upload_smoke_new_markup(self):
+        response = self.client.get(reverse("imports:upload-page"))
+
+        self.assertContains(response, "css/pages/imports.css")
+        self.assertContains(response, "<h1>Importar extrato</h1>", html=True)
+        self.assertContains(response, reverse("imports:review-page"))
+        for name in ("source_type", "csv_profile", "file", "account_id"):
+            self.assertContains(response, f'name="{name}"')
+        self.assertContains(response, 'enctype="multipart/form-data"', html=False)
+        self.assertContains(response, "btn btn--primary")
+
+    def test_upload_has_no_legacy_classes(self):
+        response = self.client.get(reverse("imports:upload-page"))
+
+        self.assertEqual(self._legacy_classes_in(self._main_html(response)), [])
+
+    # Revisao
+    def test_review_smoke_new_markup(self):
+        self._create("Mercado Dia")
+
+        response = self.client.get(reverse("imports:review-page"))
+
+        self.assertContains(response, "css/pages/imports.css")
+        self.assertContains(response, "import-row")
+        self.assertContains(response, 'data-bulk-toggle="selected_imports"', html=False)
+        self.assertContains(response, "Filtros")
+        self.assertIn("filter_form", response.context)
+        self.assertEqual(response.context["active_filter_count"], 0)
+
+    def test_review_has_no_legacy_classes(self):
+        self._create("Mercado Dia")
+        self._create("Duplicada", status=ImportedTransaction.Status.DUPLICATE)
+        self._create("Tratada", status=ImportedTransaction.Status.DISCARDED)
+
+        for params in ({}, {"tab": "tratadas"}, {"tab": "duplicadas"}, {"q": "zzz"}):
+            response = self.client.get(reverse("imports:review-page"), params)
+            self.assertEqual(self._legacy_classes_in(self._main_html(response)), [], params)
+
+    def test_review_empty_state_uses_component(self):
+        response = self.client.get(reverse("imports:review-page"))
+
+        self.assertContains(response, 'class="empty"', html=False)
+        self.assertContains(response, "Nada pendente nesta importação")
+
+    def test_bulk_form_fields_unchanged(self):
+        self._create("Mercado Dia")
+
+        response = self.client.get(reverse("imports:review-page"))
+
+        self.assertContains(response, f'action="{reverse("imports:bulk-review")}"', html=False)
+        for token in (
+            'name="bulk_account_id"',
+            'name="bulk_category_id"',
+            'name="review_query"',
+            'name="bulk_action" value="apply_account"',
+            'name="bulk_action" value="apply_category"',
+            'name="bulk_action" value="confirm"',
+            'name="bulk_action" value="discard"',
+            'name="selected_imports"',
+            'form="bulk-imports-form"',
+        ):
+            self.assertContains(response, token, html=False)
+        self.assertContains(response, "<summary", html=False)
+        self.assertContains(response, ">Ações<", html=False)
+
+    def test_review_filters_dd_mm_aaaa(self):
+        self._create("Dentro", day=10)
+        self._create("Fora", day=25)
+
+        response = self.client.get(
+            reverse("imports:review-page"),
+            {"start_date": "01/05/2026", "end_date": "15/05/2026"},
+        )
+
+        self.assertContains(response, "Dentro")
+        self.assertNotContains(response, "Fora")
+        self.assertEqual(response.context["active_filter_count"], 2)
+        self.assertContains(response, "Filtros (2 ativos)")
+
+    def test_review_filters_iso_still_work(self):
+        self._create("Dentro", day=10)
+        self._create("Fora", day=25)
+
+        response = self.client.get(
+            reverse("imports:review-page"),
+            {"start_date": "2026-05-01", "end_date": "2026-05-15"},
+        )
+
+        self.assertContains(response, "Dentro")
+        self.assertNotContains(response, "Fora")
+
+    def test_review_invalid_date_is_200_with_field_error(self):
+        self._create("Dentro", day=10)
+
+        for value in ("31/02/2026", "2026-13-45", "abc"):
+            response = self.client.get(reverse("imports:review-page"), {"start_date": value})
+
+            self.assertEqual(response.status_code, 200, value)
+            self.assertContains(response, "Dentro")
+            self.assertIn("start_date", response.context["filter_form"].errors)
+
+    def test_review_confirm_button_only_on_pending_cards(self):
+        pending = self._create("Pendente")
+        duplicate = self._create("Duplicada", status=ImportedTransaction.Status.DUPLICATE)
+
+        response = self.client.get(reverse("imports:review-page"), {"q": ""})
+        html = response.content.decode()
+        pending_url = reverse("imports:confirm", args=[pending.id])
+        duplicate_url = reverse("imports:confirm", args=[duplicate.id])
+
+        # Atalho "Confirmar": form proprio, fora do <details> de edicao.
+        shortcut = f'class="import-row__quick" method="post" action="{pending_url}"'
+        self.assertIn(shortcut, html)
+        self.assertNotIn(f'class="import-row__quick" method="post" action="{duplicate_url}"', html)
+        quick = html[html.index(shortcut) :]
+        quick = quick[: quick.index("</form>")]
+        self.assertIn('name="next" value="review-page"', quick)
+        self.assertIn('name="review_query"', quick)
+        self.assertIn("btn btn--primary", quick)
+
+        treated = self.client.get(reverse("imports:review-page"), {"tab": "tratadas"})
+        self.assertNotContains(treated, "import-row__quick")
+
+    def test_review_quick_confirm_posts_to_existing_endpoint(self):
+        pending = self._create("Pendente")
+
+        response = self.client.post(
+            reverse("imports:confirm", args=[pending.id]),
+            {"next": "review-page", "review_query": "tab=pendentes"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        pending.refresh_from_db()
+        self.assertEqual(pending.status, ImportedTransaction.Status.CONFIRMED)

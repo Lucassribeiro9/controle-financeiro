@@ -1,0 +1,494 @@
+/*
+ * Importacoes: upload e revisao (issue 295, item 3.6; spec 017, D1).
+ * Dono: imports. So tokens (sem literal de cor); componentes de components.css
+ * (.btn, .card, .status, .field, .alert, .empty, .filters) sao reaproveitados.
+ * Classes locais `import-*` abaixo ficam registradas no PR para a #299 consolidar.
+ * Mobile primeiro; desktop a partir de 768px (barra em lote) e 1100px (card em linha).
+ */
+
+/* Cabecalho */
+.import-header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+}
+
+.import-header__text {
+    min-width: 0;
+}
+
+.import-header__hint {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: var(--space-xs) 0 0;
+}
+
+.import-back {
+    color: var(--color-text-secondary);
+    display: inline-block;
+    font-size: var(--font-size-caption);
+    margin-bottom: var(--space-sm);
+}
+
+/* Abas da revisao: rolagem so dentro da propria faixa */
+.import-tabs {
+    background: var(--color-action-secondary);
+    border-radius: var(--radius-pill);
+    display: flex;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-lg);
+    overflow-x: auto;
+    padding: var(--space-xs);
+    scrollbar-width: none;
+}
+
+.import-tab {
+    align-items: center;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-weight: 600;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 14px;
+    white-space: nowrap;
+}
+
+.import-tab[aria-current="page"] {
+    background: var(--color-bg-surface);
+}
+
+.import-tab__count {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+}
+
+@media (min-width: 768px) {
+    .import-tabs {
+        border-radius: var(--radius-lg);
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+}
+
+/* Busca e filtros */
+.import-filters {
+    display: grid;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.import-filters__error {
+    margin: 0;
+}
+
+/* Barra de acoes em lote: estatica no celular, sticky no desktop */
+.import-bulk {
+    background: var(--color-text-primary);
+    border-radius: var(--radius-xl);
+    color: var(--color-bg-surface);
+    margin-bottom: var(--space-lg);
+    padding: var(--space-sm) var(--space-md);
+}
+
+.import-bulk :focus-visible {
+    outline-color: var(--color-action-primary);
+}
+
+.import-bulk__bar {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    justify-content: space-between;
+}
+
+.import-bulk__select-all {
+    align-items: center;
+    align-self: flex-start;
+    cursor: pointer;
+    display: inline-flex;
+    font-weight: 600;
+    gap: var(--space-sm);
+    min-height: 44px;
+    white-space: nowrap;
+}
+
+.import-bulk__menu {
+    flex: 0 1 auto;
+}
+
+.import-bulk__summary {
+    cursor: pointer;
+    list-style: none;
+    min-height: 44px;
+    padding-bottom: 0;
+    padding-top: 0;
+}
+
+.import-bulk__summary::-webkit-details-marker {
+    display: none;
+}
+
+.import-bulk__summary::after {
+    content: "\25BE";
+    font-size: var(--font-size-caption);
+}
+
+.import-bulk__panel {
+    display: grid;
+    gap: var(--space-sm);
+    padding: var(--space-sm) 0;
+}
+
+.import-bulk__pair {
+    display: grid;
+    gap: var(--space-sm);
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.import-bulk__field {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-pill);
+    color: var(--color-text-primary);
+    min-height: 44px;
+    min-width: 0;
+    padding: 8px 14px;
+    width: 100%;
+}
+
+/* Abaixo de 768px o painel abre no fluxo, ocupando a largura toda da barra */
+@media (max-width: 767.98px) {
+    .import-bulk__menu[open] {
+        flex: 1 0 100%;
+    }
+
+    .import-bulk__menu[open] .import-bulk__summary {
+        width: 100%;
+    }
+}
+
+@media (min-width: 768px) {
+    .import-bulk__bar {
+        flex-wrap: nowrap;
+    }
+
+    .import-bulk__menu {
+        flex: 1 1 auto;
+    }
+
+    .import-bulk__panel {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+        justify-content: flex-end;
+        padding: 0;
+    }
+
+    .import-bulk__pair {
+        display: flex;
+        gap: var(--space-xs);
+    }
+
+    .import-bulk__field {
+        width: auto;
+    }
+
+    @supports selector(::details-content) {
+        .import-bulk__menu::details-content {
+            content-visibility: visible;
+            display: block;
+            height: auto;
+        }
+
+        .import-bulk__summary {
+            display: none;
+        }
+    }
+}
+
+/* Lista e card de importacao */
+.import-list {
+    display: grid;
+    gap: var(--space-md);
+}
+
+.import-row {
+    background: var(--color-bg-surface);
+    border-radius: var(--radius-xl);
+    display: grid;
+    gap: var(--space-md);
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: var(--space-lg);
+}
+
+.import-row__main {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--space-md);
+    min-width: 0;
+}
+
+.import-row__check {
+    accent-color: var(--color-text-primary);
+    flex: 0 0 auto;
+    height: 20px;
+    margin: 2px 0 0;
+    width: 20px;
+}
+
+.import-row__icon {
+    align-items: center;
+    background: var(--color-bg-surface-muted);
+    border-radius: var(--radius-pill);
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-weight: 700;
+    height: 36px;
+    justify-content: center;
+    width: 36px;
+}
+
+.import-row__icon--expense {
+    background: var(--color-money-expense-bg);
+    color: var(--color-money-expense-strong);
+}
+
+.import-row__icon--income {
+    background: var(--color-money-income-bg);
+    color: var(--color-money-income);
+}
+
+.import-row__text {
+    min-width: 0;
+}
+
+.import-row__title {
+    display: block;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.import-row__meta {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: var(--space-xs) 0 0;
+    overflow-wrap: anywhere;
+}
+
+.import-row__amount {
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.import-row__amount--expense {
+    color: var(--color-money-expense);
+}
+
+.import-row__amount--income {
+    color: var(--color-money-income);
+}
+
+.import-row__tags {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    grid-column: 1 / -1;
+    min-width: 0;
+}
+
+.import-row__tag {
+    background: var(--color-bg-surface-muted);
+    border-radius: var(--radius-pill);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 4px 10px;
+}
+
+.import-row__alert {
+    grid-column: 1 / -1;
+    margin: 0;
+}
+
+/* Acoes: Confirmar | Editar | Descartar em uma linha; o editor aberto desce para
+   a linha de baixo, ocupando a largura toda */
+.import-row__actions {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    grid-column: 1 / -1;
+}
+
+.import-row__actions > .import-row__quick,
+.import-row__actions > .import-row__discard,
+.import-row__edit {
+    flex: 1 1 0;
+    margin: 0;
+    min-width: 0;
+}
+
+.import-row__quick .btn,
+.import-row__discard .btn,
+.import-row__edit > summary {
+    width: 100%;
+}
+
+.import-row__quick {
+    order: 1;
+}
+
+.import-row__edit {
+    order: 2;
+}
+
+.import-row__discard {
+    order: 3;
+}
+
+.import-row__edit > summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.import-row__edit > summary::-webkit-details-marker {
+    display: none;
+}
+
+.import-row__edit[open] {
+    flex-basis: 100%;
+    order: 4;
+}
+
+.import-row__form {
+    display: grid;
+    gap: var(--space-md);
+    padding-top: var(--space-md);
+}
+
+/* Estado vazio e paginacao */
+.import-pagination {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    justify-content: space-between;
+    margin-top: var(--space-lg);
+}
+
+.import-pagination__text {
+    color: var(--color-text-secondary);
+}
+
+.import-pagination__links {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+/* Sticky so com largura: em 768-1099px o painel quebra em ate 4 linhas e taparia a lista */
+@media (min-width: 1100px) {
+    .import-bulk {
+        position: sticky;
+        top: var(--space-md);
+        z-index: 5;
+    }
+}
+
+/* Com largura (main de ~700px ou mais), as acoes sobem para a linha do titulo;
+   tags e avisos continuam na linha de baixo. Editor aberto volta a linha inteira. */
+@media (min-width: 1100px) {
+    .import-row {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+
+    .import-row__actions {
+        align-self: center;
+        flex-wrap: nowrap;
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .import-row__actions > .import-row__quick,
+    .import-row__actions > .import-row__discard,
+    .import-row__edit {
+        flex: 0 0 auto;
+    }
+
+    .import-row__actions:has(.import-row__edit[open]) {
+        flex-wrap: wrap;
+        grid-column: 1 / -1;
+        grid-row: auto;
+    }
+
+    .import-row__edit[open] {
+        flex-basis: 100%;
+    }
+}
+
+/* Upload */
+.import-upload {
+    display: grid;
+    gap: var(--space-lg);
+    max-width: 560px;
+}
+
+.import-drop {
+    align-items: center;
+    border: 2px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    display: grid;
+    gap: var(--space-xs);
+    justify-items: center;
+    min-width: 0;
+    padding: var(--space-xl) var(--space-lg);
+    text-align: center;
+}
+
+.import-drop__icon {
+    font-size: var(--font-size-title);
+    line-height: var(--line-height-title);
+}
+
+.import-drop__title {
+    font-weight: 600;
+}
+
+.import-drop__hint {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+}
+
+.import-drop input[type="file"] {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+}
+
+.import-hint {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
+.import-upload__fields {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.import-upload__submit {
+    width: 100%;
+}

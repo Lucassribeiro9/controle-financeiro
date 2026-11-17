@@ -1,266 +1,209 @@
 {% extends "base.html" %}
-{% load money %}
+{% load money static %}
 
 {% block title %}Revisar importações - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/imports.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <header class="import-header">
+        <div class="import-header__text">
             <h1>Revisar importações</h1>
-            <p class="muted">Confira transações importadas antes de confirmar ou descartar.</p>
+            <p class="import-header__hint">Confira transações importadas antes de confirmar ou descartar.</p>
         </div>
-        <a class="button" href="{% url 'imports:upload-page' %}">Novo upload</a>
+        <a class="btn btn--primary" href="{% url 'imports:upload-page' %}">Importar extrato</a>
     </header>
 
-    <nav class="review-tabs" aria-label="Abas da revisão">
+    <nav class="import-tabs" aria-label="Abas da revisão">
         {% for tab in review_tabs %}
-            <a class="review-tab{% if tab.is_active %} is-active{% endif %}" href="?{{ tab.query_string }}"{% if tab.is_active %} aria-current="page"{% endif %}>
+            <a class="import-tab" href="?{{ tab.query_string }}"{% if tab.is_active %} aria-current="page"{% endif %}>
                 <span>{{ tab.label }}</span>
-                <span class="review-tab-count">{{ tab.count }}</span>
+                <span class="import-tab__count">{{ tab.count }}</span>
             </a>
         {% endfor %}
     </nav>
 
-    <form class="filter-bar import-filter-bar" method="get" action="{% url 'imports:review-page' %}">
+    {% url 'imports:review-page' as review_url %}
+    <form class="import-filters" method="get" action="{{ review_url }}" novalidate>
         <input type="hidden" name="tab" value="{{ active_tab }}">
-        <label class="form-field">
-            <span>Arquivo</span>
-            <select name="source_file_name">
-                <option value="">Todos</option>
-                {% for source_file_name in filter_options.source_files %}
-                    <option value="{{ source_file_name }}" {% if active_filters.source_file_name == source_file_name %}selected{% endif %}>{{ source_file_name }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        <label class="form-field">
-            <span>Tipo</span>
-            <select name="source_type">
-                <option value="">Todos</option>
-                {% for value, label in filter_options.source_types %}
-                    <option value="{{ value }}" {% if active_filters.source_type == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        <label class="form-field">
-            <span>Conta</span>
-            <select name="account_id">
-                <option value="">Todas</option>
-                {% for account in accounts %}
-                    <option value="{{ account.id }}" {% if active_filters.account_id == account.id|stringformat:"s" %}selected{% endif %}>{{ account.name }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        <label class="form-field">
-            <span>Categoria</span>
-            <select name="category_id">
-                <option value="">Todas</option>
-                {% for category in categories %}
-                    <option value="{{ category.id }}" {% if active_filters.category_id == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        <label class="form-field">
-            <span>Tipo transação</span>
-            <select name="transaction_type">
-                <option value="">Todos</option>
-                {% for value, label in transaction_types %}
-                    <option value="{{ value }}" {% if active_filters.transaction_type == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        <label class="form-field">
-            <span>Texto</span>
+        <label class="field">
+            <span class="field__label">Buscar</span>
             <input name="q" type="search" value="{{ active_filters.q }}" placeholder="Descrição">
         </label>
-
-        <label class="form-field">
-            <span>Início</span>
-            <input name="start_date" type="date" value="{{ active_filters.start_date }}">
-        </label>
-
-        <label class="form-field">
-            <span>Fim</span>
-            <input name="end_date" type="date" value="{{ active_filters.end_date }}">
-        </label>
-
-        <button class="button" type="submit">Filtrar</button>
+        {% if filter_form.errors %}
+            <p class="field__error import-filters__error" role="alert">Corrija as datas em Filtros.</p>
+        {% endif %}
+        {% with clear_url=review_url|add:"?tab="|add:active_tab %}
+            {% include "partials/filter_bar.html" with fields_template="imports/_review_filters.html" active_count=active_filter_count clear_url=clear_url %}
+        {% endwith %}
     </form>
 
     {% if active_tab != "tratadas" %}
-    <form id="bulk-imports-form" class="bulk-action-bar" method="post" action="{% url 'imports:bulk-review' %}">
+    <form id="bulk-imports-form" class="import-bulk" method="post" action="{% url 'imports:bulk-review' %}">
         {% csrf_token %}
         <input type="hidden" name="review_query" value="{{ review_query_string }}">
-        <label class="checkbox-row bulk-select-row">
-            <input type="checkbox" data-bulk-toggle="selected_imports">
-            <span>Selecionar todos</span>
-        </label>
-        <div class="action-row">
-            <select name="bulk_account_id" aria-label="Conta em lote">
-                <option value="">Conta</option>
-                {% for account in accounts %}
-                    <option value="{{ account.id }}">{{ account.name }}</option>
-                {% endfor %}
-            </select>
-            <button class="button" type="submit" name="bulk_action" value="apply_account">Aplicar conta</button>
-
-            <select name="bulk_category_id" aria-label="Categoria em lote">
-                <option value="">Categoria</option>
-                {% for category in categories %}
-                    <option value="{{ category.id }}">{{ category.name }}</option>
-                {% endfor %}
-            </select>
-            <button class="button" type="submit" name="bulk_action" value="apply_category">Aplicar categoria</button>
-
-            <button class="button" type="submit" name="bulk_action" value="confirm">Confirmar selecionadas</button>
-            <button class="button button-danger" type="submit" name="bulk_action" value="discard">Descartar selecionadas</button>
+        <div class="import-bulk__bar">
+            <label class="import-bulk__select-all">
+                <input class="import-row__check" type="checkbox" data-bulk-toggle="selected_imports">
+                <span>Selecionar todos</span>
+            </label>
+            <details class="import-bulk__menu">
+                <summary class="btn btn--primary import-bulk__summary">Ações</summary>
+                <div class="import-bulk__panel">
+                    <div class="import-bulk__pair">
+                        <select class="import-bulk__field" name="bulk_account_id" aria-label="Conta em lote">
+                            <option value="">Conta</option>
+                            {% for account in accounts %}
+                                <option value="{{ account.id }}">{{ account.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn--secondary" type="submit" name="bulk_action" value="apply_account">Aplicar conta</button>
+                    </div>
+                    <div class="import-bulk__pair">
+                        <select class="import-bulk__field" name="bulk_category_id" aria-label="Categoria em lote">
+                            <option value="">Categoria</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn--secondary" type="submit" name="bulk_action" value="apply_category">Aplicar categoria</button>
+                    </div>
+                    <button class="btn btn--primary" type="submit" name="bulk_action" value="confirm">Confirmar selecionadas</button>
+                    <button class="btn btn--secondary" type="submit" name="bulk_action" value="discard">Descartar selecionadas</button>
+                </div>
+            </details>
         </div>
     </form>
     {% endif %}
 
-    <div class="item-list">
+    <div class="import-list">
         {% for imported_transaction in imported_transactions %}
-            <article class="import-card">
-                <div>
-                    <div class="card-title-row">
-                        {% if is_treated_tab %}
-                            <strong>{{ imported_transaction.raw_description }}</strong>
-                        {% else %}
-                            <label class="checkbox-row">
-                                <input
-                                    form="bulk-imports-form"
-                                    type="checkbox"
-                                    name="selected_imports"
-                                    value="{{ imported_transaction.id }}"
-                                >
-                                <span>{{ imported_transaction.raw_description }}</span>
-                            </label>
-                        {% endif %}
-                        <span class="{{ imported_transaction.status|status_badge_class }}">{{ imported_transaction.get_status_display }}</span>
+            <article class="import-row">
+                <div class="import-row__main">
+                    {% if not is_treated_tab %}
+                        <input
+                            class="import-row__check"
+                            form="bulk-imports-form"
+                            type="checkbox"
+                            name="selected_imports"
+                            value="{{ imported_transaction.id }}"
+                            aria-label="Selecionar {{ imported_transaction.raw_description }}"
+                        >
+                    {% endif %}
+                    <span class="import-row__icon{% if imported_transaction.suggested_transaction_type == 'expense' %} import-row__icon--expense{% elif imported_transaction.suggested_transaction_type == 'income' %} import-row__icon--income{% endif %}" aria-hidden="true">{% if imported_transaction.suggested_transaction_type == 'expense' %}&darr;{% elif imported_transaction.suggested_transaction_type == 'income' %}&uarr;{% else %}&bull;{% endif %}</span>
+                    <div class="import-row__text">
+                        <strong class="import-row__title">{{ imported_transaction.raw_description }}</strong>
+                        <p class="import-row__meta">{{ imported_transaction.date|date_br }} &middot; {{ imported_transaction.source_file_name }}</p>
                     </div>
-
-                    <dl class="detail-list import-summary-list">
-                        <div>
-                            <dt>Data</dt>
-                            <dd>{{ imported_transaction.date|date_br }}</dd>
-                        </div>
-                        <div>
-                            <dt>Valor</dt>
-                            <dd>{{ imported_transaction.amount|brl }}</dd>
-                        </div>
-                        <div>
-                            <dt>Tipo</dt>
-                            <dd>{{ imported_transaction.get_source_type_display }}</dd>
-                        </div>
-                        <div>
-                            <dt>Arquivo</dt>
-                            <dd>{{ imported_transaction.source_file_name }}</dd>
-                        </div>
-                        <div>
-                            <dt>Conta</dt>
-                            <dd>{{ imported_transaction.suggested_account|default:"Não sugerida" }}</dd>
-                        </div>
-                        <div>
-                            <dt>Categoria</dt>
-                            <dd>{{ imported_transaction.suggested_category|default:"Sem categoria" }}</dd>
-                        </div>
-                    </dl>
-                    {% if imported_transaction.status == "duplicate" %}
-                        <p class="form-error">Possível duplicidade. Revise antes de confirmar.</p>
-                    {% endif %}
-                    {% if imported_transaction.review_error %}
-                        <p class="form-error">{{ imported_transaction.review_error }}</p>
-                    {% endif %}
                 </div>
 
-                {% if imported_transaction.status == "pending" or imported_transaction.status == "duplicate" %}
-                <details class="import-edit-details">
-                    <summary>Editar e confirmar</summary>
+                <strong class="import-row__amount{% if imported_transaction.suggested_transaction_type == 'expense' %} import-row__amount--expense{% elif imported_transaction.suggested_transaction_type == 'income' %} import-row__amount--income{% endif %}">{{ imported_transaction.amount|brl }}</strong>
 
-                    <form class="form-grid import-edit-form" method="post" action="{% url 'imports:confirm' imported_transaction.id %}">
+                <div class="import-row__tags">
+                    <span class="{{ imported_transaction.status|status_badge_class }}">{{ imported_transaction.get_status_display }}</span>
+                    <span class="import-row__tag">Tipo: {{ imported_transaction.get_source_type_display }}</span>
+                    <span class="import-row__tag">Conta: {{ imported_transaction.suggested_account|default:"Não sugerida" }}</span>
+                    <span class="import-row__tag">Categoria: {{ imported_transaction.suggested_category|default:"Sem categoria" }}</span>
+                </div>
+
+                {% if imported_transaction.status == "duplicate" %}
+                    <p class="alert alert--warning import-row__alert">Possível duplicidade. Revise antes de confirmar.</p>
+                {% endif %}
+                {% if imported_transaction.review_error %}
+                    <p class="alert alert--error import-row__alert">{{ imported_transaction.review_error }}</p>
+                {% endif %}
+
+                {% if imported_transaction.status == "pending" or imported_transaction.status == "duplicate" %}
+                <div class="import-row__actions">
+                    {% if imported_transaction.status == "pending" %}
+                    <form class="import-row__quick" method="post" action="{% url 'imports:confirm' imported_transaction.id %}">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ review_next_value }}">
                         <input type="hidden" name="review_query" value="{{ review_query_string }}">
-
-                        <label class="form-field">
-                            <span>Descrição</span>
-                            <input name="description" type="text" value="{{ imported_transaction.normalized_description }}" required>
-                        </label>
-
-                        <label class="form-field">
-                            <span>Data</span>
-                            <input name="date" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="dd/mm/aaaa" value="{{ imported_transaction.date|date_br }}" required>
-                        </label>
-
-                        <label class="form-field">
-                            <span>Valor</span>
-                            <input name="amount" type="text" inputmode="decimal" placeholder="0,00" value="{{ imported_transaction.amount|decimal_ptbr }}" required>
-                        </label>
-
-                        <label class="form-field">
-                            <span>Conta</span>
-                            <select name="account_id" required>
-                                <option value="">Selecione uma conta</option>
-                                {% for account in accounts %}
-                                    <option value="{{ account.id }}" {% if account.id == imported_transaction.suggested_account_id %}selected{% endif %}>{{ account.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </label>
-
-                        <label class="form-field">
-                            <span>Categoria</span>
-                            <select name="category_id">
-                                <option value="">Sem categoria</option>
-                                {% for category in categories %}
-                                    <option value="{{ category.id }}" {% if category.id == imported_transaction.suggested_category_id %}selected{% endif %}>{{ category.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </label>
-
-                        <label class="form-field">
-                            <span>Tipo</span>
-                            <select name="transaction_type" required>
-                                <option value="">Selecione o tipo</option>
-                                {% for value, label in transaction_types %}
-                                    <option value="{{ value }}" {% if value == imported_transaction.suggested_transaction_type %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </label>
-
-                        <div class="action-row">
-                            <button class="button" type="submit">Confirmar importação</button>
-                        </div>
+                        <button class="btn btn--primary" type="submit">Confirmar</button>
                     </form>
-                </details>
+                    {% endif %}
 
-                <form method="post" action="{% url 'imports:discard' imported_transaction.id %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ review_next_value }}">
-                    <input type="hidden" name="review_query" value="{{ review_query_string }}">
-                    <button class="button button-danger" type="submit">Descartar</button>
-                </form>
+                    <details class="import-row__edit">
+                        <summary class="btn btn--secondary">Editar</summary>
+
+                        <form class="import-row__form" method="post" action="{% url 'imports:confirm' imported_transaction.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ review_next_value }}">
+                            <input type="hidden" name="review_query" value="{{ review_query_string }}">
+
+                            <label class="field">
+                                <span class="field__label">Descrição</span>
+                                <input name="description" type="text" value="{{ imported_transaction.normalized_description }}" required>
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Data</span>
+                                <input name="date" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="dd/mm/aaaa" value="{{ imported_transaction.date|date_br }}" required>
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Valor</span>
+                                <input name="amount" type="text" inputmode="decimal" placeholder="0,00" value="{{ imported_transaction.amount|decimal_ptbr }}" required>
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Conta</span>
+                                <select name="account_id" required>
+                                    <option value="">Selecione uma conta</option>
+                                    {% for account in accounts %}
+                                        <option value="{{ account.id }}" {% if account.id == imported_transaction.suggested_account_id %}selected{% endif %}>{{ account.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Categoria</span>
+                                <select name="category_id">
+                                    <option value="">Sem categoria</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category.id }}" {% if category.id == imported_transaction.suggested_category_id %}selected{% endif %}>{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                <span class="field__label">Tipo</span>
+                                <select name="transaction_type" required>
+                                    <option value="">Selecione o tipo</option>
+                                    {% for value, label in transaction_types %}
+                                        <option value="{{ value }}" {% if value == imported_transaction.suggested_transaction_type %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+
+                            <button class="btn btn--primary" type="submit">Confirmar importação</button>
+                        </form>
+                    </details>
+
+                    <form class="import-row__discard" method="post" action="{% url 'imports:discard' imported_transaction.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ review_next_value }}">
+                        <input type="hidden" name="review_query" value="{{ review_query_string }}">
+                        <button class="btn btn--tertiary" type="submit">Descartar</button>
+                    </form>
+                </div>
                 {% endif %}
             </article>
         {% empty %}
-            <section class="panel">
-                <p class="empty">{{ empty_message }}</p>
-            </section>
+            {% include "partials/empty_state.html" with title=empty_message description="" %}
         {% endfor %}
     </div>
 
     {% if page_obj.paginator.num_pages > 1 %}
-        <nav class="pagination" aria-label="Paginação da revisão">
-            <span class="muted">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-            <div class="action-row">
+        <nav class="import-pagination" aria-label="Paginação da revisão">
+            <span class="import-pagination__text">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            <div class="import-pagination__links">
                 {% if page_obj.has_previous %}
-                    <a class="button" href="?{% if pagination_query_string %}{{ pagination_query_string }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
+                    <a class="btn btn--secondary" href="?{% if pagination_query_string %}{{ pagination_query_string }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
                 {% endif %}
                 {% if page_obj.has_next %}
-                    <a class="button" href="?{% if pagination_query_string %}{{ pagination_query_string }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
+                    <a class="btn btn--secondary" href="?{% if pagination_query_string %}{{ pagination_query_string }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
                 {% endif %}
             </div>
         </nav>
