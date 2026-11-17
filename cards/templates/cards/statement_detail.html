@@ -1,126 +1,115 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}Fatura {{ statement }} - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/cards.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1>Fatura {{ statement.month }}/{{ statement.year }}</h1>
-            <p class="muted">{{ statement.card }} - {{ statement.card.institution }}</p>
-        </div>
+    <div class="cards-page">
+        <a class="cards-back" href="{% url 'cards:statements' %}">‹ Voltar para faturas</a>
 
-        <a class="button button-secondary" href="{% url 'cards:statements' %}">Voltar</a>
-    </header>
+        <section class="card cards-item" aria-labelledby="statement-title">
+            <div class="cards-item__head">
+                <h1 class="cards-item__title" id="statement-title">{{ statement.card }} · {{ statement.month }}/{{ statement.year }}</h1>
+                <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
+            </div>
+            <p class="cards-muted">{{ statement.card.institution }}</p>
 
-    <section class="panel">
-        <div class="card-title-row">
-            <h2>{{ statement.card }}</h2>
-            <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
-        </div>
+            <p class="cards-amount">{{ statement_summary.expected_amount|brl }}</p>
+            <p class="cards-muted">Fecha {{ statement.closing_date|date:"d/m" }} · vence {{ statement.due_date|date:"d/m" }}</p>
 
-        <div class="summary-grid">
-            <div class="metric-card">
-                <span>Previsto</span>
-                <strong>{{ statement_summary.expected_amount|brl }}</strong>
-            </div>
-            <div class="metric-card">
-                <span>Fechado</span>
-                <strong>{{ statement_summary.closed_amount|brl }}</strong>
-            </div>
-            <div class="metric-card">
-                <span>Pago</span>
-                <strong>{{ statement_summary.paid_amount|brl }}</strong>
-            </div>
-            <div class="metric-card">
-                <span>Pendente</span>
-                <strong>{{ statement_summary.remaining_amount|brl }}</strong>
-            </div>
-        </div>
+            {% if statement.card.credit_limit and statement.card.credit_limit > 0 %}
+                {% include "cards/_progress.html" with value=statement_summary.expected_amount limit=statement.card.credit_limit caption=True %}
+            {% endif %}
 
-        <dl class="detail-list">
-            <div>
-                <dt>Mês/Ano</dt>
-                <dd>{{ statement.month }}/{{ statement.year }}</dd>
-            </div>
-            <div>
-                <dt>Valor esperado</dt>
-                <dd>{{ statement_summary.expected_amount|brl }}</dd>
-            </div>
-            <div>
-                <dt>Valor fechado</dt>
-                <dd>{{ statement_summary.closed_amount|brl }}</dd>
-            </div>
-            <div>
-                <dt>Valor pago</dt>
-                <dd>{{ statement_summary.paid_amount|brl }}</dd>
-            </div>
-            <div>
-                <dt>Fechamento</dt>
-                <dd>{{ statement.closing_date|date_br }}</dd>
-            </div>
-            <div>
-                <dt>Vencimento</dt>
-                <dd>{{ statement.due_date|date_br }}</dd>
-            </div>
-            <div>
-                <dt>Conta de pagamento</dt>
-                <dd>{{ statement.payment_account|default:"Não vinculada" }}</dd>
-            </div>
-            <div>
-                <dt>Status</dt>
-                <dd><span class="{{ statement_summary.status|status_badge_class }}">{{ statement.get_status_display }}</span></dd>
-            </div>
-        </dl>
-    </section>
+            <dl class="summary-rows">
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Previsto</dt>
+                    <dd class="summary-rows__value">{{ statement_summary.expected_amount|brl }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Fechado</dt>
+                    <dd class="summary-rows__value">{{ statement_summary.closed_amount|brl }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Pago</dt>
+                    <dd class="summary-rows__value">{{ statement_summary.paid_amount|brl }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Pendente</dt>
+                    <dd class="summary-rows__value">{{ statement_summary.remaining_amount|brl }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Fechamento</dt>
+                    <dd class="summary-rows__value">{{ statement.closing_date|date_br }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Vencimento</dt>
+                    <dd class="summary-rows__value">{{ statement.due_date|date_br }}</dd>
+                </div>
+                <div class="summary-rows__row">
+                    <dt class="summary-rows__label">Conta de pagamento</dt>
+                    <dd class="summary-rows__value">{{ statement.payment_account|default:"Não vinculada" }}</dd>
+                </div>
+            </dl>
+        </section>
 
-    <section class="panel page-section">
-        <h2>Ações da fatura</h2>
-        <div class="action-row">
-            <form method="post" action="{% url 'cards:statement-detail' statement.id %}">
-                {% csrf_token %}
-                <button class="button button-secondary" type="submit">Fechar fatura</button>
-            </form>
+        <section class="cards-partial" aria-label="Ações da fatura">
+            <div class="cards-actions">
+                <button class="btn btn--primary" type="submit" form="pay-form">Pagar fatura</button>
+                <form method="post" action="{% url 'cards:statement-detail' statement.id %}">
+                    {% csrf_token %}
+                    <button class="btn btn--secondary" type="submit">Fechar fatura</button>
+                </form>
+            </div>
 
-            <form class="inline-form" method="get" action="{% url 'cards:pay-statement' statement.id %}">
-                <label class="sr-only" for="{{ payment_form.amount.id_for_label }}">{{ payment_form.amount.label }}</label>
+            <form class="field" id="pay-form" method="get" action="{% url 'cards:pay-statement' statement.id %}">
+                <label class="field__label" for="{{ payment_form.amount.id_for_label }}">{{ payment_form.amount.label }} (opcional)</label>
                 {{ payment_form.amount }}
-                <button class="button" type="submit">Pagar</button>
+                <p class="cards-partial__hint">Deixe em branco para pagar o valor pendente.</p>
             </form>
-        </div>
-    </section>
+        </section>
 
-    <section class="panel page-section">
-        <h2>Transações vinculadas</h2>
-        {% if transactions %}
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th class="cell-primary">Descrição</th>
-                            <th class="cell-date">Data</th>
-                            <th>Tipo</th>
-                            <th class="cell-status">Status</th>
-                            <th class="cell-amount">Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for transaction in transactions %}
-                            <tr>
-                                <td class="cell-primary">{{ transaction.description }}</td>
-                                <td class="cell-date">{{ transaction.date|date_br }}</td>
-                                <td>{{ transaction.get_transaction_type_display }}</td>
-                                <td class="cell-status">
-                                    <span class="{{ transaction.status|status_badge_class }}">{{ transaction.get_status_display }}</span>
-                                </td>
-                                <td class="cell-amount">{{ transaction.amount|brl }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="empty">Nenhuma transação vinculada a esta fatura.</p>
-        {% endif %}
-    </section>
+        <section class="card" aria-labelledby="tx-title">
+            <h2 class="cards-section-title" id="tx-title">Transações vinculadas{% if transactions %} · {{ transactions|length }}{% endif %}</h2>
+            {% if transactions %}
+                <ul class="cards-tx">
+                    {% for transaction in transactions %}
+                        {% if transaction.transaction_type == "income" or transaction.transaction_type == "adjustment_in" %}
+                            <li class="cards-tx__row">
+                                <span class="cards-tx__icon cards-tx__icon--in" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>
+                                </span>
+                                <div class="cards-tx__body">
+                                    <span class="cards-tx__title">{{ transaction.description }}</span>
+                                    <span class="cards-tx__meta">
+                                        <span>{{ transaction.get_transaction_type_display }} · {{ transaction.date|date_br }}</span>
+                                        <span class="{{ transaction.status|status_badge_class }}">{{ transaction.get_status_display }}</span>
+                                    </span>
+                                </div>
+                                <span class="cards-tx__amount cards-tx__amount--in">+ {{ transaction.amount|brl }}</span>
+                            </li>
+                        {% else %}
+                            <li class="cards-tx__row">
+                                <span class="cards-tx__icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 5v14M6 13l6 6 6-6"></path></svg>
+                                </span>
+                                <div class="cards-tx__body">
+                                    <span class="cards-tx__title">{{ transaction.description }}</span>
+                                    <span class="cards-tx__meta">
+                                        <span>{{ transaction.get_transaction_type_display }} · {{ transaction.date|date_br }}</span>
+                                        <span class="{{ transaction.status|status_badge_class }}">{{ transaction.get_status_display }}</span>
+                                    </span>
+                                </div>
+                                <span class="cards-tx__amount">− {{ transaction.amount|brl }}</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty">Nenhuma transação vinculada a esta fatura.</p>
+            {% endif %}
+        </section>
+    </div>
 {% endblock %}
