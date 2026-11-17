@@ -20,7 +20,7 @@
     </header>
 
     <section class="home__summary" aria-labelledby="home-summary-title">
-        <h2 id="home-summary-title" class="home__sr-only">Resumo financeiro do mês</h2>
+        <h2 id="home-summary-title" class="sr-only">Resumo financeiro do mês</h2>
 
         {% if empty_states.summary.is_empty %}
             {% include "partials/empty_state.html" with title=empty_states.summary.title description="Comece registrando uma receita, despesa ou transferência." cta_label=empty_states.summary.cta_label cta_url=empty_states.summary.cta_url %}

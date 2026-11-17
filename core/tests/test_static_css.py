@@ -214,6 +214,54 @@ class LegacyCssRemovedTests(SimpleTestCase):
         self.assertEqual(used - defined, set())
 
 
+class SharedComponentsTests(SimpleTestCase):
+    """3.9: o que se repetia entre apps vive em components.css, sem regra duplicada nas paginas."""
+
+    PROMOTED = (
+        "app-messages", "sr-only", "screen-head", "soft-text", "card-stack", "card-head",
+        "card-section", "form-card", "form-stack", "field--check", "button-bar", "btn--danger",
+        "list-card", "row-main", "row-meta", "row-value", "list-table--records",
+    )
+    RECORD_PAGES = ("accounts", "categories", "institutions", "installments")
+
+    def test_components_css_defines_the_promoted_classes(self):
+        names = class_names(read(CSS_DIR / "components.css"))
+
+        self.assertEqual(sorted(set(self.PROMOTED) - names), [])
+
+    def test_page_css_does_not_redefine_promoted_classes(self):
+        for sheet in sorted((CSS_DIR / "pages").glob("*.css")):
+            with self.subTest(sheet=sheet.name):
+                css = re.sub(r"/\*.*?\*/", "", read(sheet), flags=re.S)
+                heads = {
+                    part.strip()
+                    for head in re.findall(r"([^{}]+)\{", css)
+                    for part in head.split(",")
+                }
+                promoted = {f".{name}" for name in self.PROMOTED}
+                self.assertEqual(sorted(heads & promoted), [])
+
+    def test_record_tables_opt_in_to_the_stacked_modifier(self):
+        for app in self.RECORD_PAGES:
+            for template in sorted((ROOT / app / "templates" / app).glob("*.html")):
+                for table in re.findall(r'<table class="([^"]*)"', read(template)):
+                    if "list-table" in table.split():
+                        with self.subTest(template=f"{app}/{template.name}"):
+                            self.assertIn("list-table--records", table.split())
+
+    def test_progress_bar_is_lime_by_default(self):
+        css = read(CSS_DIR / "components.css")
+        rule = re.search(r"\.progress__bar\s*\{(?P<body>[^}]*)\}", css).group("body")
+
+        self.assertIn("var(--color-action-primary)", rule)
+        for sheet in sorted((CSS_DIR / "pages").glob("*.css")):
+            with self.subTest(sheet=sheet.name):
+                self.assertNotRegex(read(sheet), r"\.progress__bar[^{]*\{[^}]*\bbackground\b")
+
+    def test_components_css_no_longer_mentions_the_legacy_file(self):
+        self.assertNotIn("app.css", read(CSS_DIR / "components.css"))
+
+
 class ComponentsCssTests(SimpleTestCase):
     """Componentes compartilhados de components.css (spec 002)."""
 

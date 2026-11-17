@@ -70,7 +70,7 @@
                                 <span class="report-category__value">{{ item.total_amount|brl }} · {{ item.percentage|percentage:0 }}</span>
                             </div>
                             <div class="progress" role="img" aria-label="{{ item.category_name }} representa {{ item.percentage|percentage:0 }} das despesas">
-                                <span class="progress__bar report-category__bar" style="width: {{ item.percentage }}%"></span>
+                                <span class="progress__bar" style="width: {{ item.percentage }}%"></span>
                             </div>
                         </li>
                     {% endfor %}

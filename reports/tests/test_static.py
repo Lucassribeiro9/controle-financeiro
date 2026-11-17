@@ -34,8 +34,12 @@ class ReportsCssTests(SimpleTestCase):
         self.assertTrue(names)
         self.assertEqual({n for n in names if not n.startswith("report-")}, set())
 
-    def test_reports_css_uses_tokens_for_the_category_bar(self):
-        self.assertIn("var(--color-action-primary)", read(CSS_PATH))
+    def test_category_bar_is_lime_from_the_shared_progress_component(self):
+        components = read(CSS_PATH.parent.parent / "components.css")
+        rule = re.search(r"\.progress__bar\s*\{([^}]*)\}", components).group(1)
+
+        self.assertIn("var(--color-action-primary)", rule)
+        self.assertNotIn("progress__bar", read(CSS_PATH))
 
     def test_template_loads_page_css(self):
         self.assertIn("css/pages/reports.css", read(TEMPLATE_PATH))

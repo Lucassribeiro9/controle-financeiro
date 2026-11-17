@@ -115,10 +115,6 @@
     font-size: var(--font-size-caption);
 }
 
-.report-category__bar {
-    background: var(--color-action-primary);
-}
-
 /* Linhas com status abaixo do valor */
 .report-row__meta {
     align-items: center;

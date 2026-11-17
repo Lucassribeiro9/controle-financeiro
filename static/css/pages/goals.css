@@ -6,7 +6,7 @@
  *
  * Periodo: no celular vai no topo (<details class="gl-period"> em topbar_actions, sem JS);
  * a partir de 768px o topo some e o formulario aparece no cabecalho (.gl-period-inline).
- * Barra de progresso em lima local (.gl-bar); .progress--over a deixa vermelha.
+ * Barra de progresso: .progress do components.css (lima por padrao; .progress--over a deixa vermelha).
  */
 
 /* Cabecalho */
@@ -157,10 +157,6 @@
     font-size: var(--font-size-caption);
     line-height: var(--line-height-caption);
     margin: 0;
-}
-
-.gl-bar {
-    background: var(--color-action-primary);
 }
 
 .gl-legend {
