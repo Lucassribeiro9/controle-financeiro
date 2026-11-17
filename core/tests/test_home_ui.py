@@ -21,21 +21,6 @@ from transactions.models import Transaction
 HOME_CSS = CSS_DIR / "pages" / "home.css"
 CARDS = ("realized", "pending", "forecasted")
 
-# Classes legadas que so o partial transaction_table (dono: item 3.4, #293) ainda
-# emite dentro do detalhe do resumo. Sai desta lista quando a 3.4 migrar o partial.
-LEGACY_TRANSACTION_TABLE_CLASSES = {
-    "table-responsive",
-    "table-responsive-wide",
-    "data-table",
-    "cell-primary",
-    "cell-date",
-    "cell-type",
-    "cell-status",
-    "cell-secondary",
-    "cell-amount",
-    "muted",
-}
-
 VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "wbr"}
 
 
@@ -328,7 +313,7 @@ class HomeMarkupTests(HomeFixtureMixin, AuthenticatedTestCase):
             if element is main:
                 continue
             for name in element.classes:
-                ok = name.startswith("home__") or name in allowed or name in extra
+                ok = name.startswith(("home__", "tx-")) or name in allowed or name in extra
                 self.assertTrue(ok, f"classe fora do sistema novo: {name} em <{element.tag}>")
 
     def test_expense_values_sit_inside_a_surface(self):
@@ -349,9 +334,11 @@ class HomeMarkupTests(HomeFixtureMixin, AuthenticatedTestCase):
 
 
 class SummaryDetailMarkupTests(HomeFixtureMixin, AuthenticatedTestCase):
-    def test_detail_uses_new_classes_with_legacy_partial_allowlist(self):
+    def test_detail_uses_only_new_system_classes(self):
         self.create_data()
-        allowed = class_names(read(CSS_DIR / "components.css"))
+        allowed = class_names(read(CSS_DIR / "components.css")) | class_names(
+            read(CSS_DIR / "pages" / "transactions.css")
+        )
         for card in CARDS:
             html = self.client.get(reverse("core:summary_detail", args=[card])).content.decode()
             main = main_content(parse(html))
@@ -359,11 +346,7 @@ class SummaryDetailMarkupTests(HomeFixtureMixin, AuthenticatedTestCase):
                 if element is main:
                     continue
                 for name in element.classes:
-                    ok = (
-                        name.startswith("home__")
-                        or name in allowed
-                        or name in LEGACY_TRANSACTION_TABLE_CLASSES
-                    )
+                    ok = name.startswith(("home__", "tx-")) or name in allowed
                     self.assertTrue(ok, f"{card}: classe fora do sistema novo: {name}")
 
     def test_detail_totals_sit_inside_a_card_and_back_is_secondary(self):
