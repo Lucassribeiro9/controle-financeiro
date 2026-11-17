@@ -33,14 +33,6 @@ MONTH_LABELS = {
     11: "nov",
     12: "dez",
 }
-CHART_COLORS = [
-    "#059669",
-    "#0f8bd6",
-    "#d9c92f",
-    "#e87121",
-    "#7c3aed",
-    "#64748b",
-]
 UNCATEGORIZED_EXPENSE_ALERT_THRESHOLD = 50
 
 
@@ -99,7 +91,7 @@ def _build_category_expense_share(breakdown):
         return []
 
     share_items = []
-    for index, item in enumerate(breakdown):
+    for item in breakdown:
         amount = item["total_amount"]
         percentage = ((amount / total) * Decimal("100")).quantize(
             Decimal("1"),
@@ -111,7 +103,6 @@ def _build_category_expense_share(breakdown):
                 "category_name": item["category__name"] or "Sem categoria",
                 "total_amount": amount,
                 "percentage": int(percentage),
-                "color": CHART_COLORS[index % len(CHART_COLORS)],
             }
         )
 
@@ -244,7 +235,6 @@ def _build_dashboard_chart_payload(cashflow_series, category_share):
         "categories": {
             "labels": [item["category_name"] for item in category_share],
             "values": [_chart_number(item["total_amount"]) for item in category_share],
-            "colors": [item["color"] for item in category_share],
         },
         "currency": "BRL",
     }
