@@ -1,0 +1,10 @@
+{% load money %}{% comment %}
+Barra de progresso do uso do limite (FIN-52). Entradas: value (usado ou total da fatura),
+limit (limite do cartao, maior que zero) e caption (opcional, mostra "N% do limite de R$ X").
+Quando value passa de limit, usa progress--over; a largura e o aria-valuenow param em 100.
+{% endcomment %}{% widthratio value limit 100 as pct %}<div class="cards-progress">
+    <div class="progress{% if value > limit %} progress--over{% endif %}" role="progressbar" aria-label="Uso do limite" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{% if pct|add:'0' > 100 %}100{% else %}{{ pct }}{% endif %}">
+        <span class="progress__bar" style="width: {% if pct|add:'0' > 100 %}100{% else %}{{ pct }}{% endif %}%"></span>
+    </div>
+    {% if caption %}<p class="cards-progress__caption">{{ pct }}% do limite de {{ limit|brl }}</p>{% endif %}
+</div>
