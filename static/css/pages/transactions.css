@@ -1,0 +1,326 @@
+/*
+ * Ajustes das telas de lancamentos (spec 017, item 3.4, issue 293). Dono: app transactions.
+ * Usa os componentes do components.css (.btn, .card, .field, .filters, .list-table,
+ * .summary-rows, .alert, .empty, .status) e so acrescenta o que falta, com prefixo
+ * tx-. So tokens: nenhuma cor literal. Carregado pelo bloco page_css.
+ *
+ * O partial templates/partials/transaction_table.html tambem aparece no detalhe dos
+ * cards do resumo (core/summary_detail.html). Sem este arquivo a lista continua
+ * legivel (base do components.css, sem rolagem lateral); com ele ganha a linha
+ * inteira clicavel, valor colorido por tipo e a segunda linha compacta no celular.
+ */
+
+/* Cabecalho e navegacao da tela */
+.tx-header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md) var(--space-lg);
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+}
+
+.tx-header__title {
+    min-width: 0;
+}
+
+.tx-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.tx-sub {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: 0;
+}
+
+.tx-header__title .tx-sub {
+    margin-top: var(--space-xs);
+}
+
+.tx-back {
+    align-items: center;
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    font-weight: 600;
+    min-height: 44px;
+}
+
+/* Periodo e filtros */
+.tx-filters {
+    display: grid;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.tx-period {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.tx-period .field {
+    width: 104px;
+}
+
+/* Lista */
+.tx-card {
+    padding: var(--space-sm) var(--space-lg);
+}
+
+.tx-row {
+    position: relative;
+}
+
+.tx-link {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.tx-link::after {
+    content: "";
+    inset: 0;
+    position: absolute;
+}
+
+.tx-link:focus-visible {
+    outline: none;
+}
+
+.tx-row:has(.tx-link:focus-visible) {
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: -3px;
+}
+
+.tx-row:not(.tx-row--static):hover {
+    background: var(--color-bg-surface-muted);
+}
+
+.tx-main {
+    overflow-wrap: anywhere;
+}
+
+.tx-main .tx-sub {
+    margin-top: 2px;
+}
+
+.tx-amount--income {
+    color: var(--color-money-income);
+}
+
+.tx-amount--expense {
+    color: var(--color-money-expense);
+}
+
+.tx-amount--neutral {
+    color: var(--color-text-secondary);
+}
+
+/* Desktop: tabela. Colunas curtas nao quebram; abaixo de 1100px o Tipo sai para caber. */
+@media (min-width: 768px) {
+    .tx-card {
+        padding: var(--space-md) var(--space-xl);
+    }
+
+    .tx-main {
+        width: 38%;
+    }
+
+    .list-table .tx-date,
+    .list-table .tx-type,
+    .list-table .tx-status,
+    .list-table .tx-account {
+        white-space: nowrap;
+    }
+
+    .list-table .tx-row td:last-child,
+    .list-table th:last-child {
+        padding-right: 0;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1099.98px) {
+    .list-table .tx-type {
+        display: none;
+    }
+
+    .list-table .tx-account {
+        white-space: normal;
+    }
+
+    .tx-main {
+        width: 30%;
+    }
+}
+
+/* Celular: linha 1 com descricao e valor; linha 2 com data, conta, tipo e status */
+@media (max-width: 767.98px) {
+    .tx-period .field {
+        width: 88px;
+    }
+
+    .list-table .tx-row {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 var(--space-sm);
+        padding: var(--space-md) 0;
+    }
+
+    .list-table .tx-row::before {
+        content: "";
+        flex-basis: 100%;
+        height: 0;
+        order: 2;
+    }
+
+    .list-table .tx-main {
+        flex: 1 1 0;
+        min-width: 0;
+        order: 0;
+    }
+
+    .list-table .tx-row .list-table__amount {
+        flex: 0 0 auto;
+        order: 1;
+    }
+
+    .list-table .tx-row .tx-date,
+    .list-table .tx-row .tx-account,
+    .list-table .tx-row .tx-type,
+    .list-table .tx-row .tx-status {
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-caption);
+        line-height: var(--line-height-caption);
+        margin-top: var(--space-xs);
+    }
+
+    .list-table .tx-row .tx-date {
+        order: 3;
+    }
+
+    .list-table .tx-row .tx-account {
+        order: 4;
+    }
+
+    .list-table .tx-row .tx-status {
+        order: 6;
+    }
+
+    /* O tipo fica so para leitor de tela: o valor ja vem colorido e o detalhe mostra o tipo. */
+    .list-table .tx-row .tx-type {
+        clip-path: inset(50%);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        position: absolute;
+        width: 1px;
+    }
+
+    .list-table .tx-row .tx-account::before {
+        content: "·";
+        margin-right: var(--space-sm);
+    }
+
+    .tx-header__actions {
+        width: 100%;
+    }
+
+    .tx-header__actions .btn {
+        flex: 1 1 auto;
+        padding-left: var(--space-md);
+        padding-right: var(--space-md);
+    }
+
+    .list-table .tx-row .tx-arrow::before {
+        content: "→";
+    }
+
+    .list-table .tx-row .tx-status .status {
+        vertical-align: middle;
+    }
+}
+
+/* Detalhe */
+.tx-hero,
+.tx-details,
+.tx-notes,
+.tx-edit {
+    margin-bottom: var(--space-lg);
+    max-width: 720px;
+}
+
+.tx-hero {
+    display: grid;
+    gap: var(--space-sm);
+    justify-items: start;
+}
+
+.tx-hero h1 {
+    overflow-wrap: anywhere;
+}
+
+.tx-hero__amount {
+    font-size: var(--font-size-balance);
+    font-weight: var(--font-weight-display);
+    line-height: var(--line-height-balance);
+    margin: 0;
+}
+
+.tx-notes p {
+    margin: var(--space-sm) 0 0;
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+}
+
+.tx-edit {
+    display: flex;
+}
+
+@media (min-width: 768px) {
+    .tx-edit {
+        display: inline-flex;
+    }
+}
+
+/* Formularios: tela de tarefa (shell_mode task) */
+.tx-form {
+    display: grid;
+    gap: var(--space-lg);
+    max-width: 640px;
+}
+
+.tx-form .field > span,
+.tx-form .field > small {
+    min-width: 0;
+}
+
+.tx-form__bar {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+@media (max-width: 767.98px) {
+    .tx-form {
+        padding-bottom: 96px;
+    }
+
+    .tx-form__bar {
+        background: var(--color-bg-surface);
+        border-top: 1px solid var(--color-border-default);
+        bottom: var(--shell-bottom-inset);
+        left: 0;
+        padding: var(--space-md) var(--space-lg) calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+        position: fixed;
+        right: 0;
+        z-index: 5;
+    }
+
+    .tx-form__bar .btn {
+        width: 100%;
+    }
+}

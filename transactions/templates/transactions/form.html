@@ -1,39 +1,46 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ page_title|default:"Novo lançamento" }} - Controle Financeiro{% endblock %}
 
+{% block shell_mode %}task{% endblock %}
+
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/transactions.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <a class="tx-back" href="{{ cancel_url|default:'/transactions/' }}">&lsaquo; Cancelar</a>
+
+    <header class="tx-header">
+        <div class="tx-header__title">
             <h1>{{ page_heading|default:"Novo lançamento" }}</h1>
-            <p class="muted">{{ page_description|default:"Registre receitas, despesas, ajustes e compras no cartão." }}</p>
+            <p class="tx-sub">{{ page_description|default:"Registre receitas, despesas, ajustes e compras no cartão." }}</p>
         </div>
     </header>
 
-    <section class="panel">
-        <form class="form-grid" method="post" action="{{ request.path }}" data-conditional-form="transaction">
-            {% csrf_token %}
+    {# O app.js acha o campo pelo pai direto (label) e o rotulo pelo primeiro <span>: nao mudar essa estrutura. #}
+    <form class="tx-form" method="post" action="{{ request.path }}" data-conditional-form="transaction">
+        {% csrf_token %}
 
-            {% if form.non_field_errors %}
-                <div class="app-message">
-                    {{ form.non_field_errors }}
-                </div>
-            {% endif %}
-
-            {% for field in form %}
-                <label class="form-field" for="{{ field.id_for_label }}">
-                    <span>{{ field.label }}</span>
-                    {{ field }}
-                    {% if field.errors %}
-                        <small class="field-error">{{ field.errors|join:", " }}</small>
-                    {% endif %}
-                </label>
-            {% endfor %}
-
-            <div class="action-row">
-                <button class="button" type="submit">{{ submit_label|default:"Salvar" }}</button>
-                <a class="button button-secondary" href="{{ cancel_url|default:'/transactions/' }}">Cancelar</a>
+        {% if form.non_field_errors %}
+            <div class="alert alert--error" role="alert">
+                {% for error in form.non_field_errors %}
+                    <span class="alert__detail">{{ error }}</span>
+                {% endfor %}
             </div>
-        </form>
-    </section>
+        {% endif %}
+
+        {% for field in form %}
+            <label class="field" for="{{ field.id_for_label }}">
+                <span class="field__label">{{ field.label }}</span>
+                {{ field }}
+                {% if field.errors %}
+                    <small class="field__error">{{ field.errors|join:", " }}</small>
+                {% endif %}
+            </label>
+        {% endfor %}
+
+        <div class="tx-form__bar">
+            <button class="btn btn--primary" type="submit">{{ submit_label|default:"Salvar" }}</button>
+        </div>
+    </form>
 {% endblock %}
