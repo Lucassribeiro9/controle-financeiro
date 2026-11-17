@@ -1,0 +1,7 @@
+{# Periodo no topo do celular: <details> sem JS. O topo some a partir de 768px, onde o formulario fica no conteudo. #}
+<details class="gl-period">
+    <summary class="period-picker gl-period__summary">{{ month|stringformat:"02d" }}/{{ year }}</summary>
+    <div class="card gl-period__panel">
+        {% include "goals/_period.html" with action=action %}
+    </div>
+</details>

@@ -1,0 +1,256 @@
+/*
+ * Objetivos e metas mensais (spec 017, item 3.7, issue 298). Dono: app goals.
+ * Usa os componentes do components.css (.card, .segmented, .progress, .status, .btn,
+ * .field, .list-table, .summary-rows, .empty) e so acrescenta o que falta, com prefixo
+ * gl-. So tokens: nenhuma cor literal. Carregado pelo bloco page_css.
+ *
+ * Periodo: no celular vai no topo (<details class="gl-period"> em topbar_actions, sem JS);
+ * a partir de 768px o topo some e o formulario aparece no cabecalho (.gl-period-inline).
+ * Barra de progresso em lima local (.gl-bar); .progress--over a deixa vermelha.
+ */
+
+/* Cabecalho */
+.gl-header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md) var(--space-lg);
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+}
+
+.gl-header__title {
+    min-width: 0;
+}
+
+.gl-sub {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: var(--space-xs) 0 0;
+}
+
+.gl-back {
+    align-items: center;
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    font-weight: 600;
+    min-height: 44px;
+}
+
+/* Periodo */
+.gl-period-fields {
+    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.gl-period-fields .field {
+    width: 120px;
+}
+
+.gl-period-inline {
+    display: none;
+}
+
+.gl-period {
+    position: relative;
+}
+
+.gl-period__summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 4px var(--space-lg);
+}
+
+.gl-period__summary::-webkit-details-marker {
+    display: none;
+}
+
+.gl-period__summary::after {
+    content: "\25BE";
+    font-size: var(--font-size-caption);
+    margin-left: var(--space-xs);
+}
+
+.gl-period__panel {
+    border: 1px solid var(--color-border-default);
+    min-width: 260px;
+    padding: var(--space-lg);
+    position: absolute;
+    right: 0;
+    top: calc(100% + var(--space-sm));
+    z-index: 5;
+}
+
+.gl-period__panel .gl-period-fields {
+    display: grid;
+}
+
+.gl-period__panel .field {
+    width: auto;
+}
+
+/* Abas Objetivos / Metas mensais */
+.gl-tabs {
+    display: flex;
+    margin-bottom: var(--space-lg);
+    width: 100%;
+}
+
+.gl-tabs .segmented__item {
+    flex: 1;
+    text-align: center;
+    text-decoration: none;
+}
+
+/* Cards de objetivo */
+.gl-list {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.gl-goal {
+    display: grid;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+.gl-hero {
+    margin-bottom: var(--space-lg);
+}
+
+.gl-goal__head {
+    align-items: center;
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+}
+
+.gl-goal__name {
+    font-size: var(--font-size-section);
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.gl-goal__name a {
+    color: inherit;
+}
+
+.gl-goal__label {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+}
+
+.gl-goal__amount {
+    font-size: var(--font-size-title);
+    font-weight: var(--font-weight-display);
+    line-height: 1.15;
+    margin: 0;
+}
+
+.gl-goal__of {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: 0;
+}
+
+.gl-bar {
+    background: var(--color-action-primary);
+}
+
+.gl-legend {
+    border-top: 1px solid var(--color-border-default);
+    display: grid;
+    gap: var(--space-sm) var(--space-lg);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: var(--space-sm) 0 0;
+    padding-top: var(--space-md);
+}
+
+.gl-legend dt {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
+.gl-legend dd {
+    font-weight: 600;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Tabelas dentro de card */
+.gl-table-card,
+.gl-block {
+    min-width: 0;
+}
+
+.gl-block__title {
+    margin: 0 0 var(--space-md);
+}
+
+.gl-columns {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.gl-cell-name a {
+    color: inherit;
+    font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+    /* list-table empilha em grid de 2 colunas; Atual e Alvo dividem a coluna do valor */
+    .gl-cell-current {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .gl-cell-target {
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-caption);
+        font-weight: 400;
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .gl-cell-target::before {
+        content: "de ";
+    }
+
+    .gl-cell-status {
+        grid-column: 1;
+        grid-row: 2;
+    }
+}
+
+@media (min-width: 768px) {
+    .gl-period-inline {
+        display: block;
+    }
+
+    .gl-tabs {
+        width: auto;
+    }
+
+    .gl-tabs .segmented__item {
+        flex: none;
+    }
+
+    .gl-list {
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    }
+
+    .gl-columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .gl-columns .gl-block:last-child {
+        grid-column: 1 / -1;
+    }
+}
