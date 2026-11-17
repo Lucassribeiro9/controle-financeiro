@@ -1,99 +1,105 @@
 {% extends "base.html" %}
-{% load money %}
+{% load static money %}
 
 {% block title %}Cartões - Controle Financeiro{% endblock %}
 
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/cards.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
-            <h1>Cartões</h1>
-            <p class="muted">Cartões de crédito, benefício, transporte e pré-pagos.</p>
-        </div>
+    <div class="cards-page">
+        <header class="cards-head">
+            <div class="cards-head__text">
+                <h1>Cartões</h1>
+                <p class="cards-head__sub">Cartões de crédito, benefício, transporte e pré-pagos.</p>
+            </div>
 
-        <div class="action-row">
-            <a class="button button-secondary" href="{% url 'cards:statements' %}">Ver faturas</a>
-            <a class="button" href="{% url 'cards:create' %}">Novo cartão</a>
-        </div>
-    </header>
+            <div class="cards-head__actions">
+                <a class="btn btn--secondary" href="{% url 'cards:statements' %}">Ver faturas</a>
+                <a class="btn btn--primary" href="{% url 'cards:create' %}">Novo cartão</a>
+            </div>
+        </header>
 
-    <section class="panel page-section">
         {% if cards %}
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th class="cell-primary">Nome</th>
-                            <th>Instituição</th>
-                            <th>Tipo</th>
-                            <th class="cell-amount">Limite</th>
-                            <th class="cell-amount">Usado</th>
-                            <th class="cell-amount">Disponível</th>
-                            <th class="cell-count">Fechamento</th>
-                            <th class="cell-count">Vencimento</th>
-                            <th>Conta pagamento</th>
-                            <th class="cell-amount">Saldo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for card in cards %}
-                            <tr>
-                                <td class="cell-primary">
-                                    <a href="{% url 'cards:update' card.id %}">{{ card.name }}</a>
-                                    <p class="muted">
-                                        <span class="{{ card.is_active|active_badge_class }}">
-                                            {% if card.is_active %}Ativo{% else %}Inativo{% endif %}
-                                        </span>
-                                    </p>
-                                </td>
-                                <td>{{ card.institution }}</td>
-                                <td>{{ card.get_card_type_display }}</td>
-                                <td class="cell-amount">
+            <ul class="cards-grid">
+                {% for card in cards %}
+                    <li class="card cards-item">
+                        <div class="cards-item__head">
+                            <a class="cards-item__title" href="{% url 'cards:update' card.id %}">{{ card.name }}</a>
+                            <span class="{{ card.is_active|active_badge_class }}">
+                                {% if card.is_active %}Ativo{% else %}Inativo{% endif %}
+                            </span>
+                        </div>
+                        <p class="cards-muted">{{ card.institution }} · {{ card.get_card_type_display }}</p>
+
+                        <dl class="summary-rows">
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Limite</dt>
+                                <dd class="summary-rows__value">
                                     {% if card.card_type == "credit" %}
                                         {{ card.limit_summary.credit_limit|brl }}
                                     {% else %}
                                         Não se aplica
                                     {% endif %}
-                                </td>
-                                <td class="cell-amount">
+                                </dd>
+                            </div>
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Usado</dt>
+                                <dd class="summary-rows__value">
                                     {% if card.card_type == "credit" %}
                                         {{ card.limit_summary.used_limit|brl }}
-                                        <div class="limit-bar" aria-hidden="true">
-                                            <span
-                                                class="limit-bar-fill {% if card.limit_summary.available_limit < 0 %}limit-bar-over{% endif %}"
-                                                style="width: {% if card.limit_summary.credit_limit > 0 %}{% widthratio card.limit_summary.used_limit card.limit_summary.credit_limit 100 %}{% else %}0{% endif %}%"
-                                            ></span>
-                                        </div>
                                     {% else %}
                                         Não se aplica
                                     {% endif %}
-                                </td>
-                                <td class="cell-amount">
+                                </dd>
+                            </div>
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Disponível</dt>
+                                <dd class="summary-rows__value">
                                     {% if card.card_type == "credit" %}
                                         {{ card.limit_summary.available_limit|brl }}
                                         {% if card.limit_summary.available_limit < 0 %}
-                                            <p class="muted">Limite excedido</p>
+                                            <span class="cards-over">Limite excedido</span>
                                         {% endif %}
                                     {% else %}
                                         Não se aplica
                                     {% endif %}
-                                </td>
-                                <td class="cell-count">{{ card.statement_closing_day|default:"Não informado" }}</td>
-                                <td class="cell-count">{{ card.statement_due_day|default:"Não informado" }}</td>
-                                <td>{{ card.payment_account|default:"Não vinculada" }}</td>
-                                <td class="cell-amount">
+                                </dd>
+                            </div>
+                        </dl>
+
+                        {% if card.card_type == "credit" and card.limit_summary.credit_limit > 0 %}
+                            {% include "cards/_progress.html" with value=card.limit_summary.used_limit limit=card.limit_summary.credit_limit %}
+                        {% endif %}
+
+                        <dl class="summary-rows">
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Fechamento</dt>
+                                <dd class="summary-rows__value">{{ card.statement_closing_day|default:"Não informado" }}</dd>
+                            </div>
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Vencimento</dt>
+                                <dd class="summary-rows__value">{{ card.statement_due_day|default:"Não informado" }}</dd>
+                            </div>
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Conta pagamento</dt>
+                                <dd class="summary-rows__value">{{ card.payment_account|default:"Não vinculada" }}</dd>
+                            </div>
+                            <div class="summary-rows__row">
+                                <dt class="summary-rows__label">Saldo</dt>
+                                <dd class="summary-rows__value">
                                     {% if card.is_balance_card %}
                                         {{ card.balance|brl }}
                                     {% else %}
                                         {{ card.estimated_balance|brl }}
                                     {% endif %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                </dd>
+                            </div>
+                        </dl>
+                    </li>
+                {% endfor %}
+            </ul>
         {% else %}
             <p class="empty">Nenhum cartão cadastrado.</p>
         {% endif %}
-    </section>
+    </div>
 {% endblock %}

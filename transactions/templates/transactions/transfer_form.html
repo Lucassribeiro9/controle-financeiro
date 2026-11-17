@@ -1,39 +1,45 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Nova transferência - Controle Financeiro{% endblock %}
 
+{% block shell_mode %}task{% endblock %}
+
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/transactions.css' %}">{% endblock %}
+
 {% block content %}
-    <header class="page-header">
-        <div>
+    <a class="tx-back" href="{% url 'transactions:transfers' %}">&lsaquo; Cancelar</a>
+
+    <header class="tx-header">
+        <div class="tx-header__title">
             <h1>Nova transferência</h1>
-            <p class="muted">Mova saldo entre contas sem registrar receita ou despesa.</p>
+            <p class="tx-sub">Mova saldo entre contas sem registrar receita ou despesa.</p>
         </div>
     </header>
 
-    <section class="panel">
-        <form class="form-grid" method="post" action="{% url 'transactions:transfer-create' %}">
-            {% csrf_token %}
+    <form class="tx-form" method="post" action="{% url 'transactions:transfer-create' %}">
+        {% csrf_token %}
 
-            {% if form.non_field_errors %}
-                <div class="app-message">
-                    {{ form.non_field_errors }}
-                </div>
-            {% endif %}
-
-            {% for field in form %}
-                <label class="form-field" for="{{ field.id_for_label }}">
-                    <span>{{ field.label }}</span>
-                    {{ field }}
-                    {% if field.errors %}
-                        <small class="field-error">{{ field.errors|join:", " }}</small>
-                    {% endif %}
-                </label>
-            {% endfor %}
-
-            <div class="action-row">
-                <button class="button" type="submit">Salvar</button>
-                <a class="button button-secondary" href="{% url 'transactions:transfers' %}">Cancelar</a>
+        {% if form.non_field_errors %}
+            <div class="alert alert--error" role="alert">
+                {% for error in form.non_field_errors %}
+                    <span class="alert__detail">{{ error }}</span>
+                {% endfor %}
             </div>
-        </form>
-    </section>
+        {% endif %}
+
+        {% for field in form %}
+            <label class="field" for="{{ field.id_for_label }}">
+                <span class="field__label">{{ field.label }}</span>
+                {{ field }}
+                {% if field.errors %}
+                    <small class="field__error">{{ field.errors|join:", " }}</small>
+                {% endif %}
+            </label>
+        {% endfor %}
+
+        <div class="tx-form__bar">
+            <button class="btn btn--primary" type="submit">Salvar</button>
+        </div>
+    </form>
 {% endblock %}

@@ -1,0 +1,62 @@
+{# Campos recolhiveis dos filtros da revisao (entram no partials/filter_bar.html). #}
+<label class="field">
+    <span class="field__label">Arquivo</span>
+    <select name="source_file_name">
+        <option value="">Todos</option>
+        {% for source_file_name in filter_options.source_files %}
+            <option value="{{ source_file_name }}" {% if active_filters.source_file_name == source_file_name %}selected{% endif %}>{{ source_file_name }}</option>
+        {% endfor %}
+    </select>
+</label>
+
+<label class="field">
+    <span class="field__label">Tipo</span>
+    <select name="source_type">
+        <option value="">Todos</option>
+        {% for value, label in filter_options.source_types %}
+            <option value="{{ value }}" {% if active_filters.source_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</label>
+
+<label class="field">
+    <span class="field__label">Conta</span>
+    <select name="account_id">
+        <option value="">Todas</option>
+        {% for account in accounts %}
+            <option value="{{ account.id }}" {% if active_filters.account_id == account.id|stringformat:"s" %}selected{% endif %}>{{ account.name }}</option>
+        {% endfor %}
+    </select>
+</label>
+
+<label class="field">
+    <span class="field__label">Categoria</span>
+    <select name="category_id">
+        <option value="">Todas</option>
+        {% for category in categories %}
+            <option value="{{ category.id }}" {% if active_filters.category_id == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+    </select>
+</label>
+
+<label class="field">
+    <span class="field__label">Tipo transação</span>
+    <select name="transaction_type">
+        <option value="">Todos</option>
+        {% for value, label in transaction_types %}
+            <option value="{{ value }}" {% if active_filters.transaction_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</label>
+
+<div class="field">
+    <label class="field__label" for="{{ filter_form.start_date.id_for_label }}">{{ filter_form.start_date.label }}</label>
+    {{ filter_form.start_date }}
+    {% for error in filter_form.start_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+</div>
+
+<div class="field">
+    <label class="field__label" for="{{ filter_form.end_date.id_for_label }}">{{ filter_form.end_date.label }}</label>
+    {{ filter_form.end_date }}
+    {% for error in filter_form.end_date.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+</div>

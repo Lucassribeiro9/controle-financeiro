@@ -1,0 +1,411 @@
+/*
+ * Inicio e detalhe do resumo (spec 017, item 3.3). Classes locais com prefixo home__;
+ * componentes vem de components.css. A 3.9 promove o que se repetir em outras telas.
+ * Seletor Realizado/Pendente/Previsto sem JS: radios irmaos dos cards (:checked ~).
+ */
+
+/* Ritmo vertical entre blocos; o padding externo vem do .shell__main */
+.home__header,
+.home__summary,
+.home__columns,
+.home__section,
+.home__detail-balance,
+.home__detail-section {
+    margin: 0 0 var(--space-xl);
+    min-width: 0;
+}
+
+.home__sr-only,
+.home__switch-input {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+/* Cabecalho */
+.home__header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    justify-content: space-between;
+}
+
+.home__heading {
+    min-width: 0;
+}
+
+.home__subtitle {
+    align-items: center;
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin: var(--space-xs) 0 0;
+}
+
+.home__new,
+.home__back {
+    display: none;
+}
+
+.home__section-title {
+    margin-bottom: var(--space-md);
+}
+
+.home__muted {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+/* Seletor e cards do resumo */
+.home__picker {
+    border: 0;
+    margin: 0;
+    min-width: 0;
+    padding: 0;
+    position: relative;
+}
+
+.home__summary .empty {
+    margin-bottom: var(--space-lg);
+}
+
+.home__switch {
+    background: var(--color-action-secondary);
+    border-radius: var(--radius-pill);
+    display: grid;
+    gap: var(--space-xs);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: var(--space-lg);
+    padding: var(--space-xs);
+}
+
+.home__switch-label {
+    align-items: center;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    display: flex;
+    font-weight: 600;
+    justify-content: center;
+    min-height: 40px;
+    padding: 6px var(--space-sm);
+}
+
+#home-summary-realized:checked ~ .home__switch label[for="home-summary-realized"],
+#home-summary-pending:checked ~ .home__switch label[for="home-summary-pending"],
+#home-summary-forecasted:checked ~ .home__switch label[for="home-summary-forecasted"] {
+    background: var(--color-action-primary);
+    color: var(--color-text-on-primary);
+}
+
+#home-summary-realized:focus-visible ~ .home__switch label[for="home-summary-realized"],
+#home-summary-pending:focus-visible ~ .home__switch label[for="home-summary-pending"],
+#home-summary-forecasted:focus-visible ~ .home__switch label[for="home-summary-forecasted"] {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+}
+
+.home__cards {
+    display: grid;
+    gap: var(--space-lg);
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.home__card {
+    align-content: start;
+    display: grid;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+.home__card-label {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
+/* Saldo grande que nao estoura em 375px */
+.home__amount {
+    font-size: clamp(28px, 9vw, var(--font-size-balance));
+    font-weight: var(--font-weight-display);
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+}
+
+.home__card--pending .home__amount,
+.home__card--forecasted .home__amount {
+    font-size: clamp(24px, 7vw, 28px);
+}
+
+.home__chip {
+    border-radius: var(--radius-md);
+    display: grid;
+    flex: 1 1 120px;
+    font-weight: 600;
+    gap: 2px;
+    min-width: 0;
+    padding: var(--space-sm) var(--space-md);
+}
+
+.home__chip--income {
+    background: var(--color-money-income-bg);
+    color: var(--color-money-income);
+}
+
+.home__chip--expense {
+    background: var(--color-money-expense-bg);
+    color: var(--color-money-expense-strong);
+}
+
+.home__chip-label {
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
+.home__chip .balance-card__income,
+.home__chip .balance-card__expense {
+    color: inherit;
+    overflow-wrap: anywhere;
+}
+
+.home__lines {
+    display: grid;
+    gap: var(--space-xs);
+    margin: 0;
+}
+
+.home__line {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    justify-content: space-between;
+}
+
+.home__line dt {
+    color: var(--color-text-secondary);
+}
+
+.home__line dd {
+    font-weight: 600;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.home__value--income {
+    color: var(--color-money-income);
+}
+
+.home__value--expense {
+    color: var(--color-money-expense-strong);
+}
+
+.home__cta {
+    font-weight: 600;
+    margin-top: var(--space-xs);
+}
+
+/* Celular: um card por vez, escolhido pelo radio marcado */
+@media (max-width: 767.98px) {
+    .home__card {
+        display: none;
+    }
+
+    #home-summary-realized:checked ~ .home__cards .home__card--realized,
+    #home-summary-pending:checked ~ .home__cards .home__card--pending,
+    #home-summary-forecasted:checked ~ .home__cards .home__card--forecasted {
+        display: grid;
+    }
+}
+
+/* Desktop: os tres cards visiveis, sem seletor */
+@media (min-width: 768px) {
+    .home__new,
+    .home__back {
+        display: inline-flex;
+    }
+
+    .home__switch-input,
+    .home__switch {
+        display: none;
+    }
+
+    .home__cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home__card--realized {
+        grid-column: 1 / -1;
+    }
+
+    .home__amount {
+        font-size: var(--font-size-balance);
+    }
+
+    .home__card--pending .home__amount,
+    .home__card--forecasted .home__amount {
+        font-size: 28px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .home__cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .home__card--realized {
+        grid-column: auto;
+    }
+
+    .home__columns {
+        align-items: start;
+        display: grid;
+        gap: var(--space-xl);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home__columns .home__section {
+        margin-bottom: 0;
+    }
+}
+
+/* Alertas */
+.home__list {
+    display: grid;
+    gap: var(--space-md);
+}
+
+.home__alert {
+    align-items: center;
+    background: var(--color-status-warning-bg);
+    color: var(--color-status-warning-text);
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+    padding: var(--space-lg);
+}
+
+.home__alert-body {
+    display: grid;
+    gap: var(--space-xs);
+    justify-items: start;
+    min-width: 0;
+}
+
+.home__alert-title {
+    overflow-wrap: anywhere;
+}
+
+.home__alert .status--warning {
+    background: var(--color-bg-surface);
+}
+
+.home__alert-text {
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
+.home__alert-value {
+    font-weight: 600;
+    text-align: right;
+}
+
+/* Pendencias */
+.home__rows {
+    display: grid;
+    gap: var(--space-xs);
+    padding: var(--space-md) var(--space-lg);
+}
+
+.home__row {
+    align-items: center;
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+    min-height: 44px;
+}
+
+.home__row-body {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+/* Limites de gastos */
+.home__limits {
+    display: grid;
+    gap: var(--space-xl);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.home__limit {
+    display: grid;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+.home__limit-head,
+.home__limit-foot {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    justify-content: space-between;
+}
+
+.home__limit-percent,
+.home__limit-values {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+}
+
+.home__limit .progress__bar {
+    background: var(--color-action-primary);
+    max-width: 100%;
+}
+
+.home__limit .progress--over .progress__bar {
+    background: var(--color-money-expense);
+}
+
+/* Atalhos */
+.home__shortcut-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+/* Detalhe do resumo */
+.home__detail-section {
+    min-width: 0;
+}
+
+.home__detail-head {
+    align-items: baseline;
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+    margin-bottom: var(--space-md);
+}
+
+.home__detail-head .home__section-title {
+    margin-bottom: 0;
+}
+
+.home__total--income {
+    color: var(--color-money-income);
+}
+
+.home__total--expense {
+    color: var(--color-money-expense-strong);
+}

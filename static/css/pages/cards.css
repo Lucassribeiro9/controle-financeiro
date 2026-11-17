@@ -1,0 +1,281 @@
+/*
+ * Cartoes e faturas (FIN-52, spec 017). Dono: item 3.5. Ajustes so desta tela, com
+ * tokens e prefixo `cards-`; componentes vem de components.css. Mobile primeiro.
+ * Classes locais candidatas a promocao na 3.9 (#299): cards-head, cards-back,
+ * cards-grid, cards-item, cards-amount, cards-progress, cards-tx.
+ */
+
+.cards-page {
+    display: grid;
+    gap: var(--space-xl);
+    margin: 0 auto;
+    max-width: 1120px;
+}
+
+/* Cabecalho: titulo, apoio e acoes */
+.cards-head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md) var(--space-lg);
+    justify-content: space-between;
+}
+
+.cards-head__text {
+    display: grid;
+    gap: var(--space-xs);
+    min-width: 0;
+}
+
+.cards-head__sub,
+.cards-muted {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: 0;
+}
+
+.cards-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.cards-back {
+    align-items: center;
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    font-weight: 600;
+    gap: var(--space-xs);
+    min-height: 44px;
+}
+
+.cards-back:hover {
+    color: var(--color-text-primary);
+}
+
+.cards-section-title {
+    margin: 0;
+}
+
+/* Grade de cartoes e de faturas */
+.cards-grid {
+    display: grid;
+    gap: var(--space-lg);
+    grid-template-columns: minmax(0, 1fr);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.cards-item {
+    display: grid;
+    gap: var(--space-md);
+    min-width: 0;
+}
+
+.cards-item__head {
+    align-items: center;
+    display: flex;
+    gap: var(--space-md);
+    justify-content: space-between;
+}
+
+.cards-item__title {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-section);
+    font-weight: 600;
+    line-height: var(--line-height-section);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+a.cards-item__title:hover {
+    text-decoration: underline;
+}
+
+.cards-amount {
+    font-size: var(--font-size-balance);
+    font-weight: var(--font-weight-display);
+    line-height: var(--line-height-balance);
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.cards-progress {
+    display: grid;
+    gap: var(--space-sm);
+}
+
+.cards-progress__caption {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: 0;
+}
+
+.cards-over {
+    color: var(--color-money-expense-strong);
+    font-weight: 600;
+}
+
+/* Detalhe da fatura: destaque e acoes */
+.cards-actions {
+    display: grid;
+    gap: var(--space-md);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cards-actions form {
+    display: contents;
+}
+
+.cards-partial {
+    display: grid;
+    gap: var(--space-sm);
+}
+
+.cards-partial__hint {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    margin: 0;
+}
+
+/* Lista empilhada de transacoes vinculadas (ADR-014) */
+.cards-tx {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.cards-tx__row {
+    align-items: center;
+    border-bottom: 1px solid var(--color-border-default);
+    display: grid;
+    gap: var(--space-md);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: var(--space-md) 0;
+}
+
+.cards-tx__row:last-child {
+    border-bottom: 0;
+}
+
+.cards-tx__icon {
+    align-items: center;
+    background: var(--color-money-expense-bg);
+    border-radius: var(--radius-pill);
+    color: var(--color-money-expense-strong);
+    display: inline-flex;
+    height: 36px;
+    justify-content: center;
+    width: 36px;
+}
+
+.cards-tx__icon--in {
+    background: var(--color-money-income-bg);
+    color: var(--color-money-income);
+}
+
+.cards-tx__body {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.cards-tx__title {
+    overflow-wrap: anywhere;
+}
+
+.cards-tx__meta {
+    align-items: center;
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--font-size-caption);
+    gap: var(--space-xs) var(--space-sm);
+    line-height: var(--line-height-caption);
+}
+
+.cards-tx__amount {
+    color: var(--color-money-expense);
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.cards-tx__amount--in {
+    color: var(--color-money-income);
+}
+
+/* Formulario de cartao e confirmacao de pagamento */
+.cards-form {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.cards-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.cards-check {
+    align-items: center;
+    display: flex;
+    gap: var(--space-sm);
+    min-height: 44px;
+}
+
+.cards-check input {
+    flex: 0 0 auto;
+    height: 20px;
+    min-height: 0;
+    width: 20px;
+}
+
+.cards-check .field__label {
+    order: 2;
+}
+
+.cards-projected {
+    border-top: 1px solid var(--color-border-default);
+    display: grid;
+    gap: var(--space-xs);
+    padding-top: var(--space-lg);
+}
+
+.cards-projected__value {
+    font-size: var(--font-size-section);
+    font-weight: 700;
+    margin: 0;
+}
+
+.cards-projected__value--negative {
+    color: var(--color-money-expense-strong);
+}
+
+.cards-projected__value--positive {
+    color: var(--color-money-income);
+}
+
+@media (min-width: 768px) {
+    .cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cards-actions {
+        grid-template-columns: repeat(2, minmax(0, 220px));
+    }
+
+    .cards-form,
+    .cards-confirm {
+        max-width: 560px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}

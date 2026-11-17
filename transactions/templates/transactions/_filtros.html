@@ -1,0 +1,19 @@
+{# Campos de filtro da lista de lancamentos (dentro do <form> e do <details> de filter_bar). #}
+<label class="field">
+    <span class="field__label">Status</span>
+    <select name="status">
+        <option value="">Todos</option>
+        {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</label>
+<label class="field">
+    <span class="field__label">Tipo</span>
+    <select name="transaction_type">
+        <option value="">Todos</option>
+        {% for value, label in transaction_type_choices %}
+            <option value="{{ value }}" {% if transaction_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</label>
