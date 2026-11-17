@@ -1,221 +1,166 @@
 {% extends "base.html" %}
 {% load money static %}
 
-{% block title %}Dashboard financeiro - {{ month }}/{{ year }}{% endblock %}
+{% block title %}Relatório - {{ month }}/{{ year }}{% endblock %}
+
+{% block page_css %}
+    <link rel="stylesheet" href="{% static 'css/pages/reports.css' %}">
+{% endblock %}
+
+{% block topbar_actions %}
+    {% with current=cashflow_series|last %}
+        {% include "reports/_period_picker.html" with period_label=current.label|capfirst extra_class="report-period--mobile" %}
+    {% endwith %}
+{% endblock %}
 
 {% block content %}
-    <header class="page-header dashboard-header">
+    <header class="report-header">
         <div>
-            <h1>Dashboard financeiro</h1>
-            <p class="muted">{{ month }}/{{ year }}</p>
+            <h1>Relatório</h1>
+            <p class="report-header__subtitle">{{ month }}/{{ year }}</p>
         </div>
 
-        <form class="period-form" method="get" action="{% url 'reports:monthly-dashboard-page' %}">
-            <input name="range" type="hidden" value="{{ range_months }}">
-            <label>
-                <span>Mês</span>
-                <input name="month" type="text" inputmode="numeric" pattern="\d*" min="1" max="12" value="{{ month }}" required>
-            </label>
-            <label>
-                <span>Ano</span>
-                <input name="year" type="text" inputmode="numeric" pattern="\d*" min="2000" value="{{ year }}" required>
-            </label>
-            <button class="button" type="submit">Filtrar</button>
-        </form>
+        <div class="report-header__actions">
+            {% with current=cashflow_series|last %}
+                {% include "reports/_period_picker.html" with period_label=current.label|capfirst extra_class="report-period--desktop" %}
+            {% endwith %}
+            <a class="btn btn--primary report-header__new" href="{% url 'transactions:create' %}">+ Novo lançamento</a>
+        </div>
     </header>
 
-    <div class="summary-grid dashboard-summary" aria-label="Resumo financeiro do mês">
-        <div class="metric-card">
-            <span>Receitas</span>
-            <strong class="income">{{ income_total|brl }}</strong>
-        </div>
-        <div class="metric-card">
-            <span>Despesas</span>
-            <strong class="expense">{{ expense_total|brl }}</strong>
-        </div>
-        <div class="metric-card">
-            <span>Saldo do mês</span>
-            <strong>{{ monthly_balance|brl }}</strong>
-        </div>
-    </div>
-
-    <section class="panel chart-panel">
-        <div class="panel-title-row">
-            <div>
-                <h2>Evolução financeira</h2>
-                <p class="muted">Saldo mensal dos últimos {{ range_months }} meses</p>
-            </div>
-
-            <div class="segment-control" aria-label="Intervalo do gráfico">
-                <a class="{% if range_months == 6 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=6">6 meses</a>
-                <a class="{% if range_months == 12 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=12">12 meses</a>
-                <a class="{% if range_months == 24 %}active{% endif %}" href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=24">24 meses</a>
-            </div>
-        </div>
-
-        <div class="chart-canvas-wrap" aria-label="Gráfico de evolução financeira mensal">
-            <canvas id="cashflow-chart" height="280"></canvas>
+    <section class="balance-card" aria-label="Resumo financeiro do mês">
+        <span class="balance-card__label">Saldo do mês</span>
+        <strong class="balance-card__amount">{{ monthly_balance|brl }}</strong>
+        <div class="balance-card__split">
+            <span class="balance-card__income">Receitas {{ income_total|brl }}</span>
+            <span class="balance-card__expense">Despesas {{ expense_total|brl }}</span>
         </div>
     </section>
 
-    <div class="dashboard-grid">
-        <section class="panel composition-panel">
+    <div class="report-grid">
+        <section class="card report-chart">
+            <div class="report-card__head">
+                <h2>Evolução ({{ range_months }} meses)</h2>
+                <nav class="segmented" aria-label="Intervalo do gráfico">
+                    <a class="segmented__item"{% if range_months == 6 %} aria-current="true"{% endif %} href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=6">6</a>
+                    <a class="segmented__item"{% if range_months == 12 %} aria-current="true"{% endif %} href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=12">12</a>
+                    <a class="segmented__item"{% if range_months == 24 %} aria-current="true"{% endif %} href="{% url 'reports:monthly-dashboard-page' %}?month={{ month }}&year={{ year }}&range=24">24</a>
+                </nav>
+            </div>
+
+            <div class="report-chart__canvas" role="img" aria-label="Gráfico de receitas e despesas por mês">
+                <canvas id="cashflow-chart"></canvas>
+            </div>
+        </section>
+
+        <section class="card report-categories">
             <h2>Gastos por categoria</h2>
             {% if uncategorized_expense_alert %}
-                <div class="insight-alert">
-                    <strong>{{ uncategorized_expense_alert.percentage|percentage }} dos gastos estão sem categoria.</strong>
-                    <span>{{ uncategorized_expense_alert.amount|brl }} precisam de classificação para melhorar a leitura do mês.</span>
+                <div class="alert alert--warning report-categories__alert">
+                    <strong class="alert__title">{{ uncategorized_expense_alert.percentage|percentage }} dos gastos estão sem categoria.</strong>
+                    <span class="alert__detail">{{ uncategorized_expense_alert.amount|brl }} precisam de classificação para melhorar a leitura do mês.</span>
                 </div>
             {% endif %}
             {% if category_expense_share %}
-                <div class="composition-list">
+                <ul class="report-category-list">
                     {% for item in category_expense_share %}
-                        <div class="composition-item">
-                            <span
-                                class="donut-meter"
-                                style="--share: {{ item.percentage }}%; --share-color: {{ item.color }};"
-                                aria-label="{{ item.category_name }} representa {{ item.percentage|percentage }} das despesas"
-                            >
-                                <span>{{ item.percentage|percentage }}</span>
-                            </span>
-                            <span class="composition-copy">
+                        <li class="report-category">
+                            <div class="report-category__head">
                                 <span>{{ item.category_name }}</span>
-                                <strong>{{ item.total_amount|brl }}</strong>
-                            </span>
-                        </div>
+                                <span class="report-category__value">{{ item.total_amount|brl }} · {{ item.percentage|percentage:0 }}</span>
+                            </div>
+                            <div class="progress" role="img" aria-label="{{ item.category_name }} representa {{ item.percentage|percentage:0 }} das despesas">
+                                <span class="progress__bar report-category__bar" style="width: {{ item.percentage }}%"></span>
+                            </div>
+                        </li>
                     {% endfor %}
-                </div>
-            {% elif category_expenses %}
-                <table class="data-table">
-                    <tbody>
-                        {% for item in category_expenses %}
-                            <tr>
-                                <td>{{ item.category__name|default:"Sem categoria" }}</td>
-                                <td>{{ item.total_amount|brl }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                </ul>
             {% else %}
                 <p class="empty">Nenhuma despesa no período.</p>
             {% endif %}
         </section>
+    </div>
 
-        <section class="panel">
-            <h2>Patrimônio por moeda</h2>
-            {% if net_worth %}
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Moeda</th>
-                                <th class="cell-amount">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in net_worth %}
-                                <tr>
-                                    <td>{{ item.currency }}</td>
-                                    <td class="cell-amount">{{ item.total|currency:item.currency }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <p class="empty">Nenhuma conta ativa cadastrada.</p>
-            {% endif %}
-        </section>
-
-        <section class="panel">
+    <div class="report-summaries">
+        <section class="card">
             <h2>Faturas do mês</h2>
             {% if card_statements %}
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Cartão</th>
-                                <th class="cell-status">Status</th>
-                                <th class="cell-amount">Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for statement in card_statements %}
-                                <tr>
-                                    <td>{{ statement.card.name }}</td>
-                                    <td class="cell-status">
-                                        <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
-                                    </td>
-                                    <td class="cell-amount">{{ statement.closed_amount|brl }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <dl class="summary-rows">
+                    {% for statement in card_statements %}
+                        <div class="summary-rows__row report-row">
+                            <dt class="summary-rows__label">{{ statement.card.name }}</dt>
+                            <dd class="summary-rows__value">
+                                {{ statement.closed_amount|brl }}
+                                <span class="report-row__meta">
+                                    <span class="{{ statement.status|status_badge_class }}">{{ statement.get_status_display }}</span>
+                                    vence {{ statement.due_date|date:"d/m" }}
+                                </span>
+                            </dd>
+                        </div>
+                    {% endfor %}
+                </dl>
             {% else %}
                 <p class="empty">Nenhuma fatura no período.</p>
             {% endif %}
         </section>
 
-        <section class="panel">
+        <section class="card">
             <h2>Metas mensais</h2>
             {% if goal_summary %}
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Meta</th>
-                                <th class="cell-status">Status</th>
-                                <th class="cell-amount">Atual</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for monthly_goal in goal_summary %}
-                                <tr>
-                                    <td>{{ monthly_goal.goal.name }}</td>
-                                    <td class="cell-status">
-                                        <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
-                                    </td>
-                                    <td class="cell-amount">{{ monthly_goal.current_amount|brl }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <dl class="summary-rows">
+                    {% for monthly_goal in goal_summary %}
+                        <div class="summary-rows__row report-row">
+                            <dt class="summary-rows__label">{{ monthly_goal.goal.name }}</dt>
+                            <dd class="summary-rows__value">
+                                {{ monthly_goal.current_amount|brl }} de {{ monthly_goal.target_amount|brl }}
+                                <span class="report-row__meta">
+                                    <span class="{{ monthly_goal.status|status_badge_class }}">{{ monthly_goal.get_status_display }}</span>
+                                </span>
+                            </dd>
+                        </div>
+                    {% endfor %}
+                </dl>
             {% else %}
                 <p class="empty">Nenhuma meta mensal no período.</p>
             {% endif %}
         </section>
 
-        <section class="panel">
+        <section class="card">
+            <h2>Patrimônio por moeda</h2>
+            {% if net_worth %}
+                <dl class="summary-rows">
+                    {% for item in net_worth %}
+                        <div class="summary-rows__row">
+                            <dt class="summary-rows__label">{{ item.currency }}</dt>
+                            <dd class="summary-rows__value">{{ item.total|currency:item.currency }}</dd>
+                        </div>
+                    {% endfor %}
+                </dl>
+            {% else %}
+                <p class="empty">Nenhuma conta ativa cadastrada.</p>
+            {% endif %}
+        </section>
+
+        <section class="card">
             <h2>Limites sob atenção</h2>
             {% if categories_at_risk %}
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Categoria</th>
-                                <th class="cell-status">Status</th>
-                                <th class="cell-amount">Progresso</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for category in categories_at_risk %}
-                                <tr>
-                                    <td>{{ category.name }}</td>
-                                    <td class="cell-status">
-                                        {% if category.limit_status == "exceeded" %}
-                                            <span class="badge badge-danger">Excedido</span>
-                                        {% else %}
-                                            <span class="badge badge-warning">Em risco</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="cell-amount">{{ category.monthly_spent|brl }} de {{ category.limit_amount|brl }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <dl class="summary-rows">
+                    {% for category in categories_at_risk %}
+                        <div class="summary-rows__row report-row">
+                            <dt class="summary-rows__label">{{ category.name }}</dt>
+                            <dd class="summary-rows__value">
+                                {{ category.monthly_spent|brl }} de {{ category.limit_amount|brl }}
+                                <span class="report-row__meta">
+                                    {% if category.limit_status == "exceeded" %}
+                                        <span class="status status--negative">Excedido</span>
+                                    {% else %}
+                                        <span class="status status--warning">Em risco</span>
+                                    {% endif %}
+                                </span>
+                            </dd>
+                        </div>
+                    {% endfor %}
+                </dl>
             {% else %}
                 <p class="empty">Nenhum limite sob atenção no período.</p>
             {% endif %}
