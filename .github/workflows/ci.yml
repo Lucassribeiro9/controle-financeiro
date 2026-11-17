@@ -82,7 +82,7 @@ jobs:
       - name: Validate gunicorn and static files
         run: |
           docker logs web 2>&1 | grep -q "Starting gunicorn"
-          curl -fsS -o /dev/null -H "X-Forwarded-Proto: https" http://localhost:8000/static/css/app.css
+          curl -fsS -o /dev/null -H "X-Forwarded-Proto: https" http://localhost:8000/static/css/components.css
 
       - name: Container logs
         if: failure()

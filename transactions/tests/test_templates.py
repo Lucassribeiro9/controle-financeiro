@@ -6,6 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from core.testing import AuthenticatedTestCase
+from core.tests.legacy_css import LEGACY_CLASS_NAMES, new_css_class_names, template_class_tokens
 from django.test import SimpleTestCase
 from django.urls import reverse
 
@@ -336,34 +337,14 @@ class FormTemplateTests(TransactionTemplateTestCase):
 
 
 class LegacyClassGuardTests(SimpleTestCase):
-    """Os templates de lancamentos nao usam classe que so existe no app.css legado."""
+    """Os templates de lancamentos nao usam classe que so existia no antigo app.css."""
 
     def test_templates_do_not_use_legacy_only_classes(self):
-        app_css = CSS_DIR / "app.css"
-        if not app_css.exists():
-            self.skipTest("app.css foi removido (3.9)")
-
-        def names(path):
-            css = re.sub(r"/\*.*?\*/", "", path.read_text(encoding="utf-8"), flags=re.S)
-            found = set()
-            for selector in re.findall(r"([^{}]+)\{", css):
-                if not selector.strip().startswith("@"):
-                    found.update(re.findall(r"\.([A-Za-z_][\w-]*)", selector))
-            return found
-
-        owned = set()
-        for name in ("components.css", "layout.css", "base.css"):
-            owned |= names(CSS_DIR / name)
-        page_css = CSS_DIR / "pages" / "transactions.css"
-        self.assertTrue(page_css.exists())
-        owned |= names(page_css)
-        legacy_only = names(app_css) - owned
+        legacy_only = LEGACY_CLASS_NAMES - new_css_class_names()
+        self.assertTrue((CSS_DIR / "pages" / "transactions.css").exists())
 
         for template in TEMPLATE_FILES:
-            html = template.read_text(encoding="utf-8")
-            used = set()
-            for value in re.findall(r'class="([^"{]*)"', html):
-                used.update(value.split())
+            used = template_class_tokens(template.read_text(encoding="utf-8"))
             with self.subTest(template=template.name):
                 self.assertEqual(sorted(used & legacy_only), [])
 

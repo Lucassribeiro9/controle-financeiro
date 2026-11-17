@@ -302,7 +302,7 @@ class HomeMarkupTests(HomeFixtureMixin, AuthenticatedTestCase):
             self.assertIn("btn--secondary", link.classes)
 
     def test_markup_uses_only_new_classes(self):
-        """Sem classe do app.css na marcacao propria (spec 017, D1)."""
+        """Sem classe do antigo app.css na marcacao propria (spec 017, D1)."""
 
         allowed = class_names(read(CSS_DIR / "components.css"))
         self.assert_only_new_classes(self.client.get(reverse("core:home")).content.decode(), allowed)
@@ -384,11 +384,9 @@ class HomeCssTests(SimpleTestCase):
     def test_only_local_prefix_or_component_classes(self):
         css = read(HOME_CSS)
         components = class_names(read(CSS_DIR / "components.css"))
-        legacy = class_names(read(CSS_DIR / "app.css"))
 
         for name in class_names(css):
             self.assertTrue(name.startswith("home__") or name in components, name)
-            self.assertNotIn(name, legacy - components, name)
 
     def test_switch_is_pure_css_with_sibling_selector(self):
         css = read(HOME_CSS)

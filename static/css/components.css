@@ -1,7 +1,8 @@
 /*
- * Componentes do DESIGN.md (FIN-34). Dono: item 3.1; telas novas usam estas classes
- * e so acrescentam ajustes em static/css/pages/<app>.css (spec 017, D1).
- * Nomes que nao existem no app.css legado, para o legado nao vazar estilo aqui.
+ * Componentes compartilhados do DESIGN.md (FIN-34). Telas usam estas classes e so acrescentam
+ * o que e local em static/css/pages/<app>.css. Qualquer issue pode criar ou alterar um
+ * componente aqui, com teste e entrada na spec 002; promova quando o padrao se repetir em
+ * dois apps (spec 017, 3.9).
  * Sem sombra: elevacao por contraste de superficie (card sobre canvas).
  */
 
@@ -403,6 +404,13 @@
 
 .progress--over .progress__bar {
     background: var(--color-money-expense);
+}
+
+/* Mensagens do Django (partials/messages.html) */
+.app-messages {
+    display: grid;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
 }
 
 /* Estado vazio */

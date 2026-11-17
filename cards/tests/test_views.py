@@ -18,7 +18,7 @@ from institutions.models import Institution
 from transactions.models import Transaction
 
 
-# Classes do app.css legado que as telas de cartoes nao podem mais usar (FIN-52, spec 017).
+# Classes do antigo app.css que as telas de cartoes nao podem mais usar (FIN-52, spec 017).
 LEGACY_CLASSES = {
     "panel", "page-header", "page-section", "button", "button-secondary", "data-table",
     "table-responsive", "metric-card", "detail-list", "summary-grid", "card-title-row",

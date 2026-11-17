@@ -54,8 +54,8 @@ class BaseTemplateHeadTests(TestCase):
         names = [href.rsplit("/", 1)[-1] for href in hrefs]
 
         self.assertEqual(
-            names[:5],
-            ["tokens.css", "base.css", "app.css", "components.css", "layout.css"],
+            names[:4],
+            ["tokens.css", "base.css", "components.css", "layout.css"],
         )
 
     def test_page_css_block_comes_after_layout(self):

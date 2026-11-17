@@ -1,4 +1,4 @@
-"""Guarda da remodelacao (spec 017, issue 297): sem classe do app.css nas telas de cadastro e login."""
+"""Guarda da remodelacao (spec 017, issue 297): sem classe do antigo app.css nas telas de cadastro e login."""
 
 import re
 from pathlib import Path
@@ -6,6 +6,8 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
+
+from core.tests.legacy_css import LEGACY_CLASS_NAMES, new_css_class_names
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 TEMPLATES = [
@@ -27,11 +29,6 @@ TEMPLATES = [
 PAGE_CSS = ["accounts", "categories", "institutions", "installments", "login"]
 
 
-def selectors(css):
-    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-    return set(re.findall(r"\.([a-zA-Z_][\w-]*)", css))
-
-
 def template_classes(source):
     source = re.sub(r"\{#.*?#\}", "", source, flags=re.S)
     found = set()
@@ -43,22 +40,14 @@ def template_classes(source):
 
 class LegacyClassesTests(SimpleTestCase):
     def legacy(self):
-        return selectors((ROOT / "static/css/app.css").read_text(encoding="utf-8"))
+        return LEGACY_CLASS_NAMES
 
     def test_templates_use_no_class_from_app_css(self):
-        legacy = self.legacy()
+        legacy = self.legacy() - new_css_class_names()
         for name in TEMPLATES:
             with self.subTest(template=name):
                 used = template_classes((ROOT / name).read_text(encoding="utf-8"))
                 self.assertEqual(used & legacy, set())
-
-    def test_page_css_defines_no_selector_from_app_css(self):
-        legacy = self.legacy()
-        for name in PAGE_CSS:
-            with self.subTest(css=name):
-                path = ROOT / "static/css/pages" / f"{name}.css"
-                self.assertTrue(path.exists())
-                self.assertEqual(selectors(path.read_text(encoding="utf-8")) & legacy, set())
 
     def test_page_css_uses_only_tokens_for_color(self):
         for name in PAGE_CSS:
