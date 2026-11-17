@@ -96,7 +96,7 @@ Esta spec nao deve criar regra financeira nova. Ela pode exigir ajustes de conte
 - `docs/design/tokens.md` e referencia visual existem no repositorio.
 - Partials MVP usados em pelo menos duas telas cada (quando aplicavel).
 - Home, transacoes, faturas e importacoes seguem como telas piloto.
-- Breakpoint 768px e scroll horizontal / cards empilhados conforme MVP.
+- Breakpoint 768px e lista empilhada abaixo disso (ADR-014), sem scroll horizontal.
 
 ## Open Questions
 
@@ -161,8 +161,14 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 
 - Breakpoint oficial: **768px**.
 - A partir da 3.1 (spec 017): `filter_bar` aceita `fields_template`, `active_count` e `clear_url` e vira `<details class="filters">`, recolhido abaixo de 768px com o resumo "Filtros (N ativos)" e aberto acima disso, sem JS. Sem `fields_template` renderiza só as ações. Listas viram lista empilhada abaixo de 768px (ADR-014) nas issues de tela.
-- **MVP mobile:** tabelas financeiras densas com **scroll horizontal** no desktop estreito/mobile.
-- **Onda 2 (backlog dentro da 002 ou issue dedicada):** listas em **cards empilhados** para transações e faturas.
+- **Lista empilhada (ADR-014):** abaixo de 768px toda lista financeira vira linhas empilhadas (`.list-table`, com `.list-table--records` nos cadastros), sem scroll horizontal. Substitui o MVP de scroll horizontal e a onda 2 de cards empilhados, entregues na remodelação (spec 017).
+
+### Componentes compartilhados (`static/css/components.css`)
+
+- Regra (spec 017, 3.9): `static/css/app.css` não existe mais. Qualquer issue pode criar ou alterar um componente em `components.css`, com teste e entrada nesta lista. Promova um padrão quando ele se repetir em dois apps. `static/css/pages/<app>.css` guarda só o que é local do app (prefixo próprio). `base.html` carrega `tokens.css`, `base.css`, `components.css`, `layout.css` e o bloco `page_css`.
+- Base: `.btn` (`--primary`, `--secondary`, `--tertiary`, `--danger`), `.status`, `.card`, `.balance-card`, `.field` (`--check`), `.alert`, `.segmented`, `.period-picker`, `.filters`, `.list-table`, `.summary-rows`, `.progress` (barra lima; `--over` vermelha), `.empty`.
+- Cadastros (accounts, categories, institutions, installments, login): `.screen-head` (com `__title` e `__actions`), `.soft-text`, `.card-stack`, `.card-head`, `.card-section`, `.form-card`, `.form-stack`, `.button-bar`, `.list-card`, `.row-main`, `.row-meta`, `.row-value` e o modificador `.list-table--records` (linha empilhada abaixo de 768px, nome e valor na primeira linha, metadados na segunda).
+- Utilitários: `.sr-only` (texto só para leitor de tela) e `.app-messages` (pilha das mensagens do Django, `partials/messages.html`).
 
 ### Ícones
 
@@ -225,12 +231,12 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - [ ] Issue 002-06: Aplicar design system na home (piloto).
   - Acceptance: home usa partials do MVP; responsivo em 768px; sem regra financeira no template.
   - Verify: `python manage.py test core`; validação manual desktop/mobile.
-  - Files: `core/templates/core/home.html`, `static/css/app.css`.
+  - Files: `core/templates/core/home.html`, `static/css/pages/home.css`.
 
 - [ ] Issue 002-07: Padronizar lista de transações.
-  - Acceptance: `filter_bar`, `status_badge`, `empty_state`; tabela densa + scroll horizontal no mobile MVP.
+  - Acceptance: `filter_bar`, `status_badge`, `empty_state`; lista empilhada abaixo de 768px (ADR-014).
   - Verify: `python manage.py test transactions`; manual mobile.
-  - Files: `transactions/templates/transactions/list.html`, `static/css/app.css`.
+  - Files: `transactions/templates/transactions/list.html`, `static/css/pages/transactions.css`.
 
 - [ ] Issue 002-08: Padronizar faturas (lista/detalhe relevante).
   - Acceptance: partials do MVP nas telas de faturas piloto.
@@ -245,4 +251,4 @@ Esta spec herda comandos, estrutura, estilo, estrategia de testes e boundaries d
 - [ ] Issue 002-10 (backlog / onda 2): Consolidar tokens em variáveis CSS e cards empilhados em transações/faturas.
   - Acceptance: `--color-*` semânticos; cards mobile onde aplicável.
   - Verify: `python manage.py test`; revisão visual nas telas piloto.
-  - Files: `static/css/app.css`, `docs/design/tokens.md`.
+  - Files: `static/css/tokens.css`, `static/css/components.css`, `docs/design/tokens.md`.
