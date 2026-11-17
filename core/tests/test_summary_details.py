@@ -424,7 +424,7 @@ class HomeSummaryCardTemplateTests(SummaryDetailFixtureMixin, AuthenticatedTestC
 
         response = self.client.get(reverse("core:home"))
 
-        self.assertContains(response, "home-summary-card-link", count=3)
+        self.assertContains(response, "home__cta", count=3)
         self.assertContains(response, "Ver lançamentos", count=3)
 
     def test_home_cards_stay_clickable_when_month_is_empty(self):
@@ -432,5 +432,5 @@ class HomeSummaryCardTemplateTests(SummaryDetailFixtureMixin, AuthenticatedTestC
 
         response = self.client.get(reverse("core:home"))
 
-        self.assertContains(response, "home-summary-card-link", count=3)
+        self.assertContains(response, "home__cta", count=3)
         self.assertTrue(response.context["empty_states"]["summary"]["is_empty"])
