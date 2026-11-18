@@ -64,7 +64,7 @@
                                     <form class="fc-adjust" method="post" action="{% url 'recurrences:adjust-forecast' forecast.id %}">
                                         {% csrf_token %}
                                         <label class="field fc-adjust__field">
-                                            <span class="field__label fc-sr-only">Novo valor</span>
+                                            <span class="field__label sr-only">Novo valor</span>
                                             <input id="amount-{{ forecast.id }}" name="amount" type="text" inputmode="decimal" placeholder="0,00" value="{{ forecast.amount|decimal_ptbr }}" required>
                                         </label>
                                         <button class="btn btn--tertiary" type="submit">Ajustar</button>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Checagem visual do app (spec 017, D4). Roda local; fora do CI e da imagem Docker.
 
-Abre cada URL sem parametro em 375, 900 e 1280px, nos temas claro e escuro, falha
+Abre cada URL em 375, 900 e 1280px, nos temas claro e escuro, falha
 se `document.documentElement.scrollWidth > window.innerWidth` e salva capturas em
 `.visual-check/` (ignorado pelo git).
 
@@ -23,8 +23,6 @@ import re
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
-
-from playwright.sync_api import sync_playwright
 
 URLS = [
     "/",
@@ -74,6 +72,12 @@ def measure(page) -> dict:
     )
 
 
+def redirected(url: str, landed_path: str) -> bool:
+    """True se a pagina terminou em outro caminho. A query string da URL pedida e ignorada."""
+
+    return url != LOGIN_URL and urlparse(url).path != landed_path
+
+
 def check_page(page, base_url: str, url: str, out_file: Path) -> dict:
     response = page.goto(base_url + url, wait_until="networkidle")
     status = response.status if response else 0
@@ -84,7 +88,7 @@ def check_page(page, base_url: str, url: str, out_file: Path) -> dict:
     problems = []
     if status != 200:
         problems.append(f"HTTP {status}")
-    if landed != url and url != LOGIN_URL:
+    if redirected(url, landed):
         problems.append(f"redirecionou para {landed}")
     if info["scrollWidth"] > info["innerWidth"]:
         problems.append(f"overflow {info['scrollWidth']}>{info['innerWidth']}")
@@ -92,6 +96,8 @@ def check_page(page, base_url: str, url: str, out_file: Path) -> dict:
 
 
 def run(args) -> int:
+    from playwright.sync_api import sync_playwright
+
     username = os.environ.get("VISUAL_CHECK_USERNAME")
     password = os.environ.get("VISUAL_CHECK_PASSWORD")
     if not username or not password:

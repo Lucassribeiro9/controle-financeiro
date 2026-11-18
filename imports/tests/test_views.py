@@ -1391,8 +1391,9 @@ class ImportVisualMarkupTests(AuthenticatedTestCase):
     def _legacy_classes_in(self, html):
         import re
 
-        css = (Path(__file__).resolve().parents[2] / "static/css/app.css").read_text()
-        legacy = set(re.findall(r"\.([a-zA-Z][\w-]*)", re.sub(r"/\*.*?\*/", "", css, flags=re.S)))
+        from core.tests.legacy_css import LEGACY_CLASS_NAMES, new_css_class_names
+
+        legacy = LEGACY_CLASS_NAMES - new_css_class_names()
         used = set()
         for value in re.findall(r'class="([^"]*)"', html):
             used.update(value.split())

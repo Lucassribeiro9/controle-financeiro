@@ -1,7 +1,8 @@
 /*
- * Componentes do DESIGN.md (FIN-34). Dono: item 3.1; telas novas usam estas classes
- * e so acrescentam ajustes em static/css/pages/<app>.css (spec 017, D1).
- * Nomes que nao existem no app.css legado, para o legado nao vazar estilo aqui.
+ * Componentes compartilhados do DESIGN.md (FIN-34). Telas usam estas classes e so acrescentam
+ * o que e local em static/css/pages/<app>.css. Qualquer issue pode criar ou alterar um
+ * componente aqui, com teste e entrada na spec 002; promova quando o padrao se repetir em
+ * dois apps (spec 017, 3.9).
  * Sem sombra: elevacao por contraste de superficie (card sobre canvas).
  */
 
@@ -395,7 +396,7 @@
 }
 
 .progress__bar {
-    background: var(--color-text-primary);
+    background: var(--color-action-primary);
     border-radius: var(--radius-pill);
     display: block;
     height: 100%;
@@ -403,6 +404,26 @@
 
 .progress--over .progress__bar {
     background: var(--color-money-expense);
+}
+
+/* Texto so para leitor de tela */
+.sr-only {
+    border: 0;
+    clip: rect(0, 0, 0, 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+/* Mensagens do Django (partials/messages.html) */
+.app-messages {
+    display: grid;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
 }
 
 /* Estado vazio */
@@ -428,4 +449,226 @@
 .empty__description {
     display: block;
     margin-top: var(--space-xs);
+}
+
+/* Cadastros: cabecalho de tela, texto de apoio e acoes (accounts, categories, institutions, installments, login) */
+.screen-head {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md) var(--space-lg);
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+}
+
+.screen-head__title {
+    min-width: 0;
+}
+
+.screen-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.soft-text {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-caption);
+    line-height: var(--line-height-caption);
+    margin: 0;
+}
+
+.screen-head__title .soft-text {
+    margin-top: var(--space-xs);
+}
+
+/* Painel e pilha de cartoes */
+.card-stack {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.card-stack > .card,
+.card-stack > .empty {
+    margin: 0;
+}
+
+.card-head {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm) var(--space-lg);
+    justify-content: space-between;
+    margin-bottom: var(--space-md);
+}
+
+.card-head__aside {
+    text-align: right;
+}
+
+.card-head__aside .soft-text {
+    margin-top: 2px;
+}
+
+.card-section {
+    margin-top: var(--space-lg);
+}
+
+.card-section > h2,
+.card-section > h3 {
+    margin-bottom: var(--space-sm);
+}
+
+/* Formulario: pilha de campos e linha de acoes */
+.form-card {
+    max-width: 640px;
+}
+
+.form-stack {
+    display: grid;
+    gap: var(--space-lg);
+}
+
+.form-stack .soft-text {
+    max-width: 60ch;
+}
+
+.field--check {
+    align-items: center;
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.field--check input {
+    flex: 0 0 auto;
+    height: 20px;
+    min-height: 0;
+    padding: 0;
+    width: 20px;
+}
+
+.field--check .field__label {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+}
+
+.field--check .field__error {
+    flex-basis: 100%;
+}
+
+.button-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.btn--danger {
+    background: var(--color-money-expense-bg);
+    border-color: var(--color-money-expense-strong);
+    color: var(--color-money-expense-strong);
+}
+
+@media (max-width: 767.98px) {
+    .screen-head__actions {
+        width: 100%;
+    }
+
+    .screen-head__actions .btn {
+        flex: 1 1 auto;
+    }
+
+    .button-bar .btn {
+        flex: 1 1 auto;
+    }
+}
+
+/*
+ * Lista de registros: use .list-table--records junto de .list-table. Tabela no desktop;
+ * abaixo de 768px a linha vira duas linhas (ADR-014). Linha 1: nome (.row-main) e valor
+ * (.row-value). Linha 2: metadados (.row-meta) em texto secundario; data-label vira
+ * rotulo antes do valor.
+ */
+.list-card {
+    padding: var(--space-sm) var(--space-lg);
+}
+
+.row-main {
+    overflow-wrap: anywhere;
+}
+
+.row-main a {
+    font-weight: 600;
+}
+
+.row-main .soft-text {
+    margin-top: 2px;
+}
+
+.list-table--records .row-value {
+    text-align: right;
+}
+
+.list-table--records tbody tr:last-child,
+.list-table--records tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+@media (min-width: 768px) {
+    .list-card {
+        padding: var(--space-md) var(--space-xl);
+    }
+
+    .list-table--records .row-value,
+    .list-table--records .row-meta {
+        white-space: nowrap;
+    }
+
+    .list-table--records tr > :last-child {
+        padding-right: 0;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .list-table--records tr {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 var(--space-md);
+    }
+
+    .list-table--records tr::before {
+        content: "";
+        flex-basis: 100%;
+        height: 0;
+        order: 2;
+    }
+
+    .list-table--records .row-main {
+        flex: 1 1 0;
+        min-width: 0;
+        order: 0;
+    }
+
+    .list-table--records .row-value {
+        flex: 0 0 auto;
+        font-weight: 600;
+        order: 1;
+    }
+
+    .list-table--records .row-meta {
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-caption);
+        line-height: var(--line-height-caption);
+        margin-top: var(--space-xs);
+        order: 3;
+    }
+
+    .list-table--records .row-meta[data-label]::before {
+        content: attr(data-label) ": ";
+    }
+
+    .list-table--records .row-meta .status {
+        vertical-align: middle;
+    }
 }

@@ -41,7 +41,7 @@
                     <p class="gl-goal__of">de {{ progress.target_amount|brl }} · {{ progress.progress_percent|percentage }}</p>
 
                     <div class="progress{% if monthly.status == 'at_risk' or monthly.status == 'missed' %} progress--over{% endif %}" role="progressbar" aria-label="Progresso de {{ goal.name }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress.progress_percent|floatformat:'0u' }}">
-                        <span class="progress__bar gl-bar" style="width: {{ progress.progress_percent|floatformat:'2u' }}%"></span>
+                        <span class="progress__bar" style="width: {{ progress.progress_percent|floatformat:'2u' }}%"></span>
                     </div>
 
                     <dl class="gl-legend">

@@ -5,10 +5,16 @@ from pathlib import Path
 
 from django.test import SimpleTestCase
 
+from core.tests.legacy_css import (
+    LEGACY_CLASS_NAMES,
+    new_css_class_names,
+    project_templates,
+    template_class_tokens,
+)
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 STATIC = ROOT / "static"
 CSS_DIR = STATIC / "css"
-CSS_PATH = CSS_DIR / "app.css"
 DESIGN_PATH = ROOT / "docs" / "design" / "DESIGN.md"
 
 COLOR_LITERAL = re.compile(
@@ -67,12 +73,9 @@ class HiddenAttributeCssTests(SimpleTestCase):
 
     hidden_rule = re.compile(r"^\[hidden\]\s*\{[^}]*display:\s*none\s*!important;", re.M)
 
-    def test_hidden_attribute_forces_display_none(self):
+    def test_base_css_forces_hidden(self):
         """app.js usa hidden nos campos condicionais; o CSS nao pode anular isso."""
 
-        self.assertRegex(read(CSS_PATH), self.hidden_rule)
-
-    def test_base_css_also_forces_hidden(self):
         self.assertRegex(read(CSS_DIR / "base.css"), self.hidden_rule)
 
 
@@ -173,75 +176,94 @@ class BaseCssTests(SimpleTestCase):
         self.assertNotRegex(self.css, COLOR_LITERAL)
 
 
-class LegacyAppCssTests(SimpleTestCase):
-    """R-08: o app.css legado so usa variaveis dos tokens."""
+class LegacyCssRemovedTests(SimpleTestCase):
+    """R-20 (3.9): app.css nao existe e nenhum template usa classe definida so nele."""
 
-    def setUp(self):
-        self.css = read(CSS_PATH)
+    def test_app_css_file_is_gone(self):
+        self.assertFalse((CSS_DIR / "app.css").exists())
 
-    def test_app_css_has_no_color_literals(self):
-        self.assertNotRegex(self.css, COLOR_LITERAL)
+    def test_snapshot_has_the_121_legacy_names(self):
+        self.assertEqual(len(LEGACY_CLASS_NAMES), 121)
 
-    def test_font_and_color_scheme_come_from_tokens(self):
-        self.assertNotIn("Arial", self.css)
-        self.assertNotIn("color-scheme", self.css)
-        self.assertNotIn("font-family", self.css)
+    def test_no_template_uses_a_class_only_the_legacy_css_defined(self):
+        legacy_only = LEGACY_CLASS_NAMES - new_css_class_names()
 
-    def test_legacy_variables_alias_the_tokens(self):
-        root = declarations(LIGHT_BLOCK.search(self.css).group("body"))
-        self.assertEqual(root["--bg"], "var(--color-bg-canvas)")
-        self.assertEqual(root["--surface"], "var(--color-bg-surface)")
-        self.assertEqual(root["--text"], "var(--color-text-primary)")
-        self.assertEqual(root["--line"], "var(--color-border-default)")
+        for template in project_templates():
+            with self.subTest(template=str(template.relative_to(ROOT))):
+                used = template_class_tokens(read(template))
+                self.assertEqual(sorted(used & legacy_only), [])
 
-    def test_accent_background_and_text_use_are_separated(self):
-        root = declarations(LIGHT_BLOCK.search(self.css).group("body"))
-        self.assertEqual(root["--accent"], "var(--color-action-primary)")
-        self.assertEqual(root["--accent-fg"], "var(--color-text-primary)")
-        self.assertEqual(root["--accent-soft"], "var(--color-bg-brand-pale)")
-
-    def test_sidebar_aliases_are_not_light_on_light(self):
-        root = declarations(LIGHT_BLOCK.search(self.css).group("body"))
-        self.assertEqual(root["--sidebar"], "var(--color-bg-surface)")
-        self.assertEqual(root["--sidebar-active"], "var(--color-text-primary)")
-        self.assertEqual(root["--sidebar-muted"], "var(--color-text-secondary)")
-
-    def test_shadows_are_none(self):
-        root = declarations(LIGHT_BLOCK.search(self.css).group("body"))
-        self.assertEqual(root["--shadow"], "none")
-        self.assertEqual(root["--shadow-subtle"], "none")
-
-    def test_every_legacy_variable_name_still_exists(self):
-        root = declarations(LIGHT_BLOCK.search(self.css).group("body"))
-        legacy = {
-            "--bg", "--sidebar", "--sidebar-muted", "--sidebar-active", "--surface",
-            "--surface-muted", "--text", "--muted", "--line", "--accent",
-            "--accent-soft", "--income", "--expense", "--success", "--success-soft",
-            "--warning", "--warning-soft", "--danger", "--danger-soft", "--info",
-            "--info-soft", "--neutral", "--neutral-soft", "--focus-ring", "--radius",
-            "--space-1", "--space-2", "--space-3", "--space-4", "--space-5",
-            "--space-6", "--space-8",
-        }
-        self.assertEqual(legacy - set(root), set())
+    def test_no_stylesheet_or_script_points_to_app_css(self):
+        for path in (ROOT / "templates" / "base.html", ROOT / ".github" / "workflows" / "ci.yml"):
+            with self.subTest(path=path.name):
+                self.assertNotIn("css/app.css", read(path))
 
     def test_every_variable_used_is_defined(self):
+        sheets = [CSS_DIR / name for name in ("tokens.css", "base.css", "components.css", "layout.css")]
+        sheets += sorted((CSS_DIR / "pages").glob("*.css"))
         defined = set()
-        for name in ("tokens.css", "app.css", "base.css", "components.css"):
-            defined.update(re.findall(r"(--[\w-]+)\s*:", read(CSS_DIR / name)))
         used = set()
-        for template in ROOT.rglob("*.html"):
-            if any(part in {"docs", "venv", ".agents", ".claude"} for part in template.parts):
-                continue
+        for sheet in sheets:
+            source = read(sheet)
+            defined.update(re.findall(r"(--[\w-]+)\s*:", source))
+            used.update(re.findall(r"var\((--[\w-]+)", source))
+        for template in project_templates():
             used.update(re.findall(r"var\((--[\w-]+)", read(template)))
-        for name in ("app.css", "base.css", "components.css", "tokens.css"):
-            used.update(re.findall(r"var\((--[\w-]+)", read(CSS_DIR / name)))
         # variaveis definidas inline pelo proprio template (--share, --share-color)
         used -= {"--share", "--share-color"}
         self.assertEqual(used - defined, set())
 
 
+class SharedComponentsTests(SimpleTestCase):
+    """3.9: o que se repetia entre apps vive em components.css, sem regra duplicada nas paginas."""
+
+    PROMOTED = (
+        "app-messages", "sr-only", "screen-head", "soft-text", "card-stack", "card-head",
+        "card-section", "form-card", "form-stack", "field--check", "button-bar", "btn--danger",
+        "list-card", "row-main", "row-meta", "row-value", "list-table--records",
+    )
+    RECORD_PAGES = ("accounts", "categories", "institutions", "installments")
+
+    def test_components_css_defines_the_promoted_classes(self):
+        names = class_names(read(CSS_DIR / "components.css"))
+
+        self.assertEqual(sorted(set(self.PROMOTED) - names), [])
+
+    def test_page_css_does_not_redefine_promoted_classes(self):
+        for sheet in sorted((CSS_DIR / "pages").glob("*.css")):
+            with self.subTest(sheet=sheet.name):
+                css = re.sub(r"/\*.*?\*/", "", read(sheet), flags=re.S)
+                heads = {
+                    part.strip()
+                    for head in re.findall(r"([^{}]+)\{", css)
+                    for part in head.split(",")
+                }
+                promoted = {f".{name}" for name in self.PROMOTED}
+                self.assertEqual(sorted(heads & promoted), [])
+
+    def test_record_tables_opt_in_to_the_stacked_modifier(self):
+        for app in self.RECORD_PAGES:
+            for template in sorted((ROOT / app / "templates" / app).glob("*.html")):
+                for table in re.findall(r'<table class="([^"]*)"', read(template)):
+                    if "list-table" in table.split():
+                        with self.subTest(template=f"{app}/{template.name}"):
+                            self.assertIn("list-table--records", table.split())
+
+    def test_progress_bar_is_lime_by_default(self):
+        css = read(CSS_DIR / "components.css")
+        rule = re.search(r"\.progress__bar\s*\{(?P<body>[^}]*)\}", css).group("body")
+
+        self.assertIn("var(--color-action-primary)", rule)
+        for sheet in sorted((CSS_DIR / "pages").glob("*.css")):
+            with self.subTest(sheet=sheet.name):
+                self.assertNotRegex(read(sheet), r"\.progress__bar[^{]*\{[^}]*\bbackground\b")
+
+    def test_components_css_no_longer_mentions_the_legacy_file(self):
+        self.assertNotIn("app.css", read(CSS_DIR / "components.css"))
+
+
 class ComponentsCssTests(SimpleTestCase):
-    """Os componentes novos nao colidem com classes do app.css legado."""
+    """Componentes compartilhados de components.css (spec 002)."""
 
     def setUp(self):
         self.css = read(CSS_DIR / "components.css")
@@ -255,9 +277,6 @@ class ComponentsCssTests(SimpleTestCase):
         ):
             with self.subTest(component=component):
                 self.assertIn(component, names)
-
-    def test_component_class_names_do_not_collide_with_legacy(self):
-        self.assertEqual(class_names(self.css) & class_names(read(CSS_PATH)), set())
 
     def test_components_have_no_color_literals(self):
         self.assertNotRegex(self.css, COLOR_LITERAL)
@@ -297,9 +316,10 @@ class LayoutCssTests(SimpleTestCase):
                 self.assertIn(name, self.classes)
 
     def test_does_not_reuse_legacy_class_names(self):
-        legacy = class_names(read(CSS_PATH))
         legacy_in_layout = {
-            name for name in self.classes if name.startswith(("app-", "mobile-")) or name in legacy
+            name
+            for name in self.classes
+            if name.startswith(("app-", "mobile-")) or name in LEGACY_CLASS_NAMES
         }
         self.assertEqual(legacy_in_layout, set())
 

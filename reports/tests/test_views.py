@@ -311,7 +311,7 @@ class MonthlyDashboardVisualMarkupTests(AuthenticatedTestCase):
 
         response = self.get()
 
-        self.assertContains(response, "report-category__bar")
+        self.assertContains(response, "progress__bar")
         self.assertContains(response, "width: 100%")
         self.assertNotContains(response, "--share-color")
 
